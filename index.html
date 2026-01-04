@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Spoon - Canteen Ordering</title>
+    <!-- Link to our new stylesheet -->
+    <link rel="stylesheet" href="css/menu.css">
+    <!-- Font Awesome for icons, as used in the sample UI -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.4/dist/umd/supabase.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Main container for the app, providing a consistent frame -->
+    <div class="app-container">
+
+        <!-- ============== HEADER ============== -->
+        <header class="greeting-header">
+            <div class="greeting-card">
+                <div class="greeting-card__avatar">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+                <div class="greeting-card__text">
+                    <!-- Dynamic: User name will be inserted by JS -->
+                    <h1 id="user-greeting">Hello, Guest! 👋</h1>
+                    <!-- Dynamic: Witty tagline will be inserted by JS -->
+                    <p id="greeting-tagline">What are we eating today?</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- ============== SEARCH ============== -->
+        <!-- This section is sticky, so it stays at the top on scroll -->
+        <section class="search-section">
+            <div class="search-bar">
+                <i class="fa-solid fa-search"></i>
+                <input type="text" class="search-bar__input" id="search-input"
+                    placeholder="Search for food, snacks, etc.">
+            </div>
+        </section>
+
+
+        <!-- ============== MAIN CONTENT ============== -->
+        <main class="main-content">
+
+            <!-- --- Promotional Banner --- -->
+            <section class="promo-section">
+                <div class="promo-card">
+                    <div class="promo-card__content">
+                        <h3>Late Night Cravings?</h3>
+                        <p>Get your favorite noodles, ready in minutes. No more waiting!</p>
+                        <a href="#categories-section" class="promo-card__cta" id="promo-cta">
+                            Order Now <i class="fa-solid fa-arrow-right"></i>
+                        </a>
+                    </div>
+                    <div class="promo-card__icon">
+                        <i class="fa-solid fa-bowl-food"></i>
+                    </div>
+                </div>
+            </section>
+
+            <!-- --- Categories --- -->
+            <section class="categories-section" id="categories-section">
+                <h2 class="section-title">Explore by Category</h2>
+                <!-- Dynamic: Category chips will be rendered here by JS -->
+                <div class="categories-container no-scrollbar" id="categories-container">
+                    <!-- Example Chip: <button class="category-chip active">Sandwich</button> -->
+                </div>
+            </section>
+
+            <!-- --- Product List --- -->
+            <section class="products-section">
+                <h2 class="section-title" id="product-list-title">Sandwiches</h2>
+                <!-- Dynamic: Product cards for the selected category will be rendered here by JS -->
+                <div class="products-grid" id="products-grid">
+                    <!-- Example Card: 
+                    <div class="product-card">
+                        <div class="product-card__info">
+                            <h4>Veg Sandwich</h4>
+                            <p>₹30</p>
+                        </div>
+                        <button class="product-card__add-btn"><i class="fa-solid fa-plus"></i></button>
+                    </div> 
+                    -->
+                </div>
+            </section>
+
+        </main>
+
+        <!-- ============== BOTTOM NAVIGATION ============== -->
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item active">
+                <i class="fa-solid fa-utensils nav-item__icon"></i>
+                <span class="nav-item__label">Menu</span>
+            </a>
+            <a href="cart.html" class="nav-item">
+                <i class="fa-solid fa-shopping-cart nav-item__icon"></i>
+                <span class="nav-item__label">Cart</span>
+                <!-- Cart badge, initially hidden -->
+                <span class="nav-item__badge" id="cart-badge">0</span>
+            </a>
+            <a href="orders.html" class="nav-item">
+                <i class="fa-solid fa-receipt nav-item__icon"></i>
+                <span class="nav-item__label">Orders</span>
+            </a>
+            <a href="account.html" class="nav-item">
+                <i class="fa-solid fa-user nav-item__icon"></i>
+                <span class="nav-item__label">Account</span>
+            </a>
+        </nav>
+
+    </div>
+
+    <!-- Toast notification utility -->
+    <script src="js/toast.js"></script>
+    <!-- Centralized configuration (must load before other scripts) -->
+    <script src="js/config.js"></script>
+    <!-- Link to our new JavaScript files -->
+    <script src="js/menu.js"></script>
+</body>
+
+</html>

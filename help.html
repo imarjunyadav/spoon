@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Help & Support - Spoon</title>
+    <link rel="stylesheet" href="css/account.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="cart-header">
+            <a href="account.html" class="cart-header__back-btn" aria-label="Back to account">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h1 class="cart-header__title">Help & Support</h1>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            
+            <!-- FAQ Section -->
+            <section class="info-section">
+                <h2 class="info-section__title">Frequently Asked Questions</h2>
+                
+                <div class="faq-item">
+                    <h3 class="faq-item__question">
+                        <i class="fa-solid fa-circle-question"></i>
+                        How do I place an order?
+                    </h3>
+                    <p class="faq-item__answer">
+                        Browse the menu, add items to your cart, and click "Proceed to Checkout". 
+                        You can choose to order now or schedule for later.
+                    </p>
+                </div>
+
+                <div class="faq-item">
+                    <h3 class="faq-item__question">
+                        <i class="fa-solid fa-circle-question"></i>
+                        What are your operating hours?
+                    </h3>
+                    <p class="faq-item__answer">
+                        We're open from 8:00 AM to 8:00 PM every day. Pre-orders can be scheduled 
+                        within these hours.
+                    </p>
+                </div>
+
+                <div class="faq-item">
+                    <h3 class="faq-item__question">
+                        <i class="fa-solid fa-circle-question"></i>
+                        How long does it take to prepare my order?
+                    </h3>
+                    <p class="faq-item__answer">
+                        Most orders are ready within 10-15 minutes. You'll receive a notification 
+                        when your order is ready for pickup.
+                    </p>
+                </div>
+
+                <div class="faq-item">
+                    <h3 class="faq-item__question">
+                        <i class="fa-solid fa-circle-question"></i>
+                        Can I cancel my order?
+                    </h3>
+                    <p class="faq-item__answer">
+                        Yes, you can cancel your order before it's marked as "Preparing". 
+                        Contact us immediately if you need to cancel.
+                    </p>
+                </div>
+
+                <div class="faq-item">
+                    <h3 class="faq-item__question">
+                        <i class="fa-solid fa-circle-question"></i>
+                        What payment methods do you accept?
+                    </h3>
+                    <p class="faq-item__answer">
+                        We accept all major payment methods through Razorpay including UPI, 
+                        credit/debit cards, and net banking.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Contact Section -->
+            <section class="info-section">
+                <h2 class="info-section__title">Contact Us</h2>
+                
+                <div class="contact-card">
+                    <div class="contact-card__item">
+                        <i class="fa-solid fa-phone contact-card__icon"></i>
+                        <div>
+                            <p class="contact-card__label">Phone</p>
+                            <p class="contact-card__value">+91-XXXXXXXXXX</p>
+                        </div>
+                    </div>
+
+                    <div class="contact-card__item">
+                        <i class="fa-solid fa-envelope contact-card__icon"></i>
+                        <div>
+                            <p class="contact-card__label">Email</p>
+                            <p class="contact-card__value">support@spoonapp.com</p>
+                        </div>
+                    </div>
+
+                    <div class="contact-card__item">
+                        <i class="fa-solid fa-clock contact-card__icon"></i>
+                        <div>
+                            <p class="contact-card__label">Support Hours</p>
+                            <p class="contact-card__value">8:00 AM - 8:00 PM</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item">
+                <i class="fa-solid fa-utensils nav-item__icon"></i>
+                <span class="nav-item__label">Menu</span>
+            </a>
+            <a href="cart.html" class="nav-item">
+                <i class="fa-solid fa-shopping-cart nav-item__icon"></i>
+                <span class="nav-item__label">Cart</span>
+                <span class="nav-item__badge" id="cart-badge">0</span>
+            </a>
+            <a href="orders.html" class="nav-item">
+                <i class="fa-solid fa-receipt nav-item__icon"></i>
+                <span class="nav-item__label">Orders</span>
+            </a>
+            <a href="account.html" class="nav-item active">
+                <i class="fa-solid fa-user nav-item__icon"></i>
+                <span class="nav-item__label">Account</span>
+            </a>
+        </nav>
+
+    </div>
+
+    <script src="js/account.js"></script>
+</body>
+</html>

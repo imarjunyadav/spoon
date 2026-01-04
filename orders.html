@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>My Orders - Spoon</title>
+  
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/orders.css">
+    <link rel="stylesheet" href="css/toast.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+  
+    <!-- Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.4/dist/umd/supabase.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Main App Container -->
+    <div class="app-container">
+
+        <!-- ============== HEADER ============== -->
+        <header class="cart-header">
+            <a href="index.html" class="cart-header__back-btn" aria-label="Back to menu">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h1 class="cart-header__title">My Orders</h1>
+        </header>
+
+        <!-- ============== MAIN CONTENT ============== -->
+        <main class="main-content">
+
+            <!-- Orders List Container (populated by JavaScript) -->
+            <div class="orders-list-container" id="orders-list-container">
+                <!-- Order cards will be dynamically inserted here -->
+            </div>
+
+            <!-- Empty State View (shown when no orders exist) -->
+            <div class="empty-orders-view hidden" id="empty-orders-view">
+                <i class="fa-solid fa-receipt empty-orders-view__icon"></i>
+                <h2 class="empty-orders-view__title">No orders yet!</h2>
+                <p class="empty-orders-view__message">Your past and current orders will appear here.</p>
+                <a href="index.html" class="empty-orders-view__cta">Order Now</a>
+            </div>
+
+        </main>
+
+        <!-- ============== TOAST NOTIFICATION ============== -->
+        <div class="toast-notification" id="toast-notification">
+            Order placed successfully!
+        </div>
+
+        <!-- ============== BOTTOM NAVIGATION ============== -->
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item">
+                <i class="fa-solid fa-utensils nav-item__icon"></i>
+                <span class="nav-item__label">Menu</span>
+            </a>
+            <a href="cart.html" class="nav-item">
+                <i class="fa-solid fa-shopping-cart nav-item__icon"></i>
+                <span class="nav-item__label">Cart</span>
+                <span class="nav-item__badge" id="cart-badge">0</span>
+            </a>
+            <a href="orders.html" class="nav-item active">
+                <i class="fa-solid fa-receipt nav-item__icon"></i>
+                <span class="nav-item__label">Orders</span>
+            </a>
+            <a href="account.html" class="nav-item">
+                <i class="fa-solid fa-user nav-item__icon"></i>
+                <span class="nav-item__label">Account</span>
+            </a>
+        </nav>
+
+    </div>
+
+    <!-- Toast notification utility -->
+    <script src="js/toast.js"></script>
+    <!-- Centralized configuration (must load before other scripts) -->
+    <script src="js/config.js"></script>
+    <!-- Order Logic Script -->
+    <script src="js/order.js"></script>
+
+</body>
+
+</html>

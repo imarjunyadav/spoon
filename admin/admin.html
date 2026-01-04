@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Spoon</title>
+  
+  <!-- Supabase Client Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.4/dist/umd/supabase.min.js"></script>
+  
+  <!-- Centralized configuration -->
+  <script src="../js/config.js"></script>
+  
+  <!-- Initialize Supabase and Check Session -->
+  <script>
+    let supabase = null;
+    
+    async function initAdmin() {
+      // Wait for config to load
+      await window.waitForConfig();
+      supabase = window.getSupabaseClient();
+      
+      if (!supabase) {
+        alert("Failed to connect to database.");
+        return;
+      }
+      
+      await checkSession();
+      fetchOrders();
+      fetchMenuItems();
+    }
+
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert("You must be logged in.");
+        window.location.href = "login.html";
+      }
+    }
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', initAdmin);
+  </script>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      height: 100vh;
+      margin: 0;
+    }
+    .column {
+      flex: 1;
+      padding: 10px;
+      border-right: 1px solid #ccc;
+      overflow-y: auto;
+    }
+    .column:last-child {
+      border-right: none;
+    }
+    h2 {
+      text-align: center;
+    }
+    .item, .order {
+      border: 1px solid #ddd;
+      padding: 8px;
+      margin: 6px 0;
+    }
+    .item:hover {
+      background: #f0f0f0;
+      cursor: pointer;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      padding: 5px 8px;
+      margin-top: 6px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="column" id="items-column">
+    <h2>Items to Prepare</h2>
+    <div id="items-list"></div>
+  </div>
+
+  <div class="column" id="active-orders-column">
+    <h2>Active Orders</h2>
+    <div id="active-orders-list"></div>
+  </div>
+
+  <div class="column" id="completed-orders-column">
+    <h2>Completed Orders</h2>
+    <div id="completed-orders-list"></div>
+  </div>
+
+  <div class="column" id="stock-management-column">
+    <h2>Stock Management</h2>
+    <div id="stock-items-list"></div>
+  </div>
+
+  <script>
+    
+    let allOrders = [];
+    let selectedItem = null;
+
+    async function fetchOrders() {
+      const { data, error } = await supabase.from('orders').select('*');
+      if (error) return console.error("❌ Error fetching orders:", error);
+      allOrders = data;
+      console.log("📦 Orders fetched:", allOrders);
+      renderAll();
+    }
+
+    function getItemSummary() {
+      const summary = {};
+      allOrders
+        .filter(o => o.status === 'PENDING')
+        .forEach(order => {
+          order.items.forEach(item => {
+            summary[item.title] = (summary[item.title] || 0) + item.quantity;
+          });
+        });
+      return summary;
+    }
+
+    function renderAll() {
+      renderItems();
+      renderActiveOrders();
+      renderCompletedOrders();
+    }
+
+    function renderItems() {
+      const itemsList = document.getElementById('items-list');
+      itemsList.innerHTML = '';
+      const summary = getItemSummary();
+      Object.entries(summary).forEach(([title, quantity]) => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.textContent = `${title} — ${quantity}`;
+        div.onclick = () => {
+          selectedItem = selectedItem === title ? null : title;
+          renderActiveOrders();
+        };
+        itemsList.appendChild(div);
+      });
+    }
+
+    function renderActiveOrders() {
+      const list = document.getElementById('active-orders-list');
+      list.innerHTML = '';
+      const filtered = allOrders.filter(o =>
+        o.status === 'PENDING'
+      );
+
+      filtered.forEach(order => {
+        if (selectedItem && !order.items.some(i => i.title === selectedItem)) return;
+        const div = document.createElement('div');
+        div.className = 'order';
+        div.innerHTML = `
+          <strong>Order:</strong> ${order.id}<br>
+          <strong>Items:</strong><ul>
+            ${order.items.map(i => `<li>${i.title} x${i.quantity}</li>`).join('')}
+          </ul>
+          <button onclick="markComplete('${order.id}')">Mark Complete</button>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    function renderCompletedOrders() {
+      const list = document.getElementById('completed-orders-list');
+      list.innerHTML = '';
+      const filtered = allOrders.filter(o => o.status === 'COMPLETE');
+
+      filtered.forEach(order => {
+        const div = document.createElement('div');
+        div.className = 'order';
+        div.innerHTML = `
+          <strong>Order:</strong> ${order.id}<br>
+          <strong>Items:</strong><ul>
+            ${order.items.map(i => `<li>${i.title} x${i.quantity}</li>`).join('')}
+          </ul>
+          <p><strong>Verification Code:</strong> ${order.verification_code || '-'}</p>
+          <button onclick="markPickedUp('${order.id}')">Picked Up</button>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    async function markComplete(orderId) {
+      console.log("🔄 Marking order as COMPLETE:", orderId);
+
+      try {
+        const response = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/orders/${orderId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'COMPLETE' })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          console.log('📧 Email notification + Status updated to COMPLETE');
+          if (result.email && result.email.success) {
+            console.log('✅ Email sent successfully:', result.email.messageId);
+          } else if (result.email && !result.email.success) {
+            console.warn('⚠️ Email failed:', result.email.error);
+          }
+          await fetchOrders();
+        } else {
+          console.error('❌ Error:', result.error);
+          alert('Failed to update order status: ' + result.error);
+        }
+      } catch (error) {
+        console.error('❌ Network error:', error);
+        alert('Failed to connect to server. Please check if backend is running.');
+      }
+    }
+
+    async function markPickedUp(orderId) {
+      console.log("📦 Marking as PICKED_UP:", orderId);
+
+      try {
+        const response = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/orders/${orderId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'PICKED_UP' })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          console.log('📧 Email notification + Status updated to PICKED_UP');
+          if (result.email && result.email.success) {
+            console.log('✅ Email sent successfully:', result.email.messageId);
+          } else if (result.email && !result.email.success) {
+            console.warn('⚠️ Email failed:', result.email.error);
+          }
+          await fetchOrders();
+        } else {
+          console.error('❌ Error:', result.error);
+          alert('Failed to update order status: ' + result.error);
+        }
+      } catch (error) {
+        console.error('❌ Network error:', error);
+        alert('Failed to connect to server. Please check if backend is running.');
+      }
+    }
+
+    // ========================================
+    // STOCK MANAGEMENT FUNCTIONS
+    // ========================================
+    
+    let allMenuItems = [];
+    
+    async function fetchMenuItems() {
+      const { data, error } = await supabase
+        .from('menu_items')
+        .select('*')
+        .order('category', { ascending: true })
+        .order('name', { ascending: true });
+      
+      if (error) {
+        console.error("❌ Error fetching menu items:", error);
+        return;
+      }
+      
+      allMenuItems = data;
+      console.log("📋 Menu items fetched:", allMenuItems.length);
+      renderStockItems();
+    }
+    
+    function renderStockItems() {
+      const stockList = document.getElementById('stock-items-list');
+      stockList.innerHTML = '';
+      
+      // Group by category
+      const categories = {};
+      allMenuItems.forEach(item => {
+        if (!categories[item.category]) {
+          categories[item.category] = [];
+        }
+        categories[item.category].push(item);
+      });
+      
+      // Render each category
+      Object.keys(categories).sort().forEach(category => {
+        const categoryHeader = document.createElement('h3');
+        categoryHeader.textContent = category.toUpperCase();
+        categoryHeader.style.marginTop = '20px';
+        categoryHeader.style.marginBottom = '10px';
+        categoryHeader.style.fontSize = '14px';
+        categoryHeader.style.color = '#666';
+        stockList.appendChild(categoryHeader);
+        
+        categories[category].forEach(item => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'item';
+          itemDiv.style.display = 'flex';
+          itemDiv.style.justifyContent = 'space-between';
+          itemDiv.style.alignItems = 'center';
+          
+          const itemInfo = document.createElement('div');
+          itemInfo.innerHTML = `
+            <strong>${item.name}</strong><br>
+            <small>₹${item.price}</small>
+          `;
+          
+          const toggleBtn = document.createElement('button');
+          toggleBtn.textContent = item.is_available ? 'In Stock' : 'Out of Stock';
+          toggleBtn.style.background = item.is_available ? '#28a745' : '#dc3545';
+          toggleBtn.style.fontSize = '12px';
+          toggleBtn.style.padding = '6px 12px';
+          toggleBtn.onclick = () => toggleStock(item.id, !item.is_available);
+          
+          itemDiv.appendChild(itemInfo);
+          itemDiv.appendChild(toggleBtn);
+          stockList.appendChild(itemDiv);
+        });
+      });
+    }
+    
+    async function toggleStock(itemId, newAvailability) {
+      const { error } = await supabase
+        .from('menu_items')
+        .update({ is_available: newAvailability })
+        .eq('id', itemId);
+      
+      if (error) {
+        console.error("❌ Error updating stock:", error);
+        alert('Failed to update stock status');
+        return;
+      }
+      
+      console.log(`✅ Stock updated for item ${itemId}: ${newAvailability ? 'Available' : 'Out of Stock'}`);
+      await fetchMenuItems();
+    }
+    
+    // Auto-refresh every 5 seconds for real-time updates
+    setInterval(fetchOrders, 5000);
+    setInterval(fetchMenuItems, 10000); // Refresh stock every 10 seconds
+  </script>
+</body>
+</html>

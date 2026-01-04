@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>My Cart - Spoon</title>
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/cart.css">
+    <link rel="stylesheet" href="css/toast.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    
+    <!-- Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.4/dist/umd/supabase.min.js"></script>
+    
+    <!-- Razorpay Payment Gateway -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+
+<body>
+
+    <!-- Main container for the app -->
+    <div class="app-container">
+
+        <!-- ============== HEADER ============== -->
+        <header class="cart-header">
+            <a href="index.html" class="cart-header__back-btn" aria-label="Back to menu">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h1 class="cart-header__title">My Cart</h1>
+        </header>
+
+        <!-- ============== MAIN CONTENT ============== -->
+        <main class="main-content">
+
+            <!-- This container will be filled with cart items by JavaScript -->
+            <div class="cart-items-list" id="cart-items-container">
+                <!-- JS will generate cards here -->
+            </div>
+
+            <!-- This view is shown only when the cart is empty. It's hidden by default. -->
+            <div class="empty-cart-view hidden" id="empty-cart-view">
+                <i class="fa-solid fa-cart-shopping empty-cart-view__icon"></i>
+                <h2 class="empty-cart-view__title">Your cart is feeling light!</h2>
+                <p class="empty-cart-view__message">Add some delicious food from the menu to get started.</p>
+                <a href="index.html" class="btn--primary empty-cart-view__cta">Back to Menu</a>
+            </div>
+
+        </main>
+
+        <!-- ============== STICKY SUMMARY FOOTER ============== -->
+        <div class="cart-summary-footer" id="cart-summary-footer">
+            <div>
+                <div class="cart-summary-footer__subtotal-label">Subtotal</div>
+                <div class="cart-summary-footer__subtotal-value" id="subtotal-value">₹0</div>
+            </div>
+            <button class="cart-summary-footer__cta" id="checkout-btn">Proceed to Checkout</button>
+        </div>
+
+
+        <!-- ============== BOTTOM NAVIGATION ============== -->
+        <nav class="bottom-nav">
+            <!-- (Nav items remain the same) -->
+            <a href="index.html" class="nav-item">
+                <i class="fa-solid fa-utensils nav-item__icon"></i>
+                <span class="nav-item__label">Menu</span>
+            </a>
+            <a href="cart.html" class="nav-item active">
+                <i class="fa-solid fa-shopping-cart nav-item__icon"></i>
+                <span class="nav-item__label">Cart</span>
+                <span class="nav-item__badge" id="cart-badge">0</span>
+            </a>
+            <a href="orders.html" class="nav-item">
+                <i class="fa-solid fa-receipt nav-item__icon"></i>
+                <span class="nav-item__label">Orders</span>
+            </a>
+            <a href="account.html" class="nav-item">
+                <i class="fa-solid fa-user nav-item__icon"></i>
+                <span class="nav-item__label">Account</span>
+            </a>
+        </nav>
+
+    </div>
+
+    <!-- ================================================================
+         MODALS (NEW) - Hidden by default
+         ================================================================ -->
+    <div class="modal-overlay hidden" id="modal-overlay"></div>
+
+    <!-- === Confirm Order Modal === -->
+    <div class="modal hidden" id="confirm-order-modal">
+        <div class="modal__header">
+            <h2 class="modal__title">Confirm Your Order</h2>
+            <button class="modal__close-btn" id="close-confirm-modal-btn"><i class="fa-solid fa-times"></i></button>
+        </div>
+
+        <!-- Order items will be listed here -->
+        <div class="modal__order-summary" id="modal-order-summary"></div>
+
+        <!-- Pre-order button -->
+        <button class="preorder-btn" id="preorder-btn">
+            <div class="preorder-btn__label">
+                <span>Want it later?</span>
+                <strong>Schedule for later</strong>
+            </div>
+            <i class="fa-solid fa-chevron-right"></i>
+        </button>
+
+        <!-- Final total and action buttons -->
+        <div class="modal__total">
+            <span class="modal__total-label">Total to Pay</span>
+            <span class="modal__total-value" id="modal-total-value">₹0</span>
+        </div>
+        <div class="modal__actions">
+            <button class="btn--secondary" id="cancel-order-btn">Cancel</button>
+            <button class="btn--primary">Confirm Order</button>
+        </div>
+    </div>
+
+    <!-- === Pre-order Time Picker Modal === -->
+    <div class="modal hidden" id="preorder-modal">
+        <div class="modal__header">
+            <h2 class="modal__title">Select Pickup Time</h2>
+            <button class="modal__close-btn" id="close-preorder-modal-btn"><i class="fa-solid fa-times"></i></button>
+        </div>
+
+        <!-- Info message about timing -->
+        <div class="time-picker__info">
+            <i class="fa-solid fa-clock"></i>
+            <span>Select a time at least 45 minutes from now</span>
+        </div>
+
+        <!-- Horizontal scrolling time chips (populated by JavaScript) -->
+        <div class="time-chips-wrapper">
+            <div class="time-chips-container" id="time-chips-container">
+                <!-- Time chip buttons will be generated here -->
+            </div>
+        </div>
+
+        <!-- Error message when no slots available -->
+        <div class="time-picker__error hidden" id="time-picker-error">
+            <i class="fa-solid fa-info-circle"></i>
+            <p>No available pickup times today.</p>
+            <p>Canteen closes at 6:00 PM. Please try again tomorrow after 8:00 AM.</p>
+        </div>
+
+        <!-- Fixed confirm button at bottom -->
+        <div class="time-picker__confirm-container">
+            <button class="btn--primary" id="confirm-preorder-btn" style="width: 100%;">Confirm Time</button>
+        </div>
+    </div>
+
+
+    <!-- Toast notification utility -->
+    <script src="js/toast.js"></script>
+    <!-- Centralized configuration (must load before other scripts) -->
+    <script src="js/config.js"></script>
+    <!-- Link to the cart's JavaScript file -->
+    <script src="js/cart.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,665 @@
+/* ================================================================
+    SPOON REDESIGN - CART PAGE STYLESHEET
+    Version: 1.2 (Fluid Typography Update)
+   ================================================================ */
+
+/* ====================
+   1. IMPORT DESIGN SYSTEM
+   ==================== */
+@import url('menu.css');
+
+
+/* ====================
+   2. PAGE HEADER (UNIFIED COMPONENT)
+   ==================== */
+
+/**
+ * BASE HEADER STYLES
+ * Used across cart, orders, account, and order-status pages
+ * Provides consistent back button + title layout
+ */
+.cart-header {
+    position: relative;
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 60px;
+    background-color: var(--background-white);
+}
+
+/**
+ * BACK BUTTON
+ * Positioned absolutely on the left side
+ * Consistent size and color across all pages
+ */
+.cart-header__back-btn {
+    position: absolute;
+    left: var(--spacing-md);
+    font-size: 20px;
+    color: var(--text-primary);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.cart-header__back-btn:hover {
+    background-color: var(--inactive-grey);
+}
+
+.cart-header__back-btn:active {
+    transform: scale(0.95);
+}
+
+/**
+ * HEADER TITLE
+ * Centered text with responsive font size
+ */
+.cart-header__title {
+    font-size: clamp(16px, 2.8vw, 18px);
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+
+/* ====================
+   3. CART ITEMS LIST
+   ==================== */
+.cart-items-list {
+    display: grid;
+    gap: var(--spacing-sm);
+}
+
+.cart-item-card {
+    background: var(--background-white);
+    border-radius: var(--radius-medium);
+    border: 1px solid var(--border-color);
+    padding: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.cart-item-card__details {
+    flex-grow: 1;
+}
+
+.cart-item-card__title {
+    /* ✅ FLUID TYPO: Apply clamp() to item titles */
+    font-size: clamp(16px, 2.5vw, 17px);
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.cart-item-card__price {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* --- 3a. Quantity Stepper Component --- */
+.quantity-stepper {
+    display: flex;
+    align-items: center;
+    background-color: var(--inactive-grey);
+    border-radius: var(--radius-pill);
+    flex-shrink: 0;
+}
+
+.quantity-stepper__btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: var(--brand-primary);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.quantity-stepper__value {
+    font-size: 16px;
+    font-weight: 600;
+    min-width: 24px;
+    text-align: center;
+    padding: 0 4px;
+}
+
+/* ====================
+   4. EMPTY CART VIEW
+   ==================== */
+.empty-cart-view {
+    text-align: center;
+    padding: var(--spacing-xl) var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+    color: var(--text-secondary);
+}
+
+.empty-cart-view__icon {
+    font-size: 64px;
+    color: var(--inactive-grey);
+}
+
+.empty-cart-view__title {
+    /* ✅ FLUID TYPO: Apply clamp() to empty state title */
+    font-size: clamp(20px, 4vw, 22px);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.empty-cart-view__message {
+    max-width: 250px;
+    line-height: 1.6;
+}
+
+/**
+ * EMPTY CART CTA BUTTON
+ * 
+ * NOTE: This button now uses the unified .btn--primary class
+ * Additional margin-top is added for spacing within the empty state
+ * 
+ * USAGE IN HTML:
+ * <a href="index.html" class="btn--primary empty-cart-view__cta">Back to Menu</a>
+ */
+.empty-cart-view__cta {
+    margin-top: var(--spacing-md);
+}
+
+
+/* ====================
+   5. STICKY SUMMARY FOOTER
+   ==================== */
+.cart-summary-footer {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    background: var(--background-white);
+    border-top: 1px solid var(--border-color);
+    padding: var(--spacing-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 50;
+    box-shadow: var(--shadow-sticky);
+    transition: bottom 0.3s ease-out;
+}
+
+@media (max-width: 480px) {
+    .cart-summary-footer {
+        left: 0;
+        transform: none;
+    }
+}
+
+.cart-summary-footer__subtotal-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.cart-summary-footer__subtotal-value {
+    /* ✅ FLUID TYPO: Apply clamp() to the subtotal value */
+    font-size: clamp(20px, 4vw, 22px);
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.cart-summary-footer__cta {
+    background: var(--brand-primary);
+    color: var(--text-on-brand);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 12px var(--spacing-lg);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.cart-summary-footer__cta:hover {
+    transform: scale(1.05);
+}
+
+/* ====================
+   6. MODAL STYLES
+   ==================== */
+
+/* --- 6a. Modal Overlay --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+}
+
+.modal-overlay.visible {
+    opacity: 1;
+}
+
+/* --- 6b. Base Modal Shell --- */
+.modal {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translate(-50%, 100%);
+    width: 100%;
+    max-width: 480px;
+    background-color: var(--background-white);
+    border-top-left-radius: var(--radius-large);
+    border-top-right-radius: var(--radius-large);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    transition: transform 0.3s ease-out;
+}
+
+.modal.visible {
+    transform: translate(-50%, 0);
+}
+
+@media (max-width: 480px) {
+    .modal {
+        left: 0;
+        transform: translateY(100%);
+    }
+
+    .modal.visible {
+        transform: translateY(0);
+    }
+}
+
+.modal__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal__title {
+    /* ✅ FLUID TYPO: Apply clamp() to modal titles */
+    font-size: clamp(18px, 3.5vw, 20px);
+    font-weight: 600;
+}
+
+.modal__close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+/* --- 6c. Confirm Order Modal --- */
+.modal__order-summary {
+    max-height: 200px;
+    overflow-y: auto;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: var(--spacing-sm) 0;
+}
+
+.order-summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--spacing-sm) 0;
+    font-size: 14px;
+}
+
+.order-summary-item__name {
+    color: var(--text-secondary);
+}
+
+.order-summary-item__price {
+    font-weight: 500;
+}
+
+.preorder-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 12px var(--spacing-md);
+    border-radius: var(--radius-medium);
+    background-color: var(--inactive-grey);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    font-family: var(--font-family-main);
+    transition: all 0.2s;
+}
+
+.preorder-btn.active {
+    background-color: #e8f5e9;
+    border-color: var(--success-green);
+}
+
+.preorder-btn__label span {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.preorder-btn__label strong {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.preorder-btn.active .preorder-btn__label strong {
+    color: var(--success-green);
+}
+
+.preorder-btn i {
+    font-size: 16px;
+    color: var(--text-secondary);
+}
+
+.modal__total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: var(--spacing-sm) 0;
+}
+
+.modal__total-label {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.modal__total-value {
+    /* ✅ FLUID TYPO: Apply clamp() to the final total value */
+    font-size: clamp(22px, 4vw, 24px);
+    font-weight: 700;
+    color: var(--brand-primary);
+}
+
+.modal__actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+/**
+ * UNIFIED BUTTON SYSTEM
+ * 
+ * PURPOSE: Consistent button styling across the entire app
+ * 
+ * USAGE:
+ * - .btn--primary: Main action buttons (green)
+ * - .btn--secondary: Cancel/back buttons (grey)
+ * 
+ * FEATURES:
+ * - Consistent padding, border-radius, font-size
+ * - Hover and active states for feedback
+ * - Works as <button> or <a> tag
+ */
+
+/* Base button styles (shared by all button types) */
+.btn--primary,
+.btn--secondary {
+    display: inline-block;
+    padding: 14px var(--spacing-lg);
+    border-radius: var(--radius-pill);
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    font-family: var(--font-family-main);
+}
+
+/* Primary button (green) - Main actions */
+.btn--primary {
+    background-color: var(--brand-primary);
+    color: var(--text-on-brand);
+}
+
+.btn--primary:hover {
+    transform: scale(1.05);
+    opacity: 0.95;
+}
+
+.btn--primary:active {
+    transform: scale(0.98);
+}
+
+/* Secondary button (grey) - Cancel/back actions */
+.btn--secondary {
+    background-color: var(--inactive-grey);
+    color: var(--text-secondary);
+}
+
+.btn--secondary:hover {
+    opacity: 0.8;
+}
+
+.btn--secondary:active {
+    transform: scale(0.98);
+}
+
+/* Modal-specific button layout */
+.modal__actions button {
+    flex: 1;
+    padding: 14px;
+}
+
+/* --- 6d. Pre-order Time Chip Picker --- */
+
+/**
+ * TIME PICKER INFO MESSAGE
+ * Shows helpful information about timing constraints
+ */
+.time-picker__info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: #e3f2fd;
+    border-radius: var(--radius-medium);
+    font-size: 14px;
+    color: #1976d2;
+    margin-bottom: var(--spacing-md);
+}
+
+.time-picker__info i {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+/**
+ * TIME CHIPS CONTAINER
+ * Horizontal scrolling container for time chips
+ * Mobile-optimized with smooth scrolling
+ */
+.time-chips-container {
+    display: flex;
+    gap: var(--spacing-sm);
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin: 0 calc(-1 * var(--spacing-md)); /* Extend to edges */
+    margin-bottom: var(--spacing-md);
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    
+    /* Hide scrollbar but keep functionality */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
+
+.time-chips-container::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}
+
+/**
+ * SCROLL FADE INDICATORS
+ * Visual hint that content is scrollable
+ */
+.time-chips-wrapper {
+    position: relative;
+    margin-bottom: var(--spacing-md);
+}
+
+.time-chips-wrapper::before,
+.time-chips-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.time-chips-wrapper::before {
+    left: 0;
+    background: linear-gradient(to right, var(--background-white), transparent);
+}
+
+.time-chips-wrapper::after {
+    right: 0;
+    background: linear-gradient(to left, var(--background-white), transparent);
+}
+
+/**
+ * INDIVIDUAL TIME CHIP
+ * Pill-shaped button optimized for thumb reach
+ * Minimum 44x44px touch target (iOS guidelines)
+ */
+.time-chip {
+    flex-shrink: 0;
+    padding: 12px 20px;
+    min-width: 100px;
+    height: 44px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-pill);
+    background-color: var(--background-white);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    font-family: var(--font-family-main);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/**
+ * FIRST AND LAST CHIP SPACING
+ * Extra padding for better thumb reach at edges
+ */
+.time-chip:first-child {
+    margin-left: var(--spacing-md);
+}
+
+.time-chip:last-child {
+    margin-right: var(--spacing-md);
+}
+
+/**
+ * CHIP HOVER STATE (Desktop)
+ */
+.time-chip:hover {
+    border-color: var(--brand-primary);
+    background-color: #fff3f3;
+    transform: scale(1.05);
+}
+
+/**
+ * CHIP ACTIVE STATE (Touch feedback)
+ */
+.time-chip:active {
+    transform: scale(0.95);
+}
+
+/**
+ * SELECTED TIME CHIP
+ * Clear visual feedback for selected time
+ */
+.time-chip.selected {
+    background-color: var(--brand-primary);
+    color: var(--text-on-brand);
+    border-color: var(--brand-primary);
+    box-shadow: 0 2px 8px rgba(229, 57, 53, 0.3);
+}
+
+.time-chip.selected:hover {
+    background-color: #d32f2f;
+    border-color: #d32f2f;
+}
+
+/**
+ * ERROR MESSAGE
+ * Shown when no time slots are available
+ */
+.time-picker__error {
+    text-align: center;
+    padding: var(--spacing-xl) var(--spacing-lg);
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.time-picker__error i {
+    font-size: 48px;
+    color: var(--inactive-grey);
+    margin-bottom: var(--spacing-sm);
+    display: block;
+}
+
+.time-picker__error p {
+    margin: var(--spacing-xs) 0;
+}
+
+.time-picker__error p:first-of-type {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+/**
+ * CONFIRM BUTTON CONTAINER
+ * Fixed at bottom of modal for easy thumb reach
+ */
+.time-picker__confirm-container {
+    position: sticky;
+    bottom: 0;
+    background-color: var(--background-white);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+    margin: 0 calc(-1 * var(--spacing-md));
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+}
+
+/* Helper class */
+.hidden {
+    display: none !important;
+}

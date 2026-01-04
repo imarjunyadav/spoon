@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful - Spoon</title>
+    <link rel="stylesheet" href="css/menu.css"> <!-- Re-use base styles -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <style>
+        :root {
+            --success-green: #27ae60;
+            --success-green-light: #e9f7ef;
+        }
+
+        body {
+            background-color: var(--success-green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .payment-container {
+            text-align: center;
+            color: white;
+            padding: var(--spacing-lg);
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .countdown-text {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .status-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .checkmark-icon {
+            font-size: 48px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: white;
+            color: var(--success-green);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: var(--spacing-xl);
+            animation: pop-in 0.5s ease-out;
+        }
+
+        .payment-details-card {
+            background-color: var(--success-green-light);
+            color: var(--text-primary);
+            border-radius: var(--radius-large);
+            padding: var(--spacing-lg);
+            text-align: left;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--spacing-md);
+            border-bottom: 1px dashed #bdc3c7;
+            padding-bottom: var(--spacing-md);
+        }
+
+        .card-header__title {
+            font-weight: 600;
+        }
+
+        .card-header__date {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .card-header__amount {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .card-body__row {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .card-body__id {
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-left: var(--spacing-xs);
+        }
+
+        @keyframes pop-in {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="payment-container">
+        <p class="countdown-text" id="countdown-text">You will be redirected in 5 seconds</p>
+        <h1 class="status-title">Payment Successful</h1>
+        <div class="checkmark-icon">
+            <i class="fa-solid fa-check"></i>
+        </div>
+        <div class="payment-details-card">
+            <div class="card-header">
+                <div>
+                    <div class="card-header__title">Spoon by TCET</div>
+                    <div class="card-header__date" id="payment-date">--</div>
+                </div>
+                <div class="card-header__amount" id="payment-amount">₹0</div>
+            </div>
+            <div class="card-body">
+                <div class="card-body__row">
+                    Card |<span class="card-body__id" id="payment-id">pay_xxxxxxxxxxxx</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/payment.js"></script>
+</body>
+
+</html>

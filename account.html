@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>My Account - Spoon</title>
+    <!-- We will link to css/account.css in the next step -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <!-- Placeholder for future styles -->
+    <!-- In account.html, inside the <head> tag -->
+
+    <link rel="stylesheet" href="css/account.css">
+</head>
+
+<body>
+
+    <div class="app-container">
+
+        <!-- ============== HEADER ============== -->
+        <header class="cart-header">
+            <a href="index.html" class="cart-header__back-btn" aria-label="Back to menu">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h1 class="cart-header__title">My Account</h1>
+        </header>
+
+        <!-- ============== MAIN CONTENT ============== -->
+        <main class="main-content">
+
+            <!-- --- Profile Hero Card --- -->
+            <section class="profile-hero-card">
+                <div class="profile-hero-card__avatar">
+                    <!-- Dynamic user initial or icon -->
+                    <span id="user-initial">G</span>
+                </div>
+                <div class="profile-hero-card__details">
+                    <!-- Dynamic user data will be injected here -->
+                    <h2 class="profile-hero-card__name" id="profile-name">Hello, Guest</h2>
+                    <p class="profile-hero-card__contact" id="profile-contact">+91-xxxxxxxxxx</p>
+                </div>
+            </section>
+
+            <!-- --- Action Menu --- -->
+            <section class="action-menu">
+                <a href="help.html" class="action-menu__item">
+                    <i class="fa-solid fa-circle-question action-menu__icon"></i>
+                    <span class="action-menu__label">Help & Support</span>
+                    <i class="fa-solid fa-chevron-right action-menu__arrow"></i>
+                </a>
+                <a href="privacy.html" class="action-menu__item">
+                    <i class="fa-solid fa-shield-halved action-menu__icon"></i>
+                    <span class="action-menu__label">Privacy Policy</span>
+                    <i class="fa-solid fa-chevron-right action-menu__arrow"></i>
+                </a>
+                <a href="about.html" class="action-menu__item">
+                    <i class="fa-solid fa-circle-info action-menu__icon"></i>
+                    <span class="action-menu__label">About Us</span>
+                    <i class="fa-solid fa-chevron-right action-menu__arrow"></i>
+                </a>
+            </section>
+
+            <!-- --- Logout Section --- -->
+            <section class="logout-section">
+                <button class="logout-btn" id="logout-btn">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    <span>Log Out</span>
+                </button>
+            </section>
+
+        </main>
+
+        <!-- ============== BOTTOM NAVIGATION ============== -->
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item">
+                <i class="fa-solid fa-utensils nav-item__icon"></i>
+                <span class="nav-item__label">Menu</span>
+            </a>
+            <a href="cart.html" class="nav-item">
+                <i class="fa-solid fa-shopping-cart nav-item__icon"></i>
+                <span class="nav-item__label">Cart</span>
+                <span class="nav-item__badge" id="cart-badge">0</span>
+            </a>
+            <a href="orders.html" class="nav-item">
+                <i class="fa-solid fa-receipt nav-item__icon"></i>
+                <span class="nav-item__label">Orders</span>
+            </a>
+            <a href="account.html" class="nav-item active">
+                <i class="fa-solid fa-user nav-item__icon"></i>
+                <span class="nav-item__label">Account</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- ================================================================
+         MODALS - Hidden by default
+         ================================================================ -->
+    <div class="modal-overlay hidden" id="logout-modal-overlay"></div>
+    <div class="modal hidden" id="logout-modal">
+        <div class="logout-modal__content">
+            <div class="logout-modal__icon">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            </div>
+            <h2 class="logout-modal__title">Oh no, you're leaving...</h2>
+            <p class="logout-modal__subtitle">Are you sure you want to log out?</p>
+            <div class="modal__actions">
+                <button class="btn--secondary" id="cancel-logout-btn">Stay Logged In</button>
+                <button class="btn--primary" id="confirm-logout-btn">Log Out</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- We will create js/account.js next -->
+    <script src="js/account.js" defer></script>
+
+</body>
+
+</html>

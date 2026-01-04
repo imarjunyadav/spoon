@@ -1,0 +1,104 @@
+/**
+ * TOAST NOTIFICATION STYLES
+ * 
+ * Modern, minimal toast notifications
+ * Positioned above bottom navigation bar
+ * Slides up from bottom nav
+ * No shadows, clean design
+ */
+
+.toast-notification {
+  position: fixed;
+  bottom: 80px; /* Just above bottom nav (60px nav + 20px spacing) */
+  left: 50%;
+  transform: translateX(-50%) translateY(150px); /* Start below, slide up */
+  background: var(--background-white);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-medium);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 10000; /* Above modals */
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth easing */
+  max-width: calc(100% - 32px); /* Mobile-friendly */
+  min-width: 280px;
+  box-sizing: border-box;
+}
+
+.toast-notification.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0); /* Slide up to position */
+}
+
+.toast-notification i {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.toast-message {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* Success Toast */
+.toast-success {
+  border-color: var(--success-green, #27ae60);
+  background-color: rgba(39, 174, 96, 0.1);
+}
+
+.toast-success i {
+  color: var(--success-green, #27ae60);
+}
+
+/* Error Toast */
+.toast-error {
+  border-color: var(--error-red, #c0392b);
+  background-color: rgba(192, 57, 43, 0.1);
+}
+
+.toast-error i {
+  color: var(--error-red, #c0392b);
+}
+
+/* Info Toast */
+.toast-info {
+  border-color: var(--brand-primary);
+  background-color: rgba(76, 175, 80, 0.1);
+}
+
+.toast-info i {
+  color: var(--brand-primary);
+}
+
+/* Mobile optimization */
+@media (max-width: 480px) {
+  .toast-notification {
+    min-width: auto;
+    max-width: calc(100% - 24px);
+    padding: 10px 14px;
+    bottom: 70px; /* Slightly closer to nav on mobile */
+  }
+  
+  .toast-notification i {
+    font-size: 16px;
+  }
+  
+  .toast-message {
+    font-size: 13px;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 360px) {
+  .toast-notification {
+    max-width: calc(100% - 16px);
+    padding: 8px 12px;
+    gap: 8px;
+    bottom: 65px;
+  }
+}

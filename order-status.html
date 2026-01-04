@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Order Status - Spoon</title>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    
+    <!-- Order Status Styles -->
+    <link rel="stylesheet" href="css/order-status.css">
+    
+    <!-- Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.4/dist/umd/supabase.min.js"></script>
+    
+    <!-- Inline Pickup Code Styles -->
+    <style>
+        /* Pickup code centered inside timeline card */
+        .pickup-inline {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 28px;
+            font-weight: 800;
+            color: #000;
+            letter-spacing: 3px;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        
+        /* Ensure timeline card supports absolute positioning */
+        .timeline-step__content-card {
+            position: relative;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container">
+
+        <!-- ============== HEADER ============== -->
+        <!-- The header title ID matches the original JS requirement -->
+        <header class="cart-header">
+            <a href="orders.html" class="cart-header__back-btn" aria-label="Back to My Orders">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h1 class="cart-header__title" id="status-order-id-header">#SPOON-XXXX</h1>
+        </header>
+
+        <!-- ============== MAIN CONTENT ============== -->
+        <main class="main-content">
+
+            <!-- --- Order Summary Card --- -->
+            <!-- The IDs for summary details match the original JS -->
+            <section class="order-summary-card">
+                <div class="summary-details-grid">
+                    <div class="summary-detail-item">
+                        <span class="label">Amount Paid</span>
+                        <strong id="summary-amount">₹0.00</strong>
+                    </div>
+                    <div class="summary-detail-item">
+                        <span class="label">Placed At</span>
+                        <strong id="summary-placed-at">--:--</strong>
+                    </div>
+                    <div class="summary-detail-item">
+                        <span class="label">Last Updated</span>
+                        <strong id="summary-last-updated">--:--</strong>
+                    </div>
+                </div>
+
+                <!-- Collapsible Item List -->
+                <!-- The IDs for the container and list match the original JS -->
+                <div class="collapsible-items" id="collapsible-items-container">
+                    <button class="collapsible-items__header" id="toggle-items-btn">
+                        <span>View Items</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div class="collapsible-items__content" id="summary-item-list">
+                        <!-- Items will be injected here by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- --- Vertical Timeline --- -->
+            <!-- The main container ID matches the original JS -->
+            <section class="timeline-container" id="timeline-container">
+                <!-- Timeline steps will be dynamically injected here by JS -->
+                <!-- Pickup code will be injected inline within the "Ready for Pickup" step -->
+            </section>
+
+        </main>
+
+        <!-- No bottom nav on this deep-level page -->
+    </div>
+
+    <!-- Centralized configuration (must load before other scripts) -->
+    <script src="js/config.js"></script>
+    
+    <!-- Initialize Supabase from centralized config -->
+    <script>
+        // Wait for config to load, then set up Supabase client
+        window.waitForConfig().then(() => {
+            window.supabaseClient = window.getSupabaseClient();
+            if (!window.supabaseClient) {
+                console.error('❌ Failed to initialize Supabase client');
+            }
+        });
+    </script>
+    
+    <!-- Order Status Logic -->
+    <script src="js/order-status.js"></script>
+
+</body>
+
+</html>

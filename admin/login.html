@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login - Spoon</title>
+  
+  <!-- Supabase Client Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.4/dist/umd/supabase.min.js"></script>
+  
+  <!-- Centralized configuration -->
+  <script src="../js/config.js"></script>
+  
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 100px;
+    }
+    input {
+      margin: 5px;
+      padding: 10px;
+      width: 250px;
+    }
+    button {
+      padding: 10px;
+      width: 150px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Admin Login</h2>
+  <input type="email" id="email" placeholder="Email" />
+  <input type="password" id="password" placeholder="Password" />
+  <button onclick="login()">Login</button>
+
+  <script>
+    let supabase = null;
+    
+    // Initialize when config is loaded
+    window.waitForConfig().then(() => {
+      supabase = window.getSupabaseClient();
+      if (!supabase) {
+        alert("Failed to connect to database.");
+      }
+    });
+
+    // ✅ Login function
+    async function login() {
+      if (!supabase) {
+        alert("Database not connected. Please refresh.");
+        return;
+      }
+      
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        alert("Login failed: " + error.message);
+        return;
+      }
+
+      console.log("✅ Login successful:", data);
+      window.location.href = "admin.html"; 
+    }
+  </script>
+</body>
+</html>

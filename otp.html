@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Verify OTP - Spoon</title>
+    <!-- We will create css/auth.css later, which will style this page -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <!-- Placeholder for future styles -->
+    <!-- Inside the <head> tag -->
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+
+<body>
+
+    <div class="app-container auth-container">
+
+        <!-- ============== HEADER ============== -->
+        <header class="auth-header">
+            <!-- This back button allows the user to correct their phone number -->
+            <a href="login.html" class="auth-header__back-btn" aria-label="Back to email entry">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+        </header>
+
+        <!-- ============== MAIN CONTENT ============== -->
+        <main class="auth-main">
+
+            <div class="auth-title-block">
+                <h1 class="auth-title">OTP Verification</h1>
+                <!-- The email will be dynamically inserted here by JS -->
+                <p class="auth-subtitle" id="otp-subtitle">Enter the OTP sent to your email</p>
+            </div>
+
+            <!-- OTP Input Form -->
+            <!-- The form auto-submits via JS, so no button is needed -->
+            <form id="otp-form">
+                <div class="otp-input-container">
+                    <input type="tel" class="otp-input" maxlength="1" inputmode="numeric" required>
+                    <input type="tel" class="otp-input" maxlength="1" inputmode="numeric" required>
+                    <input type="tel" class="otp-input" maxlength="1" inputmode="numeric" required>
+                    <input type="tel" class="otp-input" maxlength="1" inputmode="numeric" required>
+                </div>
+            </form>
+
+            <!-- Resend Timer -->
+            <div class="resend-timer-container">
+                Didn't receive the code?
+                <!-- The 'disabled' class will be managed by JS -->
+                <a class="resend-link disabled" id="resend-link">Resend</a>
+                <!-- The timer text will be updated by JS -->
+                <span id="otp-timer">(0:30)</span>
+            </div>
+
+        </main>
+
+    </div>
+
+    <!-- We will create js/otp.js next -->
+    <script src="js/otp.js" defer></script>
+
+</body>
+
+</html>

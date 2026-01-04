@@ -1,0 +1,387 @@
+/* ================================================================
+    SPOON REDESIGN - AUTHENTICATION STYLESHEET
+    Version: 1.1 (Floating Label Update)
+   ================================================================ */
+
+/* ====================
+   1. IMPORT DESIGN SYSTEM
+   ==================== */
+@import url('menu.css');
+
+
+/* ====================
+   2. AUTH PAGE LAYOUT
+   (No changes here)
+   ==================== */
+.app-container.auth-container {
+    display: flex;
+    flex-direction: column;
+}
+
+/**
+ * AUTH HEADER
+ * Minimal header for authentication pages (login, signup, OTP)
+ * Matches cart-header pattern but without border/title
+ */
+.auth-header {
+    padding: var(--spacing-md);
+    flex-shrink: 0;
+    height: 60px;
+    display: flex;
+    align-items: center;
+}
+
+/**
+ * AUTH BACK BUTTON
+ * Consistent with cart-header back button styling
+ */
+.auth-header__back-btn {
+    font-size: 20px;
+    color: var(--text-primary);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.auth-header__back-btn:hover {
+    background-color: var(--inactive-grey);
+}
+
+.auth-header__back-btn:active {
+    transform: scale(0.95);
+}
+
+.auth-main {
+    padding: 0 var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.auth-title-block {
+    margin: var(--spacing-xl) 0;
+}
+
+.auth-title {
+    font-size: clamp(28px, 5vw, 32px);
+    font-weight: 700;
+    margin-bottom: var(--spacing-sm);
+}
+
+.auth-subtitle {
+    font-size: clamp(16px, 3vw, 18px);
+    color: var(--text-secondary);
+}
+
+
+/* ====================
+   3. FORM & INPUT STYLES
+   ==================== */
+.auth-form {
+    margin-top: auto;
+    padding-bottom: var(--spacing-xl);
+}
+
+/* --- General Input Group --- */
+.input-group {
+    position: relative;
+    margin-bottom: var(--spacing-lg);
+}
+
+.input-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+    display: block;
+}
+
+.auth-input {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    padding: 14px;
+    font-size: 16px;
+    font-family: var(--font-family-main);
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.auth-input:focus {
+    border-color: var(--brand-primary);
+}
+
+/**
+ * ERROR STATE FOR INPUTS
+ * 
+ * PURPOSE: Provide visual feedback when input validation fails
+ * 
+ * FEATURES:
+ * - Red border to indicate error
+ * - Light red background
+ * - Clean, modern appearance
+ * - Smooth transition
+ * 
+ * USAGE:
+ * JavaScript adds/removes 'error' class based on validation
+ */
+.auth-input.error {
+    border-color: var(--error-red, #c0392b);
+    background-color: rgba(192, 57, 43, 0.05);
+}
+
+.auth-input.error:focus {
+    border-color: var(--error-red, #c0392b);
+}
+
+/**
+ * SUCCESS STATE FOR INPUTS
+ * 
+ * PURPOSE: Provide positive visual feedback when input is valid
+ * 
+ * FEATURES:
+ * - Green border to indicate success
+ * - Light green background
+ * - Clean, modern appearance
+ * - Encourages correct input
+ * 
+ * USAGE:
+ * JavaScript adds 'success' class when validation passes
+ */
+.auth-input.success {
+    border-color: var(--success-green, #27ae60);
+    background-color: rgba(39, 174, 96, 0.05);
+}
+
+.auth-input.success:focus {
+    border-color: var(--success-green, #27ae60);
+}
+
+.input-error-message {
+    color: var(--error-red, #c0392b);
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: var(--spacing-sm);
+    min-height: 1em;
+}
+
+.input-helper-text {
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-top: var(--spacing-sm);
+}
+
+/* Read-only input styling */
+.auth-input[readonly] {
+    background-color: var(--background-light, #f5f5f5);
+    color: var(--text-secondary);
+    cursor: not-allowed;
+}
+
+/* --- Phone Input Specific --- */
+.phone-input-group {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    overflow: hidden;
+    /* Important for label positioning */
+    transition: all 0.2s ease;
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+    /* ✅ UPDATED: Added for label context */
+}
+
+.phone-input-group:focus-within {
+    border-color: var(--brand-primary);
+}
+
+.country-code {
+    padding: 14px var(--spacing-md);
+    background-color: var(--background-light);
+    border-right: 1px solid var(--border-color);
+    font-weight: 500;
+    color: var(--text-secondary);
+    z-index: 2;
+    /* Keep it above floating label background */
+}
+
+/* Phone Input */
+.phone-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 14px;
+    font-size: 16px;
+    background-color: transparent;
+}
+
+.phone-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+
+/* --- OTP Input & Resend Timer (No changes here) --- */
+.otp-input-container {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    margin: var(--spacing-xl) 0;
+}
+
+.otp-input {
+    width: 60px;
+    height: 70px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 600;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.otp-input:focus {
+    border-color: var(--brand-primary);
+}
+
+.resend-timer-container {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-top: var(--spacing-lg);
+}
+
+.resend-link {
+    color: var(--brand-primary);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.resend-link.disabled {
+    color: var(--text-secondary);
+    cursor: not-allowed;
+    text-decoration: none;
+}
+
+
+/* ====================
+   4. BUTTONS (No changes here)
+   ==================== */
+.btn--full-width {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn--primary {
+    background-color: var(--brand-primary);
+    color: white;
+}
+
+.btn--primary:disabled {
+    background-color: #e0e0e0;
+    color: #9e9e9e;
+    cursor: not-allowed;
+}
+
+
+/* --- Email Input Specific --- */
+.email-input-group {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    overflow: hidden;
+    transition: all 0.2s ease;
+    margin-bottom: var(--spacing-sm);
+    position: relative;
+}
+
+.email-input-group:focus-within {
+    border-color: var(--brand-primary);
+}
+
+.email-input-group.error {
+    border-color: var(--error-red, #c0392b);
+    background-color: rgba(192, 57, 43, 0.05);
+}
+
+.email-input-group.success {
+    border-color: var(--success-green, #27ae60);
+    background-color: rgba(39, 174, 96, 0.05);
+}
+
+.email-icon {
+    padding: 14px var(--spacing-md);
+    color: var(--text-secondary);
+    font-size: 16px;
+}
+
+.email-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 14px;
+    padding-left: 0;
+    font-size: 16px;
+    background-color: transparent;
+}
+
+.email-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.input-hint {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-lg);
+    min-height: 16px;
+}
+
+.input-hint.error {
+    color: var(--error-red, #c0392b);
+}
+
+.input-hint.success {
+    color: var(--success-green, #27ae60);
+}
+
+/* Loading state for button */
+.btn--primary.loading {
+    position: relative;
+    color: transparent;
+}
+
+.btn--primary.loading::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    top: 50%;
+    left: 50%;
+    margin-left: -10px;
+    margin-top: -10px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

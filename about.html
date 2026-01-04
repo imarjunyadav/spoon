@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>About Us - Spoon</title>
+    <link rel="stylesheet" href="css/account.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="cart-header">
+            <a href="account.html" class="cart-header__back-btn" aria-label="Back to account">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h1 class="cart-header__title">About Us</h1>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            
+            <!-- Hero Section -->
+            <section class="info-section">
+                <div class="about-hero">
+                    <i class="fa-solid fa-utensils about-hero__icon"></i>
+                    <h2 class="about-hero__title">Welcome to Spoon</h2>
+                    <p class="about-hero__tagline">Your favorite canteen, now in your pocket</p>
+                </div>
+            </section>
+
+            <!-- Our Story -->
+            <section class="info-section">
+                <h2 class="info-section__title">Our Story</h2>
+                <p class="info-section__text">
+                    Spoon was born from a simple idea: make canteen ordering fast, easy, and hassle-free. 
+                    We noticed students and staff spending too much time waiting in long queues, 
+                    especially during peak hours. So we built Spoon - a smart ordering app that lets 
+                    you browse the menu, place orders, and pick up your food without the wait.
+                </p>
+            </section>
+
+            <!-- Our Mission -->
+            <section class="info-section">
+                <h2 class="info-section__title">Our Mission</h2>
+                <p class="info-section__text">
+                    To revolutionize the canteen experience by providing a seamless, efficient, 
+                    and delightful way to order food. We believe your lunch break should be about 
+                    enjoying your meal, not waiting in line.
+                </p>
+            </section>
+
+            <!-- Features -->
+            <section class="info-section">
+                <h2 class="info-section__title">Why Choose Spoon?</h2>
+                
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <i class="fa-solid fa-bolt feature-item__icon"></i>
+                        <div>
+                            <h3 class="feature-item__title">Fast & Easy</h3>
+                            <p class="feature-item__text">Order in seconds, skip the queue</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-item">
+                        <i class="fa-solid fa-clock feature-item__icon"></i>
+                        <div>
+                            <h3 class="feature-item__title">Schedule Ahead</h3>
+                            <p class="feature-item__text">Pre-order for later pickup</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-item">
+                        <i class="fa-solid fa-bell feature-item__icon"></i>
+                        <div>
+                            <h3 class="feature-item__title">Real-time Updates</h3>
+                            <p class="feature-item__text">Know exactly when your order is ready</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-item">
+                        <i class="fa-solid fa-shield-halved feature-item__icon"></i>
+                        <div>
+                            <h3 class="feature-item__title">Secure Payments</h3>
+                            <p class="feature-item__text">Safe and encrypted transactions</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Stats -->
+            <section class="info-section">
+                <h2 class="info-section__title">Our Impact</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <i class="fa-solid fa-users stat-card__icon"></i>
+                        <p class="stat-card__value">1000+</p>
+                        <p class="stat-card__label">Happy Users</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <i class="fa-solid fa-receipt stat-card__icon"></i>
+                        <p class="stat-card__value">5000+</p>
+                        <p class="stat-card__label">Orders Served</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <i class="fa-solid fa-clock stat-card__icon"></i>
+                        <p class="stat-card__value">10 min</p>
+                        <p class="stat-card__label">Avg. Wait Time</p>
+                    </div>
+
+                    <div class="stat-card">
+                        <i class="fa-solid fa-star stat-card__icon"></i>
+                        <p class="stat-card__value">4.8/5</p>
+                        <p class="stat-card__label">User Rating</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Contact -->
+            <section class="info-section">
+                <h2 class="info-section__title">Get in Touch</h2>
+                <p class="info-section__text">
+                    Have questions or feedback? We'd love to hear from you!
+                </p>
+                <div class="contact-buttons">
+                    <a href="help.html" class="btn--primary">Contact Support</a>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item">
+                <i class="fa-solid fa-utensils nav-item__icon"></i>
+                <span class="nav-item__label">Menu</span>
+            </a>
+            <a href="cart.html" class="nav-item">
+                <i class="fa-solid fa-shopping-cart nav-item__icon"></i>
+                <span class="nav-item__label">Cart</span>
+                <span class="nav-item__badge" id="cart-badge">0</span>
+            </a>
+            <a href="orders.html" class="nav-item">
+                <i class="fa-solid fa-receipt nav-item__icon"></i>
+                <span class="nav-item__label">Orders</span>
+            </a>
+            <a href="account.html" class="nav-item active">
+                <i class="fa-solid fa-user nav-item__icon"></i>
+                <span class="nav-item__label">Account</span>
+            </a>
+        </nav>
+
+    </div>
+
+    <script src="js/account.js"></script>
+</body>
+</html>

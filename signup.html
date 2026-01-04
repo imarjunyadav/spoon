@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Create Account - Spoon</title>
+    <!-- We will use a shared css/auth.css file for all auth pages -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <!-- Placeholder for future styles -->
+    <!-- Inside the <head> tag -->
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+
+<body>
+
+    <div class="app-container auth-container">
+
+        <!-- ============== HEADER ============== -->
+        <header class="auth-header">
+            <!-- This back button takes the user back to the beginning of the auth flow -->
+            <a href="login.html" class="auth-header__back-btn" aria-label="Back to login">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+        </header>
+
+        <!-- ============== MAIN CONTENT ============== -->
+        <main class="auth-main">
+
+            <div class="auth-title-block">
+                <h1 class="auth-title">Almost there!</h1>
+                <p class="auth-subtitle">Let's create your account.</p>
+            </div>
+
+            <!-- Signup Form -->
+            <form id="signup-form" novalidate>
+                <div class="input-group">
+                    <label for="email-input" class="input-label">Verified Email</label>
+                    <input type="email" id="email-input" class="auth-input" readonly>
+                    <p class="input-helper-text">Your email has been verified</p>
+                </div>
+
+                <div class="input-group">
+                    <label for="name-input" class="input-label">Nickname</label>
+                    <input type="text" id="name-input" class="auth-input" placeholder="Enter your full name" required>
+                    <p class="input-error-message" id="name-error"></p>
+                </div>
+
+                <div class="auth-form">
+                    <button type="submit" class="btn--primary btn--full-width" id="signup-btn" disabled>
+                        Create Account
+                    </button>
+                </div>
+            </form>
+
+        </main>
+
+    </div>
+
+    <!-- We will create js/signup.js next -->
+    <script src="js/signup.js" defer></script>
+
+</body>
+
+</html>

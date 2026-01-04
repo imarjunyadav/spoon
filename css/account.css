@@ -1,0 +1,401 @@
+/* ================================================================
+    SPOON REDESIGN - ACCOUNT PAGE STYLESHEET
+    Version: 1.1 (Fluid Typography Update)
+   ================================================================ */
+
+/* ====================
+   1. IMPORT DESIGN SYSTEM & SHARED COMPONENTS
+   ==================== */
+@import url('cart.css');
+
+
+/* ====================
+   2. PROFILE HERO CARD
+   ==================== */
+.profile-hero-card {
+    background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-dark) 100%);
+    color: var(--text-on-brand);
+    margin: var(--spacing-md);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-large);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    box-shadow: 0 8px 16px rgba(235, 23, 0, 0.2);
+}
+
+.profile-hero-card__avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.profile-hero-card__details {
+    flex-grow: 1;
+}
+
+.profile-hero-card__name {
+    /* ✅ FLUID TYPO: Make user name responsive */
+    font-size: clamp(20px, 4vw, 22px);
+    font-weight: 700;
+    margin-bottom: var(--spacing-xs);
+}
+
+.profile-hero-card__contact {
+    /* ✅ FLUID TYPO: Make contact info responsive */
+    font-size: clamp(14px, 2.5vw, 15px);
+    opacity: 0.9;
+}
+
+
+/* ====================
+   3. ACTION MENU
+   ==================== */
+.action-menu {
+    padding: 0 var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+}
+
+.action-menu__item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) 0;
+    border-bottom: 1px solid var(--inactive-grey);
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.action-menu__item:hover {
+    background-color: #fafafa;
+}
+
+.action-menu__icon {
+    font-size: 20px;
+    color: var(--text-secondary);
+    width: 24px;
+    text-align: center;
+}
+
+.action-menu__label {
+    flex-grow: 1;
+    font-weight: 500;
+    /* ✅ FLUID TYPO: Make menu labels responsive */
+    font-size: clamp(15px, 2.5vw, 16px);
+}
+
+.action-menu__arrow {
+    font-size: 16px;
+    color: var(--border-color);
+}
+
+
+/* ====================
+   4. LOGOUT SECTION
+   ==================== */
+.logout-section {
+    padding: var(--spacing-lg) var(--spacing-md);
+}
+
+.logout-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: 14px;
+    border: 1px solid var(--brand-primary);
+    background-color: #fef4f2;
+    color: var(--brand-primary);
+    border-radius: var(--radius-medium);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+    background-color: var(--brand-primary);
+    color: var(--text-on-brand);
+    box-shadow: 0 4px 12px rgba(235, 23, 0, 0.2);
+}
+
+
+/* ====================
+   5. LOGOUT MODAL
+   ==================== */
+.logout-modal__content {
+    text-align: center;
+    padding: var(--spacing-md);
+}
+
+.logout-modal__icon {
+    font-size: 48px;
+    color: var(--brand-primary);
+    margin-bottom: var(--spacing-md);
+}
+
+.logout-modal__title {
+    /* ✅ FLUID TYPO: Make modal title responsive */
+    font-size: clamp(20px, 4vw, 22px);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.logout-modal__subtitle {
+    /* ✅ FLUID TYPO: Make modal subtitle responsive */
+    font-size: clamp(14px, 2.5vw, 15px);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-lg);
+}
+
+#logout-modal .btn--secondary {
+    background-color: var(--inactive-grey);
+    color: var(--text-secondary);
+}
+
+#logout-modal .btn--primary {
+    background-color: var(--brand-primary);
+    color: var(--text-on-brand);
+}
+
+
+/* ================================================================
+   INFO PAGES STYLES (Help, Privacy, About)
+   ================================================================ */
+
+/* Info Section */
+.info-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.info-section__title {
+    font-size: clamp(18px, 3.5vw, 20px);
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+}
+
+.info-section__date {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-md);
+}
+
+.info-section__text {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+/* FAQ Items */
+.faq-item {
+    background: var(--background-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+}
+
+.faq-item__question {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.faq-item__question i {
+    color: var(--brand-primary);
+    font-size: 18px;
+}
+
+.faq-item__answer {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+/* Contact Card */
+.contact-card {
+    background: var(--background-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    padding: var(--spacing-md);
+}
+
+.contact-card__item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) 0;
+}
+
+.contact-card__item:not(:last-child) {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.contact-card__icon {
+    font-size: 24px;
+    color: var(--brand-primary);
+    width: 40px;
+    text-align: center;
+}
+
+.contact-card__label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.contact-card__value {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Policy Content */
+.policy-content {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+}
+
+.policy-content h2 {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: var(--spacing-lg);
+    margin-bottom: var(--spacing-sm);
+}
+
+.policy-content h2:first-child {
+    margin-top: 0;
+}
+
+.policy-content p {
+    margin-bottom: var(--spacing-sm);
+}
+
+.policy-content ul {
+    margin: var(--spacing-sm) 0;
+    padding-left: var(--spacing-lg);
+}
+
+.policy-content li {
+    margin-bottom: var(--spacing-xs);
+}
+
+/* About Page Styles */
+.about-hero {
+    text-align: center;
+    padding: var(--spacing-xl) 0;
+}
+
+.about-hero__icon {
+    font-size: 64px;
+    color: var(--brand-primary);
+    margin-bottom: var(--spacing-md);
+}
+
+.about-hero__title {
+    font-size: clamp(24px, 5vw, 28px);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.about-hero__tagline {
+    font-size: 16px;
+    color: var(--text-secondary);
+}
+
+/* Feature List */
+.feature-list {
+    display: grid;
+    gap: var(--spacing-sm);
+}
+
+.feature-item {
+    background: var(--background-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    padding: var(--spacing-md);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+}
+
+.feature-item__icon {
+    font-size: 24px;
+    color: var(--brand-primary);
+    width: 40px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.feature-item__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.feature-item__text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
+}
+
+.stat-card {
+    background: var(--background-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    padding: var(--spacing-md);
+    text-align: center;
+}
+
+.stat-card__icon {
+    font-size: 32px;
+    color: var(--brand-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.stat-card__value {
+    font-size: clamp(24px, 5vw, 28px);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.stat-card__label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* Contact Buttons */
+.contact-buttons {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--spacing-md);
+}

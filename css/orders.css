@@ -1,0 +1,209 @@
+/* ================================================================
+    SPOON REDESIGN - ORDERS PAGE STYLESHEET
+    Version: 1.2 (Fluid Typography Update)
+   ================================================================ */
+
+/* ====================
+   1. IMPORT DESIGN SYSTEM & SHARED COMPONENTS
+   ==================== */
+@import url('cart.css');
+/* Imports base theme and shared modal/header styles */
+
+
+/* ====================
+   2. ORDERS LIST CONTAINER
+   ==================== */
+.orders-list-container {
+    display: grid;
+    gap: var(--spacing-md);
+}
+
+/* ====================
+   3. ORDER CARD COMPONENT
+   ==================== */
+.order-card {
+    background: var(--background-white);
+    border-radius: var(--radius-large);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+}
+
+/* --- 3a. Card Header --- */
+.order-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.order-card__id {
+    /* ✅ FLUID TYPO: Make Order ID text responsive */
+    font-size: clamp(14px, 2.2vw, 15px);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* --- 3b. Status Badge --- */
+.order-card__status {
+    font-size: 12px;
+    /* Static size is good for badges */
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    text-transform: capitalize;
+}
+
+.status--placed {
+    background-color: #eaf2f8;
+    color: #3498db;
+}
+
+.status--preparing {
+    background-color: #fef5e7;
+    color: var(--warning-orange);
+}
+
+.status--ready {
+    background-color: #e8f5e9;
+    color: var(--success-green);
+}
+
+.status--completed {
+    background-color: #f2f2f2;
+    color: var(--text-secondary);
+}
+
+/* --- 3c. Card Body --- */
+.order-card__body {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--spacing-sm) 0;
+    border-top: 1px solid var(--inactive-grey);
+    border-bottom: 1px solid var(--inactive-grey);
+}
+
+.order-card__detail-group .label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+    display: block;
+}
+
+.order-card__detail-group .value {
+    /* ✅ FLUID TYPO: Make detail values responsive */
+    font-size: clamp(14px, 2.2vw, 15px);
+    font-weight: 500;
+}
+
+.order-card__detail-group.align-right {
+    text-align: right;
+}
+
+/* --- 3d. Pre-order Info Bar --- */
+.order-card__preorder-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background-color: var(--inactive-grey);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-medium);
+}
+
+.order-card__preorder-info i {
+    color: var(--text-primary);
+}
+
+/* --- 3e. Card Footer & CTA --- */
+.order-card__footer {
+    margin-top: var(--spacing-xs);
+}
+
+.btn--view-details {
+    background-color: var(--inactive-grey);
+    color: var(--text-primary);
+    border: none;
+    width: 100%;
+    text-align: center;
+    padding: 12px;
+    border-radius: var(--radius-medium);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn--view-details:hover {
+    background-color: #e0e0e0;
+}
+
+
+/* ====================
+   4. EMPTY STATE VIEW
+   ==================== */
+.empty-orders-view {
+    text-align: center;
+    padding: var(--spacing-xl) var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+    color: var(--text-secondary);
+}
+
+.empty-orders-view__icon {
+    font-size: 64px;
+    color: var(--inactive-grey);
+}
+
+.empty-orders-view__title {
+    /* ✅ FLUID TYPO: Make empty state title responsive */
+    font-size: clamp(20px, 4vw, 22px);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.empty-orders-view__cta {
+    background: var(--brand-primary);
+    color: var(--text-on-brand);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 12px var(--spacing-lg);
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+    margin-top: var(--spacing-md);
+}
+
+/* ====================
+   5. TOAST NOTIFICATION
+   ==================== */
+.toast-notification {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translate(-50%, 20px);
+    max-width: 450px;
+    width: calc(100% - 32px);
+    background-color: var(--text-primary);
+    color: var(--text-on-brand);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-medium);
+    text-align: center;
+    font-weight: 500;
+    z-index: 1002;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast-notification.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+}

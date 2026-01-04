@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Welcome - Spoon</title>
+    <!-- We will use the new unified auth.css file -->
+    <link rel="stylesheet" href="css/auth.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+</head>
+
+<body>
+
+    <div class="app-container auth-container">
+
+        <!-- ============== HEADER ============== -->
+        <header class="auth-header">
+            <a href="index.html" class="auth-header__back-btn" aria-label="Back to home">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+        </header>
+
+        <!-- ============== MAIN CONTENT ============== -->
+        <main class="auth-main">
+
+            <div class="auth-title-block">
+                <h1 class="auth-title">Welcome to Spoon</h1>
+                <p class="auth-subtitle">Enter your email address to continue</p>
+            </div>
+
+            <!-- Email input group -->
+            <div class="email-input-group">
+                <i class="fa-solid fa-envelope email-icon"></i>
+                <input type="email" class="email-input" id="email-input" placeholder="Enter your email address" inputmode="email" autocomplete="email">
+            </div>
+            <p class="input-hint" id="email-hint"></p>
+
+            <!-- This form will be at the bottom of the screen -->
+            <form class="auth-form" id="login-form">
+                <button type="submit" class="btn--primary btn--full-width" id="continue-btn" disabled>
+                    Continue
+                </button>
+            </form>
+
+        </main>
+
+    </div>
+
+    <script src="js/login.js" defer></script>
+
+</body>
+
+</html>
