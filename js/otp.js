@@ -12,6 +12,11 @@
  * 3. Controls a countdown timer for the "Resend OTP" functionality
  * 4. Calls backend API to verify OTP
  * 5. Handles success/error responses and redirects appropriately
+ * 6. Checks if user exists in Supabase and stores user data
+ * 
+ * REQUIREMENTS COVERED:
+ * - 6.2: Check with backend if user exists in Supabase after OTP verification
+ * - 6.3: Retrieve and store user data from backend response for existing users
  */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -202,6 +207,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Verifies the OTP via backend API and handles the response.
+     * 
+     * REQUIREMENTS COVERED:
+     * - 6.2: Check with backend if user exists in Supabase after OTP verification
+     * - 6.3: Retrieve and store user data from backend response for existing users
      */
     async function handleOtpVerification(e) {
         e.preventDefault();
@@ -231,10 +240,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     // New user: redirect to signup page with verified email
                     window.location.href = `signup.html?email=${encodeURIComponent(userEmail)}`;
                 } else {
-                    // Existing user: set login flag and redirect to home
+                    // Existing user: set login flag and store user data (Requirement 6.2, 6.3)
                     localStorage.setItem('spoon-is-logged-in', 'true');
                     if (result.user) {
+                        // Store user data from backend response
                         localStorage.setItem('spoon-user', JSON.stringify(result.user));
+                        // Also store with email key for consistency
+                        localStorage.setItem(`user-${userEmail}`, JSON.stringify(result.user));
                     }
                     window.location.replace('index.html');
                 }

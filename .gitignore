@@ -2,6 +2,9 @@
 # SPOON - GIT IGNORE FILE
 # ========================================
 
+# Kiro AI specs and configurations
+.kiro/
+
 # Dependencies
 node_modules/
 

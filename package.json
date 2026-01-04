@@ -23,12 +23,14 @@
     "cors": "^2.8.5",
     "dotenv": "^17.0.0",
     "express": "^4.21.2",
+    "ioredis": "^5.8.2",
     "nodemailer": "^7.0.11",
     "path-to-regexp": "^6.3.0",
     "razorpay": "^2.9.6"
   },
   "devDependencies": {
     "fast-check": "^4.5.3",
+    "ioredis-mock": "^8.13.1",
     "jest": "^30.2.0"
   }
 }

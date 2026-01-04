@@ -6,8 +6,11 @@
  * - Validates the user's name in real-time.
  * - Optionally collects phone number for order notifications.
  * - Enables the 'Create Account' button only when required fields are valid.
- * - Upon submission, creates a user object, saves it to localStorage,
- *   sets the login flag, and redirects to the main app page.
+ * - Upon submission, calls backend API to create user in Supabase,
+ *   saves user data to localStorage, sets the login flag, and redirects to the main app page.
+ * 
+ * REQUIREMENTS COVERED:
+ * - 6.1: Frontend calls backend to create user in Supabase on signup
  */
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -22,8 +25,37 @@ document.addEventListener('DOMContentLoaded', () => {
     let verifiedEmail = '';
     // Validation flag to control the button state
     let isNameValid = false;
+    let isSubmitting = false;
 
-    // --- 3. VALIDATION FUNCTIONS ---
+    // --- 3. API FUNCTIONS ---
+
+    /**
+     * FUNCTION: createUserApi
+     * 
+     * PURPOSE: Call backend API to create user in Supabase
+     * 
+     * PARAMETERS:
+     * @param {string} email - User's verified email address
+     * @param {string} name - User's name
+     * 
+     * RETURNS:
+     * @returns {Promise<{success: boolean, user?: object, error?: object}>}
+     */
+    async function createUserApi(email, name) {
+        const apiBaseUrl = window.SPOON_CONFIG?.API_BASE_URL || 'http://localhost:7070';
+        
+        const response = await fetch(`${apiBaseUrl}/api/auth/signup`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, name })
+        });
+        
+        return response.json();
+    }
+
+    // --- 4. VALIDATION FUNCTIONS ---
 
     /**
      * Validates the full name input.
@@ -63,16 +95,62 @@ document.addEventListener('DOMContentLoaded', () => {
      * Only name is required - email is already verified and phone is optional.
      */
     function updateButtonState() {
-        signupBtn.disabled = !isNameValid;
+        signupBtn.disabled = !isNameValid || isSubmitting;
     }
 
-    // --- 4. FORM SUBMISSION HANDLER ---
+    // --- 5. HELPER FUNCTIONS ---
 
     /**
-     * Handles the final account creation.
+     * FUNCTION: getErrorMessage
+     * 
+     * PURPOSE: Convert API error codes to user-friendly messages
      */
-    function handleFormSubmit(e) {
+    function getErrorMessage(error) {
+        if (!error) return 'Something went wrong. Please try again.';
+        
+        switch (error.code) {
+            case 'INVALID_EMAIL':
+                return 'Invalid email address.';
+            case 'INVALID_NAME':
+                return 'Please enter a valid name.';
+            case 'USER_EXISTS':
+                return 'An account with this email already exists.';
+            case 'SERVICE_UNAVAILABLE':
+                return 'Service temporarily unavailable. Please try again in a few moments.';
+            case 'DATABASE_ERROR':
+                return 'Failed to create account. Please try again.';
+            default:
+                return error.message || 'Something went wrong. Please try again.';
+        }
+    }
+
+    /**
+     * FUNCTION: setFormDisabled
+     * 
+     * PURPOSE: Enable/disable form inputs during API calls
+     */
+    function setFormDisabled(disabled) {
+        nameInput.disabled = disabled;
+        signupBtn.disabled = disabled;
+        isSubmitting = disabled;
+        
+        if (disabled) {
+            signupBtn.textContent = 'Creating Account...';
+        } else {
+            signupBtn.textContent = 'Create Account';
+        }
+    }
+
+    // --- 6. FORM SUBMISSION HANDLER ---
+
+    /**
+     * Handles the final account creation via backend API.
+     */
+    async function handleFormSubmit(e) {
         e.preventDefault();
+
+        // Prevent double submission
+        if (isSubmitting) return;
 
         // Final check before submission
         if (!isNameValid) {
@@ -80,28 +158,47 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const newUser = {
-            email: verifiedEmail,
-            name: nameInput.value.trim()
-        };
+        const name = nameInput.value.trim();
 
-        console.log('Creating new user:', newUser);
+        console.log('Creating new user:', { email: verifiedEmail, name });
 
-        // --- Create user record and log them in ---
-        // Use email as the unique key for the user record
-        localStorage.setItem(`user-${verifiedEmail}`, JSON.stringify(newUser));
-        // Set the generic 'spoon-user' for the current session
-        localStorage.setItem('spoon-user', JSON.stringify(newUser));
-        // Set the master login flag
-        localStorage.setItem('spoon-is-logged-in', 'true');
+        setFormDisabled(true);
 
-        // Redirect to the main page after successful signup.
-        // Using replace() prevents the user from going "back" to the signup form.
-        window.location.replace('index.html');
+        try {
+            // Call backend API to create user in Supabase (Requirement 6.1)
+            const result = await createUserApi(verifiedEmail, name);
+
+            if (result.success) {
+                // Store user data from response
+                const userData = result.user || { email: verifiedEmail, name };
+                
+                // Use email as the unique key for the user record
+                localStorage.setItem(`user-${verifiedEmail}`, JSON.stringify(userData));
+                // Set the generic 'spoon-user' for the current session
+                localStorage.setItem('spoon-user', JSON.stringify(userData));
+                // Set the master login flag
+                localStorage.setItem('spoon-is-logged-in', 'true');
+
+                console.log('✅ User created successfully:', userData);
+
+                // Redirect to the main page after successful signup.
+                // Using replace() prevents the user from going "back" to the signup form.
+                window.location.replace('index.html');
+            } else {
+                // Handle error response
+                const errorMessage = getErrorMessage(result.error);
+                alert(errorMessage);
+                setFormDisabled(false);
+            }
+        } catch (error) {
+            console.error('Failed to create user:', error);
+            alert('Unable to connect to server. Please try again.');
+            setFormDisabled(false);
+        }
     }
 
 
-    // --- 5. INITIALIZATION ---
+    // --- 7. INITIALIZATION ---
     function init() {
         // Get the verified email from the URL
         const params = new URLSearchParams(window.location.search);

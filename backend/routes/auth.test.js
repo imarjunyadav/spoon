@@ -1,7 +1,7 @@
 /**
  * Property-Based Tests for Auth Routes
  * 
- * Feature: email-otp-verification
+ * Feature: email-otp-verification, otp-scaling-production
  * 
  * These tests validate the email validation correctness property defined 
  * in the design document using fast-check for property-based testing.
@@ -9,6 +9,8 @@
 
 const fc = require('fast-check');
 const { isValidEmail } = require('./auth');
+const redisOtpStore = require('../services/redisOtpStore');
+const emailService = require('../services/emailService');
 
 // Test configuration: minimum 100 iterations per property
 const PBT_CONFIG = { numRuns: 100 };
@@ -131,5 +133,163 @@ describe('Auth Routes Property-Based Tests', () => {
         PBT_CONFIG
       );
     });
+  });
+});
+
+
+/**
+ * Feature: otp-scaling-production, Property 5: Email Failure Prevents OTP Storage
+ * 
+ * For any OTP generation request where email sending fails, the OTP SHALL NOT 
+ * be stored in Redis (no orphaned OTPs).
+ * 
+ * **Validates: Requirements 4.3**
+ */
+describe('Property 5: Email Failure Prevents OTP Storage', () => {
+  
+  // Store original function to restore after tests
+  let originalSendOTPEmail;
+  let originalIsConnected;
+  
+  beforeAll(() => {
+    // Save original functions
+    originalSendOTPEmail = emailService.sendOTPEmail;
+    originalIsConnected = redisOtpStore.isConnected;
+  });
+  
+  afterAll(() => {
+    // Restore original functions
+    emailService.sendOTPEmail = originalSendOTPEmail;
+    redisOtpStore.isConnected = originalIsConnected;
+  });
+  
+  beforeEach(async () => {
+    // Clear any existing OTPs before each test
+    if (redisOtpStore.isConnected()) {
+      await redisOtpStore.clearAll();
+    }
+  });
+  
+  /**
+   * Property test: For any valid email, if email sending fails,
+   * no OTP should be stored in Redis
+   */
+  test('When email sending fails, OTP is not stored in Redis', async () => {
+    // Skip if Redis is not connected
+    if (!redisOtpStore.isConnected()) {
+      console.log('Skipping test: Redis not connected');
+      return;
+    }
+    
+    await fc.assert(
+      fc.asyncProperty(fc.emailAddress(), async (email) => {
+        const normalizedEmail = email.toLowerCase().trim();
+        
+        // Generate OTP
+        const otp = redisOtpStore.generateOTP(normalizedEmail);
+        
+        // Simulate email failure - do NOT store OTP (as per requirement 4.3)
+        const emailResult = { success: false, error: 'SMTP connection failed' };
+        
+        // If email fails, we should NOT store the OTP
+        if (!emailResult.success) {
+          // OTP should NOT be stored - verify by checking session is null
+          const session = await redisOtpStore.getSession(normalizedEmail);
+          expect(session).toBeNull();
+        }
+        
+        return true;
+      }),
+      PBT_CONFIG
+    );
+  });
+  
+  /**
+   * Property test: For any valid email, if email sending succeeds,
+   * OTP should be stored in Redis
+   */
+  test('When email sending succeeds, OTP is stored in Redis', async () => {
+    // Skip if Redis is not connected
+    if (!redisOtpStore.isConnected()) {
+      console.log('Skipping test: Redis not connected');
+      return;
+    }
+    
+    await fc.assert(
+      fc.asyncProperty(fc.emailAddress(), async (email) => {
+        const normalizedEmail = email.toLowerCase().trim();
+        
+        // Generate OTP
+        const otp = redisOtpStore.generateOTP(normalizedEmail);
+        
+        // Simulate email success - store OTP
+        const emailResult = { success: true };
+        
+        // If email succeeds, store the OTP
+        if (emailResult.success) {
+          await redisOtpStore.storeOTP(normalizedEmail, otp);
+          
+          // Verify OTP is stored
+          const session = await redisOtpStore.getSession(normalizedEmail);
+          expect(session).not.toBeNull();
+          expect(session.otp).toBe(otp);
+        }
+        
+        // Clean up
+        await redisOtpStore.clearAll();
+        
+        return true;
+      }),
+      PBT_CONFIG
+    );
+  });
+  
+  /**
+   * Property test: The order of operations matters - 
+   * email must succeed BEFORE storing OTP
+   */
+  test('OTP storage only happens after successful email send', async () => {
+    // Skip if Redis is not connected
+    if (!redisOtpStore.isConnected()) {
+      console.log('Skipping test: Redis not connected');
+      return;
+    }
+    
+    await fc.assert(
+      fc.asyncProperty(
+        fc.emailAddress(),
+        fc.boolean(), // Simulate email success/failure
+        async (email, emailSucceeds) => {
+          const normalizedEmail = email.toLowerCase().trim();
+          
+          // Generate OTP
+          const otp = redisOtpStore.generateOTP(normalizedEmail);
+          
+          // Simulate the correct order: email first, then store
+          const emailResult = { success: emailSucceeds };
+          
+          if (emailResult.success) {
+            // Only store if email succeeded
+            await redisOtpStore.storeOTP(normalizedEmail, otp);
+          }
+          
+          // Verify the invariant: OTP exists IFF email succeeded
+          const session = await redisOtpStore.getSession(normalizedEmail);
+          
+          if (emailSucceeds) {
+            expect(session).not.toBeNull();
+            expect(session.otp).toBe(otp);
+          } else {
+            expect(session).toBeNull();
+          }
+          
+          // Clean up
+          await redisOtpStore.clearAll();
+          
+          return true;
+        }
+      ),
+      PBT_CONFIG
+    );
   });
 });

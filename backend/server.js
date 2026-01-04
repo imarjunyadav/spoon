@@ -126,6 +126,15 @@ app.use("/api/orders", ordersRoutes);
 const authRoutes = require("./routes/auth");
 app.use("/api/auth", authRoutes);
 
+/**
+ * HEALTH ROUTES
+ * Health check endpoint for monitoring service availability
+ * Example: GET /api/health
+ * Checks Redis and Supabase connectivity
+ */
+const healthRoutes = require("./routes/health");
+app.use("/api/health", healthRoutes);
+
 // ========================================
 // SECTION 5: SERVE FRONTEND FILES
 // ========================================
