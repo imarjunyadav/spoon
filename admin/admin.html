@@ -583,19 +583,53 @@
     }
     
     async function toggleStock(itemId, newAvailability) {
-      const { error } = await supabase
-        .from('menu_items')
-        .update({ is_available: newAvailability })
-        .eq('id', itemId);
+      // Get session token for authentication
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (error) {
-        console.error("❌ Error updating stock:", error);
-        alert('Failed to update stock status');
+      if (!session) {
+        // No session - redirect to login
+        window.location.href = "login.html";
         return;
       }
       
-      console.log(`✅ Stock updated for item ${itemId}: ${newAvailability ? 'Available' : 'Out of Stock'}`);
-      await fetchMenuItems();
+      try {
+        const response = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/admin/stock/${itemId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ is_available: newAvailability })
+        });
+        
+        if (response.status === 401) {
+          // Token invalid/expired - redirect to login
+          console.error("❌ Unauthorized - redirecting to login");
+          await supabase.auth.signOut();
+          window.location.href = "login.html";
+          return;
+        }
+        
+        if (response.status === 403) {
+          // User is not admin - show access denied
+          console.error("❌ Access denied - user is not admin");
+          showAccessDeniedModal();
+          return;
+        }
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          console.log(`✅ Stock updated for item ${itemId}: ${newAvailability ? 'Available' : 'Out of Stock'}`);
+          await fetchMenuItems();
+        } else {
+          console.error("❌ Error updating stock:", result.error || result.message);
+          alert('Failed to update stock status: ' + (result.message || result.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error("❌ Network error updating stock:", error);
+        alert('Failed to connect to server. Please check your connection.');
+      }
     }
     
     // Auto-refresh every 5 seconds for real-time updates

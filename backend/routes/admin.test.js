@@ -73,6 +73,29 @@ function getVerifyHandler() {
   return layer.route.stack[0].handle;
 }
 
+// Get the stock update handler from the router stack
+function getStockUpdateHandler() {
+  // Find the PATCH /stock/:itemId route in the router stack
+  const layer = adminRouter.stack.find(
+    layer => layer.route && layer.route.path === '/stock/:itemId' && layer.route.methods.patch
+  );
+  if (!layer) {
+    throw new Error('Could not find PATCH /stock/:itemId route handler');
+  }
+  return layer.route.stack[0].handle;
+}
+
+/**
+ * Create a mock Express request object for stock update
+ */
+function createMockStockRequest(options = {}) {
+  return {
+    headers: options.headers || {},
+    params: options.params || {},
+    body: options.body || {}
+  };
+}
+
 // ========================================
 // UNIT TESTS
 // ========================================
@@ -370,6 +393,245 @@ describe('Admin Routes Unit Tests', () => {
 
       expect(res.statusCode).toBe(500);
       expect(res.jsonData.error).toBe('SERVICE_UNAVAILABLE');
+    });
+  });
+
+  describe('PATCH /api/admin/stock/:itemId', () => {
+    let stockHandler;
+
+    beforeAll(() => {
+      stockHandler = getStockUpdateHandler();
+    });
+
+    beforeEach(() => {
+      adminService.resetClient();
+    });
+
+    test('returns 401 when no Authorization header is provided', async () => {
+      const req = createMockStockRequest({
+        params: { itemId: 'item-123' },
+        body: { is_available: true }
+      });
+      const res = createMockResponse();
+
+      await stockHandler(req, res);
+
+      expect(res.statusCode).toBe(401);
+      expect(res.jsonData.error).toBe('UNAUTHORIZED');
+    });
+
+    test('returns 401 when token is invalid', async () => {
+      const mockClient = {
+        auth: {
+          getUser: async () => ({
+            data: null,
+            error: { message: 'Invalid token' }
+          })
+        }
+      };
+      adminService.setClient(mockClient);
+
+      const req = createMockStockRequest({
+        headers: { authorization: 'Bearer invalid-token' },
+        params: { itemId: 'item-123' },
+        body: { is_available: true }
+      });
+      const res = createMockResponse();
+
+      await stockHandler(req, res);
+
+      expect(res.statusCode).toBe(401);
+      expect(res.jsonData.error).toBe('INVALID_TOKEN');
+    });
+
+    test('returns 403 when user is not admin', async () => {
+      const mockClient = {
+        auth: {
+          getUser: async () => ({
+            data: { user: { email: 'user@example.com' } },
+            error: null
+          })
+        },
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              single: async () => ({
+                data: { is_admin: false },
+                error: null
+              })
+            })
+          })
+        })
+      };
+      adminService.setClient(mockClient);
+
+      const req = createMockStockRequest({
+        headers: { authorization: 'Bearer valid-token' },
+        params: { itemId: 'item-123' },
+        body: { is_available: true }
+      });
+      const res = createMockResponse();
+
+      await stockHandler(req, res);
+
+      expect(res.statusCode).toBe(403);
+      expect(res.jsonData.error).toBe('FORBIDDEN');
+    });
+
+    test('returns 400 when is_available is missing', async () => {
+      const mockClient = {
+        auth: {
+          getUser: async () => ({
+            data: { user: { email: 'admin@example.com' } },
+            error: null
+          })
+        },
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              single: async () => ({
+                data: { is_admin: true },
+                error: null
+              })
+            })
+          })
+        })
+      };
+      adminService.setClient(mockClient);
+
+      const req = createMockStockRequest({
+        headers: { authorization: 'Bearer valid-admin-token' },
+        params: { itemId: 'item-123' },
+        body: {} // Missing is_available
+      });
+      const res = createMockResponse();
+
+      await stockHandler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.jsonData.error).toBe('INVALID_REQUEST');
+      expect(res.jsonData.message).toBe('is_available field is required');
+    });
+
+    test('returns 400 when is_available is not a boolean', async () => {
+      const mockClient = {
+        auth: {
+          getUser: async () => ({
+            data: { user: { email: 'admin@example.com' } },
+            error: null
+          })
+        },
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              single: async () => ({
+                data: { is_admin: true },
+                error: null
+              })
+            })
+          })
+        })
+      };
+      adminService.setClient(mockClient);
+
+      const req = createMockStockRequest({
+        headers: { authorization: 'Bearer valid-admin-token' },
+        params: { itemId: 'item-123' },
+        body: { is_available: 'yes' } // String instead of boolean
+      });
+      const res = createMockResponse();
+
+      await stockHandler(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.jsonData.error).toBe('INVALID_REQUEST');
+      expect(res.jsonData.message).toBe('is_available must be a boolean');
+    });
+
+    test('returns 404 when menu item does not exist', async () => {
+      const mockClient = {
+        auth: {
+          getUser: async () => ({
+            data: { user: { email: 'admin@example.com' } },
+            error: null
+          })
+        },
+        from: (table) => ({
+          select: () => ({
+            eq: () => ({
+              single: async () => ({
+                data: { is_admin: true },
+                error: null
+              })
+            })
+          }),
+          update: () => ({
+            eq: () => ({
+              select: async () => ({
+                data: [], // No rows updated
+                error: null
+              })
+            })
+          })
+        })
+      };
+      adminService.setClient(mockClient);
+
+      const req = createMockStockRequest({
+        headers: { authorization: 'Bearer valid-admin-token' },
+        params: { itemId: 'non-existent-item' },
+        body: { is_available: true }
+      });
+      const res = createMockResponse();
+
+      await stockHandler(req, res);
+
+      expect(res.statusCode).toBe(404);
+      expect(res.jsonData.error).toBe('NOT_FOUND');
+    });
+
+    test('returns 200 with success for valid admin request', async () => {
+      const mockClient = {
+        auth: {
+          getUser: async () => ({
+            data: { user: { email: 'admin@example.com' } },
+            error: null
+          })
+        },
+        from: (table) => ({
+          select: () => ({
+            eq: () => ({
+              single: async () => ({
+                data: { is_admin: true },
+                error: null
+              })
+            })
+          }),
+          update: () => ({
+            eq: () => ({
+              select: async () => ({
+                data: [{ id: 'item-123', is_available: true }],
+                error: null
+              })
+            })
+          })
+        })
+      };
+      adminService.setClient(mockClient);
+
+      const req = createMockStockRequest({
+        headers: { authorization: 'Bearer valid-admin-token' },
+        params: { itemId: 'item-123' },
+        body: { is_available: true }
+      });
+      const res = createMockResponse();
+
+      await stockHandler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.jsonData.success).toBe(true);
+      expect(res.jsonData.itemId).toBe('item-123');
+      expect(res.jsonData.is_available).toBe(true);
     });
   });
 });
@@ -727,6 +989,291 @@ describe('Admin Routes Property-Based Tests', () => {
             expect(emailTracker.queriedEmail).toBe(attackerEmail.toLowerCase().trim());
             // Should return attacker's status (false), not target's (true)
             expect(res.jsonData.isAdmin).toBe(false);
+          }
+        ),
+        PBT_CONFIG
+      );
+    });
+  });
+
+  /**
+   * Feature: secure-stock-management, Property 1: Authentication Enforcement
+   * For any request to the stock update endpoint without a valid Bearer token 
+   * (missing, malformed, or expired), the API SHALL return HTTP 401 status code.
+   * Validates: Requirements 1.2, 1.3, 1.4
+   */
+  describe('Property 1: Authentication Enforcement (Stock Update)', () => {
+    let stockHandler;
+
+    beforeAll(() => {
+      stockHandler = getStockUpdateHandler();
+    });
+
+    // Set up mock client that rejects all tokens as invalid
+    function setupInvalidTokenMock() {
+      const mockClient = {
+        auth: {
+          getUser: async () => ({
+            data: null,
+            error: { message: 'Invalid token' }
+          })
+        }
+      };
+      adminService.setClient(mockClient);
+    }
+
+    test('Random string tokens return 401 for stock update', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string({ minLength: 1, maxLength: 500 }),
+          fc.uuid(),
+          fc.boolean(),
+          async (randomToken, itemId, isAvailable) => {
+            setupInvalidTokenMock();
+            
+            const req = createMockStockRequest({
+              headers: { authorization: `Bearer ${randomToken}` },
+              params: { itemId },
+              body: { is_available: isAvailable }
+            });
+            const res = createMockResponse();
+
+            await stockHandler(req, res);
+
+            expect(res.statusCode).toBe(401);
+            expect(['UNAUTHORIZED', 'INVALID_TOKEN', 'NO_TOKEN']).toContain(res.jsonData.error);
+          }
+        ),
+        PBT_CONFIG
+      );
+    });
+
+    test('Missing Authorization header returns 401 for stock update', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.uuid(),
+          fc.boolean(),
+          async (itemId, isAvailable) => {
+            setupInvalidTokenMock();
+            
+            const req = createMockStockRequest({
+              headers: {},
+              params: { itemId },
+              body: { is_available: isAvailable }
+            });
+            const res = createMockResponse();
+
+            await stockHandler(req, res);
+
+            expect(res.statusCode).toBe(401);
+            expect(res.jsonData.error).toBe('UNAUTHORIZED');
+          }
+        ),
+        PBT_CONFIG
+      );
+    });
+
+    test('Non-Bearer authorization schemes return 401 for stock update', async () => {
+      const nonBearerSchemes = fc.constantFrom(
+        'Basic', 'Digest', 'HOBA', 'Mutual', 'Negotiate', 
+        'OAuth', 'SCRAM-SHA-1', 'SCRAM-SHA-256', 'vapid'
+      );
+
+      await fc.assert(
+        fc.asyncProperty(
+          nonBearerSchemes,
+          fc.base64String({ minLength: 10, maxLength: 50 }),
+          fc.uuid(),
+          fc.boolean(),
+          async (scheme, credentials, itemId, isAvailable) => {
+            setupInvalidTokenMock();
+            
+            const req = createMockStockRequest({
+              headers: { authorization: `${scheme} ${credentials}` },
+              params: { itemId },
+              body: { is_available: isAvailable }
+            });
+            const res = createMockResponse();
+
+            await stockHandler(req, res);
+
+            expect(res.statusCode).toBe(401);
+            expect(res.jsonData.error).toBe('INVALID_TOKEN');
+          }
+        ),
+        PBT_CONFIG
+      );
+    });
+  });
+
+  /**
+   * Feature: secure-stock-management, Property 2: Non-Boolean Input Rejection
+   * For any request body where is_available is not a boolean value 
+   * (string, number, object, array, null, undefined), the API SHALL return 
+   * HTTP 400 with error code INVALID_REQUEST.
+   * Validates: Requirements 1.6, 1.7
+   */
+  describe('Property 2: Non-Boolean Input Rejection (Stock Update)', () => {
+    let stockHandler;
+
+    beforeAll(() => {
+      stockHandler = getStockUpdateHandler();
+    });
+
+    // Set up mock client for valid admin user
+    function setupValidAdminMock() {
+      const mockClient = {
+        auth: {
+          getUser: async () => ({
+            data: { user: { email: 'admin@example.com' } },
+            error: null
+          })
+        },
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              single: async () => ({
+                data: { is_admin: true },
+                error: null
+              })
+            })
+          }),
+          update: () => ({
+            eq: () => ({
+              select: async () => ({
+                data: [{ id: 'item-123', is_available: true }],
+                error: null
+              })
+            })
+          })
+        })
+      };
+      adminService.setClient(mockClient);
+    }
+
+    test('String values for is_available return 400', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string(),
+          fc.uuid(),
+          async (stringValue, itemId) => {
+            setupValidAdminMock();
+            
+            const req = createMockStockRequest({
+              headers: { authorization: 'Bearer valid-admin-token' },
+              params: { itemId },
+              body: { is_available: stringValue }
+            });
+            const res = createMockResponse();
+
+            await stockHandler(req, res);
+
+            expect(res.statusCode).toBe(400);
+            expect(res.jsonData.error).toBe('INVALID_REQUEST');
+            expect(res.jsonData.message).toBe('is_available must be a boolean');
+          }
+        ),
+        PBT_CONFIG
+      );
+    });
+
+    test('Number values for is_available return 400', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.oneof(fc.integer(), fc.float(), fc.double()),
+          fc.uuid(),
+          async (numberValue, itemId) => {
+            setupValidAdminMock();
+            
+            const req = createMockStockRequest({
+              headers: { authorization: 'Bearer valid-admin-token' },
+              params: { itemId },
+              body: { is_available: numberValue }
+            });
+            const res = createMockResponse();
+
+            await stockHandler(req, res);
+
+            expect(res.statusCode).toBe(400);
+            expect(res.jsonData.error).toBe('INVALID_REQUEST');
+            expect(res.jsonData.message).toBe('is_available must be a boolean');
+          }
+        ),
+        PBT_CONFIG
+      );
+    });
+
+    test('Object values for is_available return 400', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.object(),
+          fc.uuid(),
+          async (objectValue, itemId) => {
+            setupValidAdminMock();
+            
+            const req = createMockStockRequest({
+              headers: { authorization: 'Bearer valid-admin-token' },
+              params: { itemId },
+              body: { is_available: objectValue }
+            });
+            const res = createMockResponse();
+
+            await stockHandler(req, res);
+
+            expect(res.statusCode).toBe(400);
+            expect(res.jsonData.error).toBe('INVALID_REQUEST');
+            expect(res.jsonData.message).toBe('is_available must be a boolean');
+          }
+        ),
+        PBT_CONFIG
+      );
+    });
+
+    test('Array values for is_available return 400', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(fc.anything()),
+          fc.uuid(),
+          async (arrayValue, itemId) => {
+            setupValidAdminMock();
+            
+            const req = createMockStockRequest({
+              headers: { authorization: 'Bearer valid-admin-token' },
+              params: { itemId },
+              body: { is_available: arrayValue }
+            });
+            const res = createMockResponse();
+
+            await stockHandler(req, res);
+
+            expect(res.statusCode).toBe(400);
+            expect(res.jsonData.error).toBe('INVALID_REQUEST');
+            expect(res.jsonData.message).toBe('is_available must be a boolean');
+          }
+        ),
+        PBT_CONFIG
+      );
+    });
+
+    test('Null value for is_available returns 400', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.uuid(),
+          async (itemId) => {
+            setupValidAdminMock();
+            
+            const req = createMockStockRequest({
+              headers: { authorization: 'Bearer valid-admin-token' },
+              params: { itemId },
+              body: { is_available: null }
+            });
+            const res = createMockResponse();
+
+            await stockHandler(req, res);
+
+            expect(res.statusCode).toBe(400);
+            expect(res.jsonData.error).toBe('INVALID_REQUEST');
+            expect(res.jsonData.message).toBe('is_available must be a boolean');
           }
         ),
         PBT_CONFIG

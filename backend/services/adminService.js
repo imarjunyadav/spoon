@@ -167,6 +167,56 @@ async function isUserAdmin(email) {
 }
 
 // ========================================
+// STOCK MANAGEMENT
+// ========================================
+
+/**
+ * Update menu item availability
+ * @param {string} itemId - UUID of the menu item
+ * @param {boolean} isAvailable - New availability status
+ * @returns {Promise<{ success: boolean, error?: string }>}
+ * 
+ * Error codes:
+ * - 'NOT_FOUND': Menu item doesn't exist
+ * - 'DATABASE_ERROR': Database query failed
+ * - 'SERVICE_UNAVAILABLE': Supabase client not initialized
+ * 
+ * Requirements covered: 2.1, 2.2, 2.4, 2.5
+ */
+async function updateMenuItemStock(itemId, isAvailable) {
+  try {
+    // Get Supabase client
+    const client = getClient();
+    
+    if (!client) {
+      return { success: false, error: 'SERVICE_UNAVAILABLE' };
+    }
+    
+    // Update the menu item's is_available field
+    const { data, error } = await client
+      .from('menu_items')
+      .update({ is_available: isAvailable })
+      .eq('id', itemId)
+      .select();
+    
+    if (error) {
+      console.error('Supabase updateMenuItemStock error:', error);
+      return { success: false, error: 'DATABASE_ERROR' };
+    }
+    
+    // Check if any row was updated (item exists)
+    if (!data || data.length === 0) {
+      return { success: false, error: 'NOT_FOUND' };
+    }
+    
+    return { success: true };
+  } catch (err) {
+    console.error('AdminService updateMenuItemStock exception:', err);
+    return { success: false, error: 'DATABASE_ERROR' };
+  }
+}
+
+// ========================================
 // UTILITY FUNCTIONS (for testing)
 // ========================================
 
@@ -193,6 +243,7 @@ function setClient(client) {
 module.exports = {
   validateToken,
   isUserAdmin,
+  updateMenuItemStock,
   // Testing utilities
   resetClient,
   setClient

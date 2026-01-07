@@ -419,6 +419,130 @@ describe('Admin Service Unit Tests', () => {
       expect(queriedEmail).toBe('admin@example.com');
     });
   });
+
+  describe('updateMenuItemStock', () => {
+    test('returns SERVICE_UNAVAILABLE when Supabase not configured', async () => {
+      adminService.resetClient();
+      const result = await adminService.updateMenuItemStock('item-123', true);
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('SERVICE_UNAVAILABLE');
+    });
+
+    test('returns success: true for successful update', async () => {
+      // Create mock client that returns successful update
+      const mockClient = {
+        from: (table) => ({
+          update: (data) => ({
+            eq: (field, value) => ({
+              select: async () => ({
+                data: [{ id: 'item-123', is_available: true }],
+                error: null
+              })
+            })
+          })
+        })
+      };
+      adminService.setClient(mockClient);
+
+      const result = await adminService.updateMenuItemStock('item-123', true);
+      expect(result.success).toBe(true);
+      expect(result.error).toBeUndefined();
+    });
+
+    test('returns NOT_FOUND for non-existent item', async () => {
+      // Create mock client that returns empty array (no rows updated)
+      const mockClient = {
+        from: (table) => ({
+          update: (data) => ({
+            eq: (field, value) => ({
+              select: async () => ({
+                data: [],
+                error: null
+              })
+            })
+          })
+        })
+      };
+      adminService.setClient(mockClient);
+
+      const result = await adminService.updateMenuItemStock('non-existent-id', true);
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('NOT_FOUND');
+    });
+
+    test('returns DATABASE_ERROR for database failures', async () => {
+      // Create mock client that returns database error
+      const mockClient = {
+        from: (table) => ({
+          update: (data) => ({
+            eq: (field, value) => ({
+              select: async () => ({
+                data: null,
+                error: { code: 'SOME_ERROR', message: 'Database connection failed' }
+              })
+            })
+          })
+        })
+      };
+      adminService.setClient(mockClient);
+
+      const result = await adminService.updateMenuItemStock('item-123', true);
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('DATABASE_ERROR');
+    });
+
+    test('updates is_available to false correctly', async () => {
+      let updatedData = null;
+      
+      // Create mock client that captures the update data
+      const mockClient = {
+        from: (table) => ({
+          update: (data) => {
+            updatedData = data;
+            return {
+              eq: (field, value) => ({
+                select: async () => ({
+                  data: [{ id: 'item-123', is_available: false }],
+                  error: null
+                })
+              })
+            };
+          }
+        })
+      };
+      adminService.setClient(mockClient);
+
+      const result = await adminService.updateMenuItemStock('item-123', false);
+      expect(result.success).toBe(true);
+      expect(updatedData).toEqual({ is_available: false });
+    });
+
+    test('updates is_available to true correctly', async () => {
+      let updatedData = null;
+      
+      // Create mock client that captures the update data
+      const mockClient = {
+        from: (table) => ({
+          update: (data) => {
+            updatedData = data;
+            return {
+              eq: (field, value) => ({
+                select: async () => ({
+                  data: [{ id: 'item-123', is_available: true }],
+                  error: null
+                })
+              })
+            };
+          }
+        })
+      };
+      adminService.setClient(mockClient);
+
+      const result = await adminService.updateMenuItemStock('item-123', true);
+      expect(result.success).toBe(true);
+      expect(updatedData).toEqual({ is_available: true });
+    });
+  });
 });
 
 // ========================================
