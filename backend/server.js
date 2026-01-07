@@ -135,6 +135,15 @@ app.use("/api/auth", authRoutes);
 const healthRoutes = require("./routes/health");
 app.use("/api/health", healthRoutes);
 
+/**
+ * ADMIN ROUTES
+ * Admin role verification endpoint
+ * Example: GET /api/admin/verify
+ * Validates JWT tokens and checks admin status in database
+ */
+const adminRoutes = require("./routes/admin");
+app.use("/api/admin", adminRoutes);
+
 // ========================================
 // SECTION 5: SERVE FRONTEND FILES
 // ========================================
