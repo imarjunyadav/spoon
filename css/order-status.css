@@ -51,8 +51,6 @@
     font-weight: 600;
     padding: var(--spacing-sm) 0;
     cursor: pointer;
-    border-top: 1px solid var(--inactive-grey);
-    margin-top: var(--spacing-md);
 }
 
 .collapsible-items__header .fa-chevron-down {
@@ -120,114 +118,105 @@
 
 
 /* ====================
-   4. VERTICAL TIMELINE
+   4. HORIZONTAL STEPPER
+   Professional minimalist design - flat, static, clean
    ==================== */
 .timeline-container {
     padding: var(--spacing-md);
+    background: white;
 }
 
-.timeline-step {
+/* --- 4a. Horizontal Stepper Layout --- */
+.horizontal-stepper {
     display: flex;
-    gap: var(--spacing-md);
-    position: relative;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: var(--spacing-lg) var(--spacing-xs);
+    gap: 0;
 }
 
-.timeline-step__icon-container {
+.stepper-step {
     display: flex;
     flex-direction: column;
     align-items: center;
-    z-index: 2;
+    text-align: center;
+    flex: 0 0 auto;
+    min-width: 60px;
+    max-width: 70px;
 }
 
-.timeline-step__icon {
-    width: 40px;
-    height: 40px;
+/* --- 4b. Icon Styling (Clean, No Shadow) --- */
+.stepper-icon {
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
-    transition: all 0.4s ease;
-    border: 3px solid var(--background-white);
+    font-size: 18px;
+    color: white;
+    z-index: 2;
 }
 
-.timeline-step__line {
-    flex-grow: 1;
-    width: 2px;
-    background-color: var(--border-color);
-    transform: translateY(-4px);
-}
-
-.timeline-step:last-child .timeline-step__line {
-    background-color: transparent !important;
-}
-
-.timeline-step__content-card {
-    flex-grow: 1;
-    margin-bottom: var(--spacing-lg);
-    padding: var(--spacing-md);
-    border-radius: var(--radius-large);
-    transition: all 0.4s ease;
-    border: 1px solid var(--border-color);
-}
-
-.timeline-step__title {
-    /* ✅ FLUID TYPO: Make timeline titles responsive */
-    font-size: clamp(16px, 2.8vw, 18px);
-    font-weight: 700;
-    margin-bottom: var(--spacing-xs);
-}
-
-.timeline-step__description {
-    /* ✅ FLUID TYPO: Make timeline descriptions responsive */
-    font-size: clamp(14px, 2.2vw, 15px);
-    color: var(--text-secondary);
-}
-
-.timeline-step__timestamp {
-    font-size: 12px;
+/* --- 4c. Label Styling (Single Line, Neutral Colors) --- */
+.stepper-label {
+    font-size: 10px;
     font-weight: 500;
-    margin-top: var(--spacing-sm);
-    color: var(--text-secondary);
+    margin-top: 6px;
+    color: #888;
+    white-space: nowrap;
+    line-height: 1.2;
 }
 
-/* --- 4a. Timeline Color States --- */
-.timeline-step--complete .timeline-step__icon {
-    background-color: var(--success-green);
-    color: white;
+/* --- 4d. Timestamp Styling (Micro-text) --- */
+.stepper-time {
+    font-size: 9px;
+    color: #aaa;
+    margin-top: 2px;
 }
 
-.timeline-step--complete .timeline-step__line {
-    background-color: var(--success-green);
+/* --- 4e. Connector Lines --- */
+.stepper-connector {
+    flex: 1;
+    height: 3px;
+    min-width: 12px;
+    margin-top: 22px;
+    border-radius: 1px;
 }
 
-.timeline-step--complete .timeline-step__content-card {
-    background-color: var(--background-white);
-    border-color: var(--border-color);
+/* --- 4f. Stepper States (Neutral Text, Colored Icons Only) --- */
+
+/* COMPLETED STATE: Green icon, grey text */
+.stepper-step--complete .stepper-icon {
+    background-color: #2E7D32 !important;
 }
 
-.timeline-step--current .timeline-step__icon {
-    background-color: var(--warning-orange);
-    color: white;
+.stepper-step--complete .stepper-label {
+    color: #888;
 }
 
-.timeline-step--current .timeline-step__content-card {
-    background-color: #fef5e7;
-    border-color: var(--warning-orange);
+/* CURRENT STATE: Red icon, black text (not bold) */
+.stepper-step--current .stepper-icon {
+    background-color: #eb1700 !important;
 }
 
-.timeline-step--pending {
-    opacity: 0.6;
+.stepper-step--current .stepper-label {
+    color: #000;
+    font-weight: 500;
 }
 
-.timeline-step--pending .timeline-step__icon {
-    background-color: var(--border-color);
-    color: #9e9e9e;
+/* PENDING STATE: Red icon (dimmed), grey text */
+.stepper-step--pending .stepper-icon {
+    background-color: #eb1700 !important;
+    opacity: 0.35;
 }
 
-.timeline-step--pending .timeline-step__description,
-.timeline-step--pending .timeline-step__timestamp {
-    display: none;
+.stepper-step--pending .stepper-label {
+    color: #ccc;
+}
+
+.stepper-step--pending .stepper-time {
+    visibility: hidden;
 }
 
 
@@ -260,4 +249,104 @@
     font-size: clamp(16px, 3vw, 18px);
     font-weight: 600;
     margin-top: var(--spacing-sm);
+}
+
+
+/* ====================
+   6. HERO SECTION (Flat, Minimalist - No Cards)
+   ==================== */
+.hero-section {
+    text-align: center;
+    padding: var(--spacing-xl) var(--spacing-md);
+    margin: var(--spacing-md);
+    background: white;
+}
+
+/* --- 6a. Waiting State (PENDING/PLACED/PREPARING) --- */
+.hero-section--waiting {
+    background: white;
+}
+
+.hero-section--waiting .hero-icon {
+    font-size: 48px;
+    color: #888;
+    margin-bottom: var(--spacing-md);
+}
+
+.hero-message {
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    margin: 0 0 var(--spacing-xs);
+}
+
+.hero-submessage {
+    font-size: 13px;
+    color: #888;
+    margin: 0;
+}
+
+/* --- 6b. Ready State (COMPLETE - OTP Visible, Floating Clean) --- */
+.hero-section--ready {
+    background: white;
+}
+
+.hero-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: var(--spacing-sm);
+}
+
+.hero-code {
+    font-size: clamp(3rem, 12vw, 4.5rem);
+    font-weight: 900;
+    letter-spacing: 6px;
+    color: #000;
+    line-height: 1;
+    margin-bottom: var(--spacing-md);
+}
+
+.hero-instruction {
+    font-size: 13px;
+    font-weight: 400;
+    color: #888;
+    margin: 0;
+}
+
+/* --- 6c. Complete State (PICKED_UP - NO OTP) --- */
+.hero-section--complete {
+    background: white;
+}
+
+.hero-section--complete .hero-label {
+    color: #2E7D32;
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: var(--spacing-md);
+}
+
+.hero-complete-icon {
+    font-size: 56px;
+    color: #2E7D32;
+    margin-bottom: var(--spacing-md);
+}
+
+.hero-thanks {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    font-size: 15px;
+    font-weight: 500;
+    color: #333;
+    margin-top: var(--spacing-sm);
+}
+
+.hero-thanks i {
+    font-size: 18px;
+    color: #2E7D32;
 }

@@ -15,27 +15,8 @@
     <!-- Supabase Client Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.4/dist/umd/supabase.min.js"></script>
     
-    <!-- Inline Pickup Code Styles -->
+    <!-- Utility Classes -->
     <style>
-        /* Pickup code centered inside timeline card */
-        .pickup-inline {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 28px;
-            font-weight: 800;
-            color: #000;
-            letter-spacing: 3px;
-            white-space: nowrap;
-            z-index: 10;
-        }
-        
-        /* Ensure timeline card supports absolute positioning */
-        .timeline-step__content-card {
-            position: relative;
-        }
-        
         .hidden {
             display: none;
         }
@@ -59,25 +40,8 @@
         <main class="main-content">
 
             <!-- --- Order Summary Card --- -->
-            <!-- The IDs for summary details match the original JS -->
             <section class="order-summary-card">
-                <div class="summary-details-grid">
-                    <div class="summary-detail-item">
-                        <span class="label">Amount Paid</span>
-                        <strong id="summary-amount">₹0.00</strong>
-                    </div>
-                    <div class="summary-detail-item">
-                        <span class="label">Placed At</span>
-                        <strong id="summary-placed-at">--:--</strong>
-                    </div>
-                    <div class="summary-detail-item">
-                        <span class="label">Last Updated</span>
-                        <strong id="summary-last-updated">--:--</strong>
-                    </div>
-                </div>
-
                 <!-- Collapsible Item List -->
-                <!-- The IDs for the container and list match the original JS -->
                 <div class="collapsible-items" id="collapsible-items-container">
                     <button class="collapsible-items__header" id="toggle-items-btn">
                         <span>View Items</span>
@@ -103,6 +67,9 @@
 
     <!-- Centralized configuration (must load before other scripts) -->
     <script src="js/config.js"></script>
+    
+    <!-- Horizontal Stepper Renderer (must load before order-status.js) -->
+    <script src="js/timelineRenderer.js"></script>
     
     <!-- Initialize Supabase from centralized config -->
     <script>

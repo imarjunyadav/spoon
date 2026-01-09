@@ -156,9 +156,23 @@ router.patch('/:orderId/status', async (req, res) => {
     console.log('  - Updating ID:', orderId);
     console.log('  - New status:', status);
     
+    // Build update object with status and appropriate timestamp
+    const updateData = { status };
+    
+    // Set timestamp based on status change
+    if (status === 'COMPLETE') {
+      updateData.ready_at = new Date().toISOString();
+      console.log('  - Setting ready_at:', updateData.ready_at);
+    } else if (status === 'PICKED_UP') {
+      updateData.picked_up_at = new Date().toISOString();
+      console.log('  - Setting picked_up_at:', updateData.picked_up_at);
+    }
+    
+    console.log('  - Full updateData:', JSON.stringify(updateData, null, 2));
+    
     const { data: updatedOrders, error: updateError, count: updateCount } = await supabase
       .from('orders')
-      .update({ status })
+      .update(updateData)
       .eq('id', orderId)
       .select('*', { count: 'exact' });
 
@@ -203,6 +217,8 @@ router.patch('/:orderId/status', async (req, res) => {
     const updatedOrder = updatedOrders[0];
     console.log('✅ DIAGNOSTIC: Order status updated successfully');
     console.log('   New status:', updatedOrder.status);
+    console.log('   ready_at:', updatedOrder.ready_at);
+    console.log('   picked_up_at:', updatedOrder.picked_up_at);
     console.log('========================================\n');
 
     // Send email notification based on status

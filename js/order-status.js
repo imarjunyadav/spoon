@@ -27,9 +27,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- 1. DOM ELEMENT REFERENCES (Matches our new HTML) ---
     const orderIdHeader = document.getElementById('status-order-id-header');
-    const summaryAmount = document.getElementById('summary-amount');
-    const summaryPlacedAt = document.getElementById('summary-placed-at');
-    const summaryLastUpdated = document.getElementById('summary-last-updated');
     const toggleItemsBtn = document.getElementById('toggle-items-btn');
     const collapsibleContainer = document.getElementById('collapsible-items-container');
     const summaryItemList = document.getElementById('summary-item-list');
@@ -39,14 +36,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     let pollingInterval;
     let currentOrder;
 
+    // --- ADAPTIVE POLLING CONFIGURATION ---
+    // Polling intervals in milliseconds based on order status
+    // Requirements: 1.1, 1.2, 1.3
+    const POLLING_INTERVALS = {
+        PENDING: 20000,    // 20 seconds - user is waiting/walking
+        PLACED: 20000,     // 20 seconds - same as PENDING
+        PREPARING: 20000,  // 20 seconds - kitchen is working
+        COMPLETE: 3000,    // 3 seconds - Counter Moment (critical for fast pickup confirmation)
+        PICKED_UP: 0       // No polling - order complete
+    };
+
+    /**
+     * Get the appropriate polling interval for a given order status.
+     * Implements hybrid polling strategy for performance optimization.
+     * 
+     * @param {string} status - Order status ('PENDING'|'PLACED'|'PREPARING'|'COMPLETE'|'PICKED_UP')
+     * @returns {number} - Polling interval in milliseconds (0 = no polling)
+     * 
+     * Requirements: 1.1, 1.2, 1.3
+     */
+    function getIntervalForStatus(status) {
+        // Only check own properties to avoid prototype pollution
+        if (Object.prototype.hasOwnProperty.call(POLLING_INTERVALS, status)) {
+            return POLLING_INTERVALS[status];
+        }
+        // Default to PENDING interval for unknown statuses
+        return POLLING_INTERVALS.PENDING;
+    }
+
     // The master list of all possible stages for an order.
-    // Map database status to display stages
-    const orderStages = [
-        { dbStatus: 'PENDING', status: 'Order Placed', description: 'We have received your order.', icon: 'fa-receipt' },
-        { dbStatus: 'PREPARING', status: 'Preparing', description: 'The kitchen has started preparing your order.', icon: 'fa-utensils' },
-        { dbStatus: 'COMPLETE', status: 'Ready for Pickup', description: 'Your order is ready at the counter.', icon: 'fa-bell' },
-        { dbStatus: 'PICKED_UP', status: 'Completed', description: 'Your order has been collected. Enjoy!', icon: 'fa-check-circle' }
-    ];
+    // Now using HorizontalStepperRenderer for modern horizontal layout
+    // Requirements: 2.1, 2.3, 2.4
 
     // --- 3. HELPER FUNCTIONS ---
 
@@ -74,67 +95,53 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     /**
-     * Renders the dynamic timeline UI based on the order's current progress.
-     * Status mapping:
-     * - PENDING: Only first step highlighted
-     * - PREPARING: First two steps highlighted
-     * - COMPLETE: First three steps highlighted (ready for pickup)
-     * - PICKED_UP: All steps complete
+     * Renders the horizontal stepper UI and hero section.
+     * Uses HorizontalStepperRenderer for modern delivery-app style layout.
+     * 
+     * Visual layout:
+     * - Horizontal progress bar at top with 4 steps
+     * - Hero verification code in center (only visible for COMPLETE/PICKED_UP)
+     * - Completed steps: Green (#2E7D32)
+     * - Pending steps: Theme red (#eb1700)
+     * 
+     * Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 4.1, 4.2, 5.1, 5.2
      */
     function renderTimeline() {
-        const currentStatus = currentOrder.status || 'PENDING';
-        const currentStatusIndex = orderStages.findIndex(s => s.dbStatus === currentStatus);
-
         timelineContainer.innerHTML = ''; // Clear previous state
 
-        orderStages.forEach((stage, index) => {
-            let statusClass = 'timeline-step--pending';
-            let timestamp = '--:--';
+        // Render horizontal stepper
+        const stepperHTML = HorizontalStepperRenderer.renderStepper(currentOrder);
+        
+        // Render hero section (verification code or waiting message)
+        const heroHTML = HorizontalStepperRenderer.renderHeroCode(currentOrder);
 
-            // Determine step status based on current order status
-            if (index < currentStatusIndex) {
-                // Past steps - completed
-                statusClass = 'timeline-step--complete';
-                timestamp = formatTime(new Date(currentOrder.created_at));
-            } else if (index === currentStatusIndex) {
-                // Current step - active
-                statusClass = 'timeline-step--current';
-                timestamp = formatTime(new Date(currentOrder.created_at));
-            } else {
-                // Future steps - pending
-                statusClass = 'timeline-step--pending';
-                timestamp = '--:--';
-            }
-
-            // Add inline pickup code for "Ready for Pickup" step when status is COMPLETE
-            let pickupCodeHTML = '';
-            if (stage.dbStatus === 'COMPLETE' && currentStatus === 'COMPLETE' && currentOrder.verification_code) {
-                pickupCodeHTML = `<div class="pickup-inline" id="pickup-inline-code">${currentOrder.verification_code}</div>`;
-            }
-
-            const timelineStepHTML = `
-                <div class="timeline-step ${statusClass}">
-                    <div class="timeline-step__icon-container">
-                        <div class="timeline-step__icon"><i class="fa-solid ${stage.icon}"></i></div>
-                        <div class="timeline-step__line"></div>
-                    </div>
-                    <div class="timeline-step__content-card">
-                        <h4 class="timeline-step__title">${stage.status}</h4>
-                        <p class="timeline-step__description">${stage.description}</p>
-                        <p class="timeline-step__timestamp">${timestamp}</p>
-                        ${pickupCodeHTML}
-                    </div>
-                </div>
-            `;
-            timelineContainer.insertAdjacentHTML('beforeend', timelineStepHTML);
-        });
+        timelineContainer.innerHTML = stepperHTML + heroHTML;
     }
 
     /**
-     * Polls Supabase for real-time status updates.
+     * Starts adaptive polling for order status updates.
+     * Uses different polling intervals based on order status:
+     * - PENDING/PLACED/PREPARING: 20 seconds (user is waiting)
+     * - COMPLETE: 3 seconds (Counter Moment - critical for fast pickup confirmation)
+     * - PICKED_UP: No polling (order complete)
+     * 
+     * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5
      */
-    function startPollingForStatus() {
-        clearInterval(pollingInterval); // Clear any existing intervals
+    function startAdaptivePolling() {
+        // Clear any existing interval first
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+
+        const status = currentOrder?.status || 'PENDING';
+        const interval = getIntervalForStatus(status);
+
+        // Don't start polling if interval is 0 (PICKED_UP status)
+        if (interval === 0) {
+            console.log('⏹️ No polling needed for status:', status);
+            return;
+        }
+
+        console.log(`⏰ Starting adaptive polling for status "${status}" at ${interval}ms interval`);
 
         pollingInterval = setInterval(async () => {
             const params = new URLSearchParams(window.location.search);
@@ -146,18 +153,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (updatedOrder && updatedOrder.status !== currentOrder.status) {
                 // Status has changed, update UI
                 console.log('🔄 Status changed from', currentOrder.status, 'to', updatedOrder.status);
+                const previousStatus = currentOrder.status;
                 currentOrder = updatedOrder;
                 renderTimeline();
-                summaryLastUpdated.textContent = formatTime(new Date());
+
+                // Adjust polling interval if status changed (Requirements: 1.4)
+                const newInterval = getIntervalForStatus(currentOrder.status);
+                const oldInterval = getIntervalForStatus(previousStatus);
+                
+                if (newInterval !== oldInterval) {
+                    console.log(`🔄 Adjusting polling: ${oldInterval}ms → ${newInterval}ms`);
+                    startAdaptivePolling(); // Restart with new interval
+                    return; // Exit current callback since we restarted
+                }
             }
 
-            // Stop polling if order is picked up
+            // Stop polling if order is picked up (Requirements: 1.3)
             if (currentOrder.status === 'PICKED_UP') {
                 console.log('✅ Order picked up, stopping polling');
                 clearInterval(pollingInterval);
+                pollingInterval = null;
             }
 
-        }, 5000); // Poll every 5 seconds
+        }, interval);
     }
 
 
@@ -184,9 +202,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // --- Populate the UI ---
         orderIdHeader.textContent = `#${currentOrder.id.substring(0, 8)}`;
-        summaryAmount.textContent = `₹${currentOrder.total}`;
-        summaryPlacedAt.textContent = formatTime(new Date(currentOrder.created_at));
-        summaryLastUpdated.textContent = formatTime(new Date(currentOrder.created_at));
 
         // Populate item list
         summaryItemList.innerHTML = currentOrder.items.map(item =>
@@ -196,9 +211,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Render the timeline
         renderTimeline();
 
-        // Start polling for updates if the order is not yet picked up
+        // Start adaptive polling for updates if the order is not yet picked up
+        // Requirements: 1.1, 1.2, 1.3
         if (currentOrder.status !== 'PICKED_UP') {
-            startPollingForStatus();
+            startAdaptivePolling();
         }
     }
 

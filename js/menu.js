@@ -452,58 +452,114 @@ document.addEventListener('DOMContentLoaded', () => {
      * 
      * HOW IT WORKS:
      * 1. Gets item details from button's data attributes
-     * 2. Checks if item already exists in cart
-     * 3. Either increases quantity or adds new item
-     * 4. Saves updated cart to localStorage
-     * 5. Shows visual feedback (button turns green with checkmark)
+     * 2. Validates stock availability via lazy check (Requirements: 3.3)
+     * 3. If unavailable: blocks addition, shows alert, disables button (Requirements: 3.4)
+     * 4. If available: adds to cart with visual feedback
+     * 5. Handles network errors optimistically (Requirements: 3.5)
      */
-    function handleAddToCart(e) {
+    async function handleAddToCart(e) {
         // Find the add button that was clicked
         const addButton = e.target.closest('.product-card__add-btn');
         if (!addButton) return; // Exit if click wasn't on add button
+        
+        // Don't process if button is already disabled
+        if (addButton.disabled) return;
         
         // Extract item data from button's data attributes
         const { id, title, price } = addButton.dataset;
         const itemId = parseInt(id); // Convert string to number
         
-        // Get current cart
-        const cart = getCart();
+        // Show loading state on button
+        const originalContent = addButton.innerHTML;
+        addButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        addButton.disabled = true;
         
-        // Check if this item is already in the cart
-        const existingItem = cart.find(item => item.id === itemId);
-        
-        if (existingItem) {
-            // Item exists: just increase quantity
-            existingItem.quantity += 1;
-        } else {
-            // New item: add it to cart with quantity 1
-            cart.push({ 
-                id: itemId, 
-                title: title, 
-                price: parseFloat(price), 
-                quantity: 1 
-            });
+        try {
+            // Lazy stock validation (Requirements: 3.3)
+            // Check availability before adding to cart
+            const stockResult = await StockValidator.checkAvailability(itemId);
+            
+            if (!stockResult.available) {
+                // Item is unavailable (Requirements: 3.4)
+                // Mark item as unavailable in UI
+                StockValidator.markItemUnavailable(itemId);
+                
+                // Show alert to user
+                const itemName = stockResult.item?.name || title;
+                StockValidator.showOutOfStockAlert(itemName);
+                
+                // Don't add to cart
+                return;
+            }
+            
+            // Item is available - proceed with add to cart
+            // Get current cart
+            const cart = getCart();
+            
+            // Check if this item is already in the cart
+            const existingItem = cart.find(item => item.id === itemId);
+            
+            if (existingItem) {
+                // Item exists: just increase quantity
+                existingItem.quantity += 1;
+            } else {
+                // New item: add it to cart with quantity 1
+                cart.push({ 
+                    id: itemId, 
+                    title: title, 
+                    price: parseFloat(price), 
+                    quantity: 1 
+                });
+            }
+            
+            // Save updated cart and update badge
+            saveCart(cart);
+            updateCartBadge();
+            
+            // VISUAL FEEDBACK: Change button to show success
+            addButton.disabled = false;
+            addButton.style.transform = 'scale(0.9)'; // Shrink slightly
+            addButton.style.backgroundColor = 'var(--success-green)'; // Green background
+            addButton.style.borderColor = 'var(--success-green)';
+            addButton.style.color = 'var(--text-on-brand)';
+            addButton.innerHTML = '<i class="fa-solid fa-check"></i>'; // Checkmark icon
+            
+            // After 1 second, reset button back to normal
+            setTimeout(() => {
+                addButton.style.transform = '';
+                addButton.style.backgroundColor = '';
+                addButton.style.borderColor = '';
+                addButton.style.color = '';
+                addButton.innerHTML = '<i class="fa-solid fa-plus"></i>'; // Plus icon
+            }, 1000);
+            
+        } catch (error) {
+            // Network error - handle optimistically (Requirements: 3.5)
+            // Allow add to cart, backend will validate at checkout
+            console.warn('Stock validation failed, proceeding optimistically:', error);
+            
+            // Get current cart
+            const cart = getCart();
+            const existingItem = cart.find(item => item.id === itemId);
+            
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({ 
+                    id: itemId, 
+                    title: title, 
+                    price: parseFloat(price), 
+                    quantity: 1 
+                });
+            }
+            
+            saveCart(cart);
+            updateCartBadge();
+            
+            // Reset button
+            addButton.disabled = false;
+            addButton.innerHTML = originalContent;
         }
-        
-        // Save updated cart and update badge
-        saveCart(cart);
-        updateCartBadge();
-        
-        // VISUAL FEEDBACK: Change button to show success
-        addButton.style.transform = 'scale(0.9)'; // Shrink slightly
-        addButton.style.backgroundColor = 'var(--success-green)'; // Green background
-        addButton.style.borderColor = 'var(--success-green)';
-        addButton.style.color = 'var(--text-on-brand)';
-        addButton.innerHTML = '<i class="fa-solid fa-check"></i>'; // Checkmark icon
-        
-        // After 1 second, reset button back to normal
-        setTimeout(() => {
-            addButton.style.transform = '';
-            addButton.style.backgroundColor = '';
-            addButton.style.borderColor = '';
-            addButton.style.color = '';
-            addButton.innerHTML = '<i class="fa-solid fa-plus"></i>'; // Plus icon
-        }, 1000);
     }
 
     /**
@@ -649,6 +705,13 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('❌ Supabase client not initialized');
             showToast('Failed to connect to database. Please refresh.', 'error');
             return;
+        }
+        
+        // Initialize StockValidator with Supabase client (Requirements: 3.3)
+        // NOTE: No Realtime subscription is created (Requirements: 3.2)
+        if (typeof StockValidator !== 'undefined') {
+            StockValidator.init(supabase);
+            console.log('✅ StockValidator initialized for lazy stock validation');
         }
         
         // Set up authentication
