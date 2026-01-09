@@ -1,0 +1,1474 @@
+/**
+ * Admin Mobile Dashboard
+ * Mobile-first admin interface for kitchen and counter staff
+ * 
+ * Requirements: 2.3, 2.5, 10.2
+ */
+
+// ============================================
+// STATE MANAGEMENT
+// ============================================
+
+const AdminState = {
+  // Current active tab
+  activeTab: 'items',
+  
+  // Order data
+  orders: [],
+  menuItems: [],
+  
+  // Filter state
+  selectedItemFilter: null,
+  searchQuery: '',
+  
+  // Connection state
+  connectionStatus: 'realtime', // 'realtime' | 'polling' | 'disconnected'
+  
+  // Pending actions (for optimistic updates)
+  pendingActions: new Map(),
+  
+  // UI state
+  isStockPanelOpen: false,
+  confirmDialog: null // { orderId, action, previousStatus }
+};
+
+// Supabase client reference
+let supabase = null;
+let retryCount = 0;
+const MAX_RETRIES = 3;
+
+// ============================================
+// DOM REFERENCES
+// ============================================
+
+const DOM = {
+  // Tabs
+  tabs: null,
+  tabItems: null,
+  tabActive: null,
+  tabCompleted: null,
+  
+  // Views
+  views: null,
+  itemsView: null,
+  activeView: null,
+  completedView: null,
+  
+  // Lists
+  itemsList: null,
+  activeOrdersList: null,
+  completedOrdersList: null,
+  stockItemsList: null,
+  
+  // Badges
+  badgeItems: null,
+  badgeActive: null,
+  badgeCompleted: null,
+  
+  // Other elements
+  connectionStatus: null,
+  filterIndicator: null,
+  filterItemName: null,
+  clearFilterBtn: null,
+  searchInput: null,
+  searchClearBtn: null,
+  stockFab: null,
+  stockPanel: null,
+  stockBackdrop: null,
+  stockCloseBtn: null,
+  confirmDialog: null,
+  confirmBackdrop: null,
+  confirmTitle: null,
+  confirmMessage: null,
+  confirmOrderId: null,
+  confirmCancelBtn: null,
+  confirmActionBtn: null,
+  toast: null,
+  toastMessage: null,
+  loadingOverlay: null,
+  errorOverlay: null,
+  accessDeniedOverlay: null,
+  retryBtn: null,
+  
+  // Empty states
+  itemsEmpty: null,
+  activeEmpty: null,
+  completedEmpty: null,
+  searchNoResults: null
+};
+
+
+// ============================================
+// INITIALIZATION
+// ============================================
+
+/**
+ * Initialize DOM references
+ */
+function initDOMReferences() {
+  // Tabs
+  DOM.tabs = document.querySelectorAll('.admin-tab');
+  DOM.tabItems = document.getElementById('tab-items');
+  DOM.tabActive = document.getElementById('tab-active');
+  DOM.tabCompleted = document.getElementById('tab-completed');
+  
+  // Views
+  DOM.views = document.querySelectorAll('.admin-view');
+  DOM.itemsView = document.getElementById('items-view');
+  DOM.activeView = document.getElementById('active-view');
+  DOM.completedView = document.getElementById('completed-view');
+  
+  // Lists
+  DOM.itemsList = document.getElementById('items-list');
+  DOM.activeOrdersList = document.getElementById('active-orders-list');
+  DOM.completedOrdersList = document.getElementById('completed-orders-list');
+  DOM.stockItemsList = document.getElementById('stock-items-list');
+  
+  // Badges
+  DOM.badgeItems = document.getElementById('badge-items');
+  DOM.badgeActive = document.getElementById('badge-active');
+  DOM.badgeCompleted = document.getElementById('badge-completed');
+  
+  // Connection status
+  DOM.connectionStatus = document.getElementById('connection-status');
+  
+  // Filter
+  DOM.filterIndicator = document.getElementById('filter-indicator');
+  DOM.filterItemName = document.getElementById('filter-item-name');
+  DOM.clearFilterBtn = document.getElementById('clear-filter-btn');
+  
+  // Search
+  DOM.searchInput = document.getElementById('verification-search');
+  DOM.searchClearBtn = document.getElementById('search-clear-btn');
+  
+  // Stock panel
+  DOM.stockFab = document.getElementById('stock-fab');
+  DOM.stockPanel = document.getElementById('stock-panel');
+  DOM.stockBackdrop = document.getElementById('stock-backdrop');
+  DOM.stockCloseBtn = document.getElementById('stock-close-btn');
+  
+  // Confirm dialog
+  DOM.confirmDialog = document.getElementById('confirm-dialog');
+  DOM.confirmBackdrop = document.getElementById('confirm-backdrop');
+  DOM.confirmTitle = document.getElementById('confirm-title');
+  DOM.confirmMessage = document.getElementById('confirm-message');
+  DOM.confirmOrderId = document.getElementById('confirm-order-id');
+  DOM.confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+  DOM.confirmActionBtn = document.getElementById('confirm-action-btn');
+  
+  // Toast
+  DOM.toast = document.getElementById('toast');
+  DOM.toastMessage = document.getElementById('toast-message');
+  
+  // Overlays
+  DOM.loadingOverlay = document.getElementById('loading-overlay');
+  DOM.errorOverlay = document.getElementById('error-overlay');
+  DOM.accessDeniedOverlay = document.getElementById('access-denied-overlay');
+  DOM.retryBtn = document.getElementById('retry-btn');
+  
+  // Settings menu (Requirements: 13.5)
+  DOM.settingsBtn = document.getElementById('settings-btn');
+  DOM.settingsMenu = document.getElementById('settings-menu');
+  DOM.logoutBtn = document.getElementById('logout-btn');
+  DOM.adminUser = document.getElementById('admin-user');
+  
+  // Session prompt (Requirements: 13.1, 13.2)
+  DOM.sessionPrompt = document.getElementById('session-prompt');
+  DOM.reauthBtn = document.getElementById('reauth-btn');
+  
+  // Empty states
+  DOM.itemsEmpty = document.getElementById('items-empty');
+  DOM.activeEmpty = document.getElementById('active-empty');
+  DOM.completedEmpty = document.getElementById('completed-empty');
+  DOM.searchNoResults = document.getElementById('search-no-results');
+}
+
+/**
+ * Initialize event listeners
+ */
+function initEventListeners() {
+  // Tab switching (Requirements: 2.3)
+  DOM.tabs.forEach(tab => {
+    tab.addEventListener('click', () => handleTabSwitch(tab.dataset.view));
+  });
+  
+  // Filter clear
+  if (DOM.clearFilterBtn) {
+    DOM.clearFilterBtn.addEventListener('click', clearItemFilter);
+  }
+  
+  // Search input (Requirements: 12.2)
+  if (DOM.searchInput) {
+    DOM.searchInput.addEventListener('input', debounce(handleSearchInput, 150));
+  }
+  
+  if (DOM.searchClearBtn) {
+    DOM.searchClearBtn.addEventListener('click', clearSearch);
+  }
+  
+  // Stock panel
+  if (DOM.stockFab) {
+    DOM.stockFab.addEventListener('click', openStockPanel);
+  }
+  
+  if (DOM.stockCloseBtn) {
+    DOM.stockCloseBtn.addEventListener('click', closeStockPanel);
+  }
+  
+  if (DOM.stockBackdrop) {
+    DOM.stockBackdrop.addEventListener('click', closeStockPanel);
+  }
+  
+  // Confirm dialog
+  if (DOM.confirmCancelBtn) {
+    DOM.confirmCancelBtn.addEventListener('click', closeConfirmDialog);
+  }
+  
+  if (DOM.confirmBackdrop) {
+    DOM.confirmBackdrop.addEventListener('click', closeConfirmDialog);
+  }
+  
+  // Retry button
+  if (DOM.retryBtn) {
+    DOM.retryBtn.addEventListener('click', retryVerification);
+  }
+  
+  // Settings menu (Requirements: 13.5)
+  if (DOM.settingsBtn) {
+    DOM.settingsBtn.addEventListener('click', toggleSettingsMenu);
+  }
+  
+  if (DOM.logoutBtn) {
+    DOM.logoutBtn.addEventListener('click', handleLogout);
+  }
+  
+  // Re-authentication button (Requirements: 13.2)
+  if (DOM.reauthBtn) {
+    DOM.reauthBtn.addEventListener('click', handleReauth);
+  }
+  
+  // Close settings menu when clicking outside
+  document.addEventListener('click', handleDocumentClick);
+  
+  // Keyboard support for dialogs
+  document.addEventListener('keydown', handleKeyDown);
+}
+
+
+// ============================================
+// TAB SWITCHING (Requirements: 2.3, 10.2)
+// ============================================
+
+/**
+ * Handle tab switch
+ * @param {string} viewId - The view to switch to ('items' | 'active' | 'completed')
+ */
+function handleTabSwitch(viewId) {
+  // Performance: Should complete within 100ms (Requirements: 10.2)
+  const startTime = performance.now();
+  
+  // Update state
+  AdminState.activeTab = viewId;
+  
+  // Update tab buttons
+  DOM.tabs.forEach(tab => {
+    const isActive = tab.dataset.view === viewId;
+    tab.classList.toggle('active', isActive);
+    tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+  
+  // Update views
+  DOM.views.forEach(view => {
+    const isActive = view.id === `${viewId}-view`;
+    view.classList.toggle('active', isActive);
+  });
+  
+  // Clear item filter when switching away from active view
+  if (viewId !== 'active' && AdminState.selectedItemFilter) {
+    // Keep filter state but hide indicator
+  }
+  
+  // Log performance
+  const duration = performance.now() - startTime;
+  if (duration > 100) {
+    console.warn(`Tab switch took ${duration.toFixed(2)}ms (target: <100ms)`);
+  }
+}
+
+// ============================================
+// BADGE UPDATES (Requirements: 2.5)
+// ============================================
+
+/**
+ * Update all badge counts based on current data
+ */
+function updateBadgeCounts() {
+  const pendingOrders = AdminState.orders.filter(o => o.status === 'PENDING');
+  const completedOrders = AdminState.orders.filter(o => o.status === 'COMPLETE');
+  
+  // Items badge: count of unique items across pending orders
+  const itemSummary = getItemSummary();
+  const itemCount = Object.keys(itemSummary).length;
+  updateBadge(DOM.badgeItems, itemCount);
+  
+  // Active badge: count of pending orders
+  updateBadge(DOM.badgeActive, pendingOrders.length);
+  
+  // Completed badge: count of completed orders
+  updateBadge(DOM.badgeCompleted, completedOrders.length);
+}
+
+/**
+ * Update a single badge
+ * @param {HTMLElement} badgeEl - The badge element
+ * @param {number} count - The count to display
+ */
+function updateBadge(badgeEl, count) {
+  if (!badgeEl) return;
+  
+  const wasVisible = badgeEl.classList.contains('visible');
+  const newVisible = count > 0;
+  
+  badgeEl.textContent = count > 99 ? '99+' : count;
+  badgeEl.classList.toggle('visible', newVisible);
+  
+  // Pulse animation when count increases
+  if (newVisible && !wasVisible) {
+    badgeEl.classList.add('pulse');
+    setTimeout(() => badgeEl.classList.remove('pulse'), 300);
+  }
+}
+
+// ============================================
+// ITEM AGGREGATION (Requirements: 3.1, 3.2, 3.4)
+// ============================================
+
+/**
+ * Get aggregated item summary from pending orders
+ * @returns {Object} Map of item name to { quantity, orderCount }
+ */
+function getItemSummary() {
+  const summary = {};
+  
+  AdminState.orders
+    .filter(o => o.status === 'PENDING')
+    .forEach(order => {
+      if (!order.items) return;
+      
+      // Track which items we've seen in this order to count orders correctly
+      const seenInThisOrder = new Set();
+      
+      order.items.forEach(item => {
+        if (!summary[item.title]) {
+          summary[item.title] = { quantity: 0, orderCount: 0 };
+        }
+        summary[item.title].quantity += item.quantity;
+        
+        // Only increment orderCount once per order per item type
+        if (!seenInThisOrder.has(item.title)) {
+          summary[item.title].orderCount += 1;
+          seenInThisOrder.add(item.title);
+        }
+      });
+    });
+  
+  return summary;
+}
+
+/**
+ * Get items sorted by quantity descending (Requirements: 3.4)
+ * @returns {Array} Sorted array of { name, quantity, orderCount }
+ */
+function getSortedItems() {
+  const summary = getItemSummary();
+  return Object.entries(summary)
+    .map(([name, data]) => ({ name, ...data }))
+    .sort((a, b) => b.quantity - a.quantity);
+}
+
+
+// ============================================
+// RENDERING FUNCTIONS
+// ============================================
+
+/**
+ * Render all views
+ */
+function renderAll() {
+  renderItems();
+  renderActiveOrders();
+  renderCompletedOrders();
+  updateBadgeCounts();
+}
+
+/**
+ * Render Items to Prepare view
+ */
+function renderItems() {
+  if (!DOM.itemsList) return;
+  
+  const items = getSortedItems();
+  
+  // Show/hide empty state
+  DOM.itemsEmpty?.classList.toggle('hidden', items.length > 0);
+  
+  if (items.length === 0) {
+    DOM.itemsList.innerHTML = '';
+    return;
+  }
+  
+  DOM.itemsList.innerHTML = items.map(item => `
+    <div class="item-card ${AdminState.selectedItemFilter === item.name ? 'item-card--selected' : ''}"
+         role="button"
+         tabindex="0"
+         aria-pressed="${AdminState.selectedItemFilter === item.name}"
+         aria-label="${item.name}, ${item.quantity} to prepare"
+         data-item="${escapeHtml(item.name)}">
+      <div class="item-card__info">
+        <div class="item-card__name">${escapeHtml(item.name)}</div>
+        <div class="item-card__orders">${item.orderCount} order${item.orderCount !== 1 ? 's' : ''}</div>
+      </div>
+      <div class="item-card__quantity">${item.quantity}</div>
+    </div>
+  `).join('');
+  
+  // Add click handlers
+  DOM.itemsList.querySelectorAll('.item-card').forEach(card => {
+    card.addEventListener('click', () => handleItemClick(card.dataset.item));
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleItemClick(card.dataset.item);
+      }
+    });
+  });
+}
+
+/**
+ * Handle item card click (Requirements: 3.3)
+ * @param {string} itemName - The item name to filter by
+ */
+function handleItemClick(itemName) {
+  // Toggle filter
+  if (AdminState.selectedItemFilter === itemName) {
+    clearItemFilter();
+  } else {
+    AdminState.selectedItemFilter = itemName;
+    renderItems();
+    renderActiveOrders();
+    
+    // Switch to active tab to show filtered results
+    handleTabSwitch('active');
+    
+    // Show filter indicator
+    if (DOM.filterIndicator && DOM.filterItemName) {
+      DOM.filterItemName.textContent = itemName;
+      DOM.filterIndicator.classList.remove('hidden');
+    }
+  }
+}
+
+/**
+ * Clear item filter
+ */
+function clearItemFilter() {
+  AdminState.selectedItemFilter = null;
+  DOM.filterIndicator?.classList.add('hidden');
+  renderItems();
+  renderActiveOrders();
+}
+
+/**
+ * Render Active Orders view (Requirements: 4.1, 4.2)
+ */
+function renderActiveOrders() {
+  if (!DOM.activeOrdersList) return;
+  
+  let orders = AdminState.orders.filter(o => o.status === 'PENDING');
+  
+  // Apply item filter (Requirements: 3.3)
+  if (AdminState.selectedItemFilter) {
+    orders = orders.filter(order => 
+      order.items?.some(item => item.title === AdminState.selectedItemFilter)
+    );
+  }
+  
+  // Show/hide empty state
+  const showEmpty = orders.length === 0 && !AdminState.selectedItemFilter;
+  DOM.activeEmpty?.classList.toggle('hidden', !showEmpty);
+  
+  if (orders.length === 0) {
+    DOM.activeOrdersList.innerHTML = '';
+    return;
+  }
+  
+  DOM.activeOrdersList.innerHTML = orders.map(order => {
+    const isPending = AdminState.pendingActions.has(order.id);
+    const displayItems = order.items?.slice(0, 3) || [];
+    const moreCount = (order.items?.length || 0) - 3;
+    
+    return `
+      <article class="order-card ${isPending ? 'order-card--pending' : ''}"
+               aria-label="Order ${truncateId(order.id)}">
+        <div class="order-card__header">
+          <span class="order-card__id">${truncateId(order.id)}</span>
+          <span class="order-card__time">${formatTime(order.created_at)}</span>
+        </div>
+        <ul class="order-card__items">
+          ${displayItems.map(item => `
+            <li class="order-card__item">
+              <span class="order-card__item-name">${escapeHtml(item.title)}</span>
+              <span class="order-card__item-qty">×${item.quantity}</span>
+            </li>
+          `).join('')}
+          ${moreCount > 0 ? `<li class="order-card__items-more">and ${moreCount} more...</li>` : ''}
+        </ul>
+        <button class="admin-btn admin-btn--primary order-card__action"
+                ${isPending ? 'disabled' : ''}
+                aria-label="Mark order ${truncateId(order.id)} as complete"
+                data-order-id="${order.id}"
+                data-action="complete">
+          ${isPending ? 'Processing...' : 'Mark Complete'}
+        </button>
+      </article>
+    `;
+  }).join('');
+  
+  // Add click handlers
+  DOM.activeOrdersList.querySelectorAll('[data-action="complete"]').forEach(btn => {
+    btn.addEventListener('click', () => showConfirmDialog(btn.dataset.orderId, 'complete'));
+  });
+}
+
+
+/**
+ * Render Completed Orders view (Requirements: 5.1, 5.2, 5.6)
+ */
+function renderCompletedOrders() {
+  if (!DOM.completedOrdersList) return;
+  
+  // Filter by COMPLETE status and sort by time ascending (oldest first) (Requirements: 5.6)
+  let orders = AdminState.orders
+    .filter(o => o.status === 'COMPLETE')
+    .sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
+  
+  // Apply search filter (Requirements: 12.2)
+  const searchQuery = AdminState.searchQuery.trim().toLowerCase();
+  if (searchQuery) {
+    orders = orders.filter(order => 
+      order.verification_code?.toLowerCase().includes(searchQuery)
+    );
+  }
+  
+  // Show/hide empty states
+  const hasOrders = AdminState.orders.some(o => o.status === 'COMPLETE');
+  const hasResults = orders.length > 0;
+  
+  DOM.completedEmpty?.classList.toggle('hidden', hasOrders || searchQuery);
+  DOM.searchNoResults?.classList.toggle('hidden', !searchQuery || hasResults);
+  
+  if (orders.length === 0) {
+    DOM.completedOrdersList.innerHTML = '';
+    return;
+  }
+  
+  DOM.completedOrdersList.innerHTML = orders.map(order => {
+    const isPending = AdminState.pendingActions.has(order.id);
+    const displayItems = order.items?.slice(0, 3) || [];
+    const moreCount = (order.items?.length || 0) - 3;
+    
+    return `
+      <article class="order-card ${isPending ? 'order-card--pending' : ''}"
+               aria-label="Order ${truncateId(order.id)}, verification code ${order.verification_code || 'none'}">
+        <div class="order-card__header">
+          <span class="order-card__id">${truncateId(order.id)}</span>
+          <span class="order-card__time">${formatTime(order.updated_at)}</span>
+        </div>
+        
+        <!-- Verification Code (Requirements: 5.2) -->
+        <div class="order-card__verification">
+          <div class="order-card__verification-label">Verification Code</div>
+          <div class="order-card__verification-code">${order.verification_code || '----'}</div>
+        </div>
+        
+        <ul class="order-card__items">
+          ${displayItems.map(item => `
+            <li class="order-card__item">
+              <span class="order-card__item-name">${escapeHtml(item.title)}</span>
+              <span class="order-card__item-qty">×${item.quantity}</span>
+            </li>
+          `).join('')}
+          ${moreCount > 0 ? `<li class="order-card__items-more">and ${moreCount} more...</li>` : ''}
+        </ul>
+        
+        <button class="admin-btn admin-btn--success order-card__action"
+                ${isPending ? 'disabled' : ''}
+                aria-label="Mark order ${truncateId(order.id)} as picked up"
+                data-order-id="${order.id}"
+                data-action="pickup">
+          ${isPending ? 'Processing...' : 'Picked Up'}
+        </button>
+      </article>
+    `;
+  }).join('');
+  
+  // Add click handlers
+  DOM.completedOrdersList.querySelectorAll('[data-action="pickup"]').forEach(btn => {
+    btn.addEventListener('click', () => showConfirmDialog(btn.dataset.orderId, 'pickup'));
+  });
+}
+
+// ============================================
+// SEARCH FUNCTIONALITY (Requirements: 12.2)
+// ============================================
+
+/**
+ * Handle search input with debounce
+ */
+function handleSearchInput() {
+  const query = DOM.searchInput?.value || '';
+  AdminState.searchQuery = query;
+  
+  // Show/hide clear button
+  DOM.searchClearBtn?.classList.toggle('hidden', !query);
+  
+  renderCompletedOrders();
+}
+
+/**
+ * Clear search input
+ */
+function clearSearch() {
+  if (DOM.searchInput) {
+    DOM.searchInput.value = '';
+  }
+  AdminState.searchQuery = '';
+  DOM.searchClearBtn?.classList.add('hidden');
+  renderCompletedOrders();
+}
+
+// ============================================
+// CONFIRMATION DIALOG (Requirements: 8.1, 8.2)
+// ============================================
+
+/**
+ * Show confirmation dialog
+ * @param {string} orderId - The order ID
+ * @param {string} action - The action ('complete' | 'pickup')
+ */
+function showConfirmDialog(orderId, action) {
+  const order = AdminState.orders.find(o => o.id === orderId);
+  if (!order) return;
+  
+  AdminState.confirmDialog = {
+    orderId,
+    action,
+    previousStatus: order.status
+  };
+  
+  // Update dialog content (Requirements: 8.2)
+  if (action === 'complete') {
+    DOM.confirmTitle.textContent = 'Mark as Complete?';
+    DOM.confirmMessage.textContent = 'This order will be moved to the Ready for Pickup list.';
+    DOM.confirmActionBtn.textContent = 'Mark Complete';
+    DOM.confirmActionBtn.className = 'admin-btn admin-btn--primary admin-btn--full';
+  } else {
+    DOM.confirmTitle.textContent = 'Confirm Pickup?';
+    DOM.confirmMessage.textContent = 'This will mark the order as picked up by the customer.';
+    DOM.confirmActionBtn.textContent = 'Confirm Pickup';
+    DOM.confirmActionBtn.className = 'admin-btn admin-btn--success admin-btn--full';
+  }
+  
+  DOM.confirmOrderId.textContent = `Order: ${truncateId(orderId)}`;
+  
+  // Show dialog
+  DOM.confirmBackdrop?.classList.remove('hidden');
+  DOM.confirmBackdrop?.classList.add('visible');
+  DOM.confirmDialog?.classList.remove('hidden');
+  DOM.confirmDialog?.classList.add('visible');
+  
+  // Set up confirm action
+  DOM.confirmActionBtn.onclick = () => executeConfirmedAction();
+  
+  // Focus the cancel button for accessibility
+  DOM.confirmCancelBtn?.focus();
+}
+
+/**
+ * Close confirmation dialog
+ */
+function closeConfirmDialog() {
+  AdminState.confirmDialog = null;
+  
+  DOM.confirmBackdrop?.classList.remove('visible');
+  DOM.confirmDialog?.classList.remove('visible');
+  
+  setTimeout(() => {
+    DOM.confirmBackdrop?.classList.add('hidden');
+    DOM.confirmDialog?.classList.add('hidden');
+  }, 200);
+}
+
+/**
+ * Execute the confirmed action
+ */
+async function executeConfirmedAction() {
+  if (!AdminState.confirmDialog) return;
+  
+  const { orderId, action } = AdminState.confirmDialog;
+  closeConfirmDialog();
+  
+  if (action === 'complete') {
+    await markComplete(orderId);
+  } else if (action === 'pickup') {
+    await markPickedUp(orderId);
+  }
+}
+
+
+// ============================================
+// ORDER STATUS UPDATES (Requirements: 4.5, 5.5, 10.3, 10.4)
+// ============================================
+
+/**
+ * Mark order as complete with optimistic update
+ * @param {string} orderId - The order ID
+ */
+async function markComplete(orderId) {
+  console.log("🔄 Marking order as COMPLETE:", orderId);
+  
+  // Optimistic update (Requirements: 10.3)
+  const order = AdminState.orders.find(o => o.id === orderId);
+  if (!order) return;
+  
+  const previousStatus = order.status;
+  AdminState.pendingActions.set(orderId, { action: 'complete', previousStatus });
+  order.status = 'COMPLETE';
+  renderAll();
+  
+  try {
+    const response = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/orders/${orderId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'COMPLETE' })
+    });
+    
+    // Handle session expiry (Requirements: 13.1)
+    if (response.status === 401) {
+      order.status = previousStatus;
+      AdminState.pendingActions.delete(orderId);
+      renderAll();
+      handleSessionExpiry();
+      return;
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('✅ Order marked as COMPLETE');
+      AdminState.pendingActions.delete(orderId);
+      showToast('Order marked as complete', 'success');
+      await fetchOrders();
+    } else {
+      throw new Error(result.error || 'Failed to update order');
+    }
+  } catch (error) {
+    console.error('❌ Error:', error);
+    
+    // Rollback optimistic update (Requirements: 10.4)
+    order.status = previousStatus;
+    AdminState.pendingActions.delete(orderId);
+    renderAll();
+    
+    showToast('Failed to update order. Please try again.', 'error');
+  }
+}
+
+/**
+ * Mark order as picked up with optimistic update
+ * @param {string} orderId - The order ID
+ */
+async function markPickedUp(orderId) {
+  console.log("📦 Marking as PICKED_UP:", orderId);
+  
+  // Optimistic update (Requirements: 10.3)
+  const order = AdminState.orders.find(o => o.id === orderId);
+  if (!order) return;
+  
+  const previousStatus = order.status;
+  AdminState.pendingActions.set(orderId, { action: 'pickup', previousStatus });
+  order.status = 'PICKED_UP';
+  renderAll();
+  
+  try {
+    const response = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/orders/${orderId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'PICKED_UP' })
+    });
+    
+    // Handle session expiry (Requirements: 13.1)
+    if (response.status === 401) {
+      order.status = previousStatus;
+      AdminState.pendingActions.delete(orderId);
+      renderAll();
+      handleSessionExpiry();
+      return;
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('✅ Order marked as PICKED_UP');
+      AdminState.pendingActions.delete(orderId);
+      showToast('Order picked up successfully', 'success');
+      await fetchOrders();
+    } else {
+      throw new Error(result.error || 'Failed to update order');
+    }
+  } catch (error) {
+    console.error('❌ Error:', error);
+    
+    // Rollback optimistic update (Requirements: 10.4)
+    order.status = previousStatus;
+    AdminState.pendingActions.delete(orderId);
+    renderAll();
+    
+    showToast('Failed to update order. Please try again.', 'error');
+  }
+}
+
+// ============================================
+// STOCK PANEL (Requirements: 6.2, 6.3, 6.5)
+// ============================================
+
+/**
+ * Open stock panel
+ */
+function openStockPanel() {
+  AdminState.isStockPanelOpen = true;
+  
+  DOM.stockBackdrop?.classList.remove('hidden');
+  DOM.stockBackdrop?.classList.add('visible');
+  DOM.stockPanel?.classList.remove('hidden');
+  
+  // Trigger animation
+  requestAnimationFrame(() => {
+    DOM.stockPanel?.classList.add('visible');
+  });
+  
+  renderStockItems();
+  
+  // Focus close button for accessibility
+  DOM.stockCloseBtn?.focus();
+}
+
+/**
+ * Close stock panel
+ */
+function closeStockPanel() {
+  AdminState.isStockPanelOpen = false;
+  
+  DOM.stockBackdrop?.classList.remove('visible');
+  DOM.stockPanel?.classList.remove('visible');
+  
+  setTimeout(() => {
+    DOM.stockBackdrop?.classList.add('hidden');
+    DOM.stockPanel?.classList.add('hidden');
+  }, 300);
+}
+
+/**
+ * Render stock items grouped by category (Requirements: 6.3)
+ */
+function renderStockItems() {
+  if (!DOM.stockItemsList) return;
+  
+  // Group by category
+  const categories = {};
+  AdminState.menuItems.forEach(item => {
+    if (!categories[item.category]) {
+      categories[item.category] = [];
+    }
+    categories[item.category].push(item);
+  });
+  
+  // Sort categories alphabetically
+  const sortedCategories = Object.keys(categories).sort();
+  
+  DOM.stockItemsList.innerHTML = sortedCategories.map(category => `
+    <div class="stock-category">
+      <h3 class="stock-category__header">${escapeHtml(category)}</h3>
+      ${categories[category].map(item => `
+        <div class="stock-item">
+          <div class="stock-item__info">
+            <div class="stock-item__name">${escapeHtml(item.name)}</div>
+            <div class="stock-item__price">₹${item.price}</div>
+          </div>
+          <label class="stock-toggle">
+            <input type="checkbox" 
+                   class="stock-toggle__input"
+                   ${item.is_available ? 'checked' : ''}
+                   aria-label="${item.name} availability"
+                   data-item-id="${item.id}">
+            <span class="stock-toggle__slider"></span>
+          </label>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+  
+  // Add change handlers
+  DOM.stockItemsList.querySelectorAll('.stock-toggle__input').forEach(toggle => {
+    toggle.addEventListener('change', (e) => {
+      toggleStock(e.target.dataset.itemId, e.target.checked);
+    });
+  });
+}
+
+/**
+ * Toggle stock availability (Requirements: 6.5)
+ * @param {string} itemId - The menu item ID
+ * @param {boolean} isAvailable - New availability state
+ */
+async function toggleStock(itemId, isAvailable) {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session) {
+    handleSessionExpiry();
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/admin/stock/${itemId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ is_available: isAvailable })
+    });
+    
+    // Handle session expiry (Requirements: 13.1)
+    if (response.status === 401) {
+      handleSessionExpiry();
+      renderStockItems(); // Revert toggle
+      return;
+    }
+    
+    if (response.status === 403) {
+      showAccessDenied();
+      return;
+    }
+    
+    const result = await response.json();
+    
+    if (response.ok && result.success) {
+      console.log(`✅ Stock updated: ${isAvailable ? 'In Stock' : 'Out of Stock'}`);
+      showToast(`Item ${isAvailable ? 'now available' : 'marked out of stock'}`, 'success');
+      await fetchMenuItems();
+    } else {
+      throw new Error(result.error || 'Failed to update stock');
+    }
+  } catch (error) {
+    console.error("❌ Error updating stock:", error);
+    showToast('Failed to update stock. Please try again.', 'error');
+    // Revert toggle
+    renderStockItems();
+  }
+}
+
+
+// ============================================
+// DATA FETCHING
+// ============================================
+
+/**
+ * Fetch orders from Supabase
+ */
+async function fetchOrders() {
+  const { data, error } = await supabase.from('orders').select('*');
+  
+  if (error) {
+    console.error("❌ Error fetching orders:", error);
+    return;
+  }
+  
+  AdminState.orders = data || [];
+  console.log("📦 Orders fetched:", AdminState.orders.length);
+  renderAll();
+}
+
+/**
+ * Fetch menu items from Supabase
+ */
+async function fetchMenuItems() {
+  const { data, error } = await supabase
+    .from('menu_items')
+    .select('*')
+    .order('category', { ascending: true })
+    .order('name', { ascending: true });
+  
+  if (error) {
+    console.error("❌ Error fetching menu items:", error);
+    return;
+  }
+  
+  AdminState.menuItems = data || [];
+  console.log("📋 Menu items fetched:", AdminState.menuItems.length);
+  
+  if (AdminState.isStockPanelOpen) {
+    renderStockItems();
+  }
+}
+
+// ============================================
+// REALTIME SUBSCRIPTIONS (Requirements: 14.1, 14.2)
+// ============================================
+
+/**
+ * Initialize realtime subscriptions
+ */
+function initRealtimeSubscriptions() {
+  RealtimeSubscriptionManager.init(supabase);
+  
+  // Register state change callback (Requirements: 14.1, 14.2, 14.3)
+  RealtimeSubscriptionManager.onStateChange(updateConnectionStatus);
+  
+  // Subscribe to orders
+  RealtimeSubscriptionManager.subscribeToTable('orders', fetchOrders);
+  
+  // Subscribe to menu items
+  RealtimeSubscriptionManager.subscribeToTable('menu_items', fetchMenuItems);
+  
+  console.log('📡 Realtime subscriptions initialized');
+  updateConnectionStatus('realtime');
+}
+
+/**
+ * Update connection status indicator (Requirements: 14.4)
+ * @param {string} status - 'realtime' | 'polling' | 'disconnected'
+ */
+function updateConnectionStatus(status) {
+  AdminState.connectionStatus = status;
+  
+  if (!DOM.connectionStatus) return;
+  
+  DOM.connectionStatus.className = `connection-status connection-status--${status}`;
+  
+  const labels = {
+    realtime: 'Connected',
+    polling: 'Polling mode',
+    disconnected: 'Disconnected'
+  };
+  
+  DOM.connectionStatus.setAttribute('aria-label', `Connection status: ${labels[status]}`);
+}
+
+// ============================================
+// AUTHENTICATION
+// ============================================
+
+/**
+ * Check session and verify admin access
+ */
+async function checkSession() {
+  showLoading();
+  
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session) {
+    window.location.href = "login.html";
+    return false;
+  }
+  
+  // Display admin user email (Requirements: 13.4)
+  displayAdminUser(session.user?.email);
+  
+  return await verifyAdminAccess(session.access_token);
+}
+
+/**
+ * Verify admin access via backend API
+ * @param {string} accessToken - The access token
+ */
+async function verifyAdminAccess(accessToken) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    
+    const response = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/admin/verify`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (response.status === 401) {
+      await supabase.auth.signOut();
+      window.location.href = "login.html";
+      return false;
+    }
+    
+    if (response.status === 500 || !response.ok) {
+      showError("Server error. Please try again.");
+      return false;
+    }
+    
+    const data = await response.json();
+    
+    if (data.isAdmin === true) {
+      retryCount = 0;
+      return true;
+    } else {
+      showAccessDenied();
+      return false;
+    }
+  } catch (error) {
+    console.error("Admin verification error:", error);
+    
+    if (error.name === 'AbortError') {
+      showError("Request timed out. Please try again.");
+    } else {
+      showError("Network error. Please check your connection.");
+    }
+    return false;
+  }
+}
+
+/**
+ * Retry verification
+ */
+async function retryVerification() {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session) {
+    window.location.href = "login.html";
+    return;
+  }
+  
+  hideError();
+  showLoading();
+  
+  const isAdmin = await verifyAdminAccess(session.access_token);
+  
+  if (isAdmin) {
+    hideLoading();
+    fetchOrders();
+    fetchMenuItems();
+    initRealtimeSubscriptions();
+  }
+}
+
+// ============================================
+// UI HELPERS
+// ============================================
+
+function showLoading() {
+  DOM.loadingOverlay?.classList.remove('hidden');
+  DOM.errorOverlay?.classList.add('hidden');
+  DOM.accessDeniedOverlay?.classList.add('hidden');
+}
+
+function hideLoading() {
+  DOM.loadingOverlay?.classList.add('hidden');
+}
+
+function showError(message) {
+  hideLoading();
+  retryCount++;
+  
+  if (retryCount >= MAX_RETRIES) {
+    document.getElementById('error-message').textContent = 
+      "Unable to verify admin access. Please contact support@spoon.com";
+    DOM.retryBtn?.classList.add('hidden');
+  } else {
+    document.getElementById('error-message').textContent = message;
+    DOM.retryBtn?.classList.remove('hidden');
+  }
+  
+  DOM.errorOverlay?.classList.remove('hidden');
+}
+
+function hideError() {
+  DOM.errorOverlay?.classList.add('hidden');
+}
+
+function showAccessDenied() {
+  hideLoading();
+  DOM.accessDeniedOverlay?.classList.remove('hidden');
+  
+  supabase.auth.signOut();
+  
+  setTimeout(() => {
+    window.location.href = "../index.html";
+  }, 3000);
+}
+
+// ============================================
+// SETTINGS MENU (Requirements: 13.5)
+// ============================================
+
+/**
+ * Toggle settings menu visibility
+ */
+function toggleSettingsMenu() {
+  const isVisible = DOM.settingsMenu?.classList.contains('visible');
+  
+  if (isVisible) {
+    closeSettingsMenu();
+  } else {
+    openSettingsMenu();
+  }
+}
+
+/**
+ * Open settings menu
+ */
+function openSettingsMenu() {
+  DOM.settingsMenu?.classList.remove('hidden');
+  DOM.settingsMenu?.classList.add('visible');
+  DOM.settingsBtn?.setAttribute('aria-expanded', 'true');
+}
+
+/**
+ * Close settings menu
+ */
+function closeSettingsMenu() {
+  DOM.settingsMenu?.classList.remove('visible');
+  DOM.settingsBtn?.setAttribute('aria-expanded', 'false');
+}
+
+/**
+ * Handle document click to close settings menu
+ * @param {Event} e - Click event
+ */
+function handleDocumentClick(e) {
+  // Close settings menu if clicking outside
+  if (DOM.settingsMenu?.classList.contains('visible')) {
+    if (!DOM.settingsBtn?.contains(e.target) && !DOM.settingsMenu?.contains(e.target)) {
+      closeSettingsMenu();
+    }
+  }
+}
+
+/**
+ * Handle logout button click (Requirements: 13.5)
+ */
+async function handleLogout() {
+  closeSettingsMenu();
+  showLoading();
+  
+  try {
+    await supabase.auth.signOut();
+    window.location.href = "login.html";
+  } catch (error) {
+    console.error('Logout error:', error);
+    hideLoading();
+    showToast('Failed to log out. Please try again.', 'error');
+  }
+}
+
+/**
+ * Display admin user email (Requirements: 13.4)
+ * @param {string} email - User email
+ */
+function displayAdminUser(email) {
+  if (DOM.adminUser && email) {
+    // Show truncated email
+    const truncated = email.length > 20 ? email.slice(0, 17) + '...' : email;
+    DOM.adminUser.textContent = truncated;
+    DOM.adminUser.setAttribute('aria-label', `Logged in as ${email}`);
+  }
+}
+
+// ============================================
+// SESSION EXPIRY HANDLING (Requirements: 13.1, 13.2, 13.3)
+// ============================================
+
+/**
+ * Show session expired prompt (non-blocking)
+ */
+function showSessionExpiredPrompt() {
+  DOM.sessionPrompt?.classList.remove('hidden');
+  
+  requestAnimationFrame(() => {
+    DOM.sessionPrompt?.classList.add('visible');
+  });
+}
+
+/**
+ * Hide session expired prompt
+ */
+function hideSessionExpiredPrompt() {
+  DOM.sessionPrompt?.classList.remove('visible');
+  
+  setTimeout(() => {
+    DOM.sessionPrompt?.classList.add('hidden');
+  }, 300);
+}
+
+/**
+ * Handle re-authentication button click
+ */
+function handleReauth() {
+  hideSessionExpiredPrompt();
+  window.location.href = "login.html";
+}
+
+/**
+ * Handle 401 response during API calls (Requirements: 13.1)
+ * Shows non-blocking prompt instead of immediate redirect
+ */
+function handleSessionExpiry() {
+  // Show non-blocking prompt (Requirements: 13.2)
+  showSessionExpiredPrompt();
+  
+  // Current view state is preserved (Requirements: 13.3)
+  // User can continue viewing current data
+}
+
+/**
+ * Show toast notification
+ * @param {string} message - The message to show
+ * @param {string} type - 'success' | 'error' | 'info'
+ */
+function showToast(message, type = 'info') {
+  if (!DOM.toast || !DOM.toastMessage) return;
+  
+  DOM.toastMessage.textContent = message;
+  DOM.toast.className = `admin-toast admin-toast--${type}`;
+  DOM.toast.classList.add('visible');
+  
+  setTimeout(() => {
+    DOM.toast.classList.remove('visible');
+  }, 3000);
+}
+
+/**
+ * Handle keyboard events
+ * @param {KeyboardEvent} e - The keyboard event
+ */
+function handleKeyDown(e) {
+  if (e.key === 'Escape') {
+    if (AdminState.confirmDialog) {
+      closeConfirmDialog();
+    } else if (AdminState.isStockPanelOpen) {
+      closeStockPanel();
+    }
+  }
+}
+
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+/**
+ * Debounce function
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Wait time in ms
+ */
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+/**
+ * Escape HTML to prevent XSS
+ * @param {string} str - String to escape
+ */
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/**
+ * Truncate order ID for display
+ * @param {string} id - The full order ID
+ */
+function truncateId(id) {
+  if (!id) return '';
+  if (id.length <= 12) return id;
+  return `${id.slice(0, 8)}...`;
+}
+
+/**
+ * Format timestamp for display
+ * @param {string} timestamp - ISO timestamp
+ */
+function formatTime(timestamp) {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit',
+    hour12: true 
+  });
+}
+
+// ============================================
+// APP INITIALIZATION
+// ============================================
+
+/**
+ * Initialize the admin dashboard
+ */
+async function initAdmin() {
+  // Wait for config to load
+  await window.waitForConfig();
+  supabase = window.getSupabaseClient();
+  
+  if (!supabase) {
+    showError("Failed to connect to database.");
+    return;
+  }
+  
+  // Initialize DOM references
+  initDOMReferences();
+  
+  // Initialize event listeners
+  initEventListeners();
+  
+  // Check session and verify admin
+  const isAdmin = await checkSession();
+  
+  if (isAdmin) {
+    hideLoading();
+    fetchOrders();
+    fetchMenuItems();
+    initRealtimeSubscriptions();
+  }
+}
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+  RealtimeSubscriptionManager.cleanup();
+});
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', initAdmin);
+
+// Export for testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    AdminState,
+    getItemSummary,
+    getSortedItems,
+    updateBadgeCounts,
+    handleTabSwitch
+  };
+}

@@ -1,0 +1,1474 @@
+/* ================================================================
+    SPOON ADMIN DASHBOARD - MOBILE-FIRST STYLESHEET
+    Version: 1.0
+    
+    Mobile-first responsive design for kitchen and counter staff.
+    Optimized for one-handed thumb operation on ≤6.5" screens.
+    
+    Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 7.1, 7.2, 11.2
+   ================================================================ */
+
+/* ====================
+   1. DESIGN SYSTEM VARIABLES
+   Extends existing Spoon design system with admin-specific tokens
+   ==================== */
+:root {
+    /* Core brand colors (from menu.css) */
+    --brand-primary: #eb1700;
+    --brand-primary-dark: #d41400;
+    --text-primary: #2C2C2C;
+    --text-secondary: #666666;
+    --text-on-brand: #FFFFFF;
+    --background-light: #F8F9FA;
+    --background-white: #FFFFFF;
+    --border-color: #E0E0E0;
+    --inactive-grey: #F1F1F1;
+    
+    /* Status colors */
+    --success-green: #28a745;
+    --success-green-light: #e8f5e9;
+    --warning-orange: #f57c00;
+    --warning-orange-light: #fff3e0;
+    --error-red: #dc3545;
+    --error-red-light: #ffebee;
+    
+    /* Connection status colors */
+    --status-realtime: #28a745;
+    --status-polling: #f57c00;
+    --status-disconnected: #dc3545;
+    
+    /* Spacing scale */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    
+    /* Touch-friendly spacing (Requirements: 7.2) */
+    --touch-spacing: 8px;  /* Minimum spacing between touch targets */
+    
+    /* Border radius */
+    --radius-small: 8px;
+    --radius-medium: 12px;
+    --radius-large: 16px;
+    --radius-pill: 999px;
+    
+    /* Shadows */
+    --shadow-card: 0px 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-sticky: 0px -2px 8px rgba(0, 0, 0, 0.1);
+    --shadow-fab: 0px 4px 12px rgba(0, 0, 0, 0.2);
+    --shadow-modal: 0px -4px 20px rgba(0, 0, 0, 0.15);
+    
+    /* Typography (Requirements: 1.5, 9.2) */
+    --font-family-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    --font-family-mono: 'SF Mono', 'Roboto Mono', 'Consolas', monospace;
+    
+    /* Font sizes - minimum 16px for body (Requirements: 1.5) */
+    --font-size-xs: 12px;
+    --font-size-sm: 14px;
+    --font-size-base: 16px;
+    --font-size-md: 18px;
+    --font-size-lg: 20px;
+    --font-size-xl: 24px;
+    --font-size-2xl: 32px;
+    
+    /* Touch target sizes (Requirements: 7.1, 11.2) */
+    --touch-target-min: 48px;  /* WCAG 2.5.5 enhanced */
+    --touch-target-comfortable: 56px;
+    
+    /* Layout dimensions */
+    --header-height: 56px;
+    --tab-bar-height: 64px;
+    --fab-size: 56px;
+    --fab-offset: 16px;
+    
+    /* Z-index scale */
+    --z-content: 1;
+    --z-sticky: 10;
+    --z-fab: 50;
+    --z-tab-bar: 100;
+    --z-modal-backdrop: 500;
+    --z-modal: 501;
+    --z-overlay: 1000;
+    
+    /* Transitions */
+    --transition-fast: 100ms ease-out;
+    --transition-normal: 200ms ease-out;
+    --transition-slow: 300ms ease-out;
+}
+
+/* ====================
+   2. CSS RESET & BASE STYLES
+   ==================== */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    /* Prevent font scaling in landscape */
+    -webkit-text-size-adjust: 100%;
+    /* Smooth scrolling */
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: var(--font-family-main);
+    font-size: var(--font-size-base);
+    line-height: 1.5;
+    color: var(--text-primary);
+    background-color: var(--background-light);
+    
+    /* Prevent overscroll bounce on iOS */
+    overscroll-behavior: none;
+    
+    /* Prevent text selection on touch (for buttons) */
+    -webkit-user-select: none;
+    user-select: none;
+    
+    /* Prevent pull-to-refresh on mobile */
+    overflow: hidden;
+}
+
+/* Allow text selection in content areas */
+.selectable {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+/* ====================
+   3. APP SHELL LAYOUT
+   Mobile-first single-column layout (Requirements: 1.1, 1.2, 1.3)
+   ==================== */
+.admin-app {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100vw;  /* Requirements: 1.2 */
+    height: 100vh;
+    height: 100dvh;  /* Dynamic viewport height for mobile browsers */
+    overflow: hidden;
+    background-color: var(--background-white);
+}
+
+/* Header area */
+.admin-header {
+    flex-shrink: 0;
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--spacing-md);
+    background-color: var(--background-white);
+    border-bottom: 1px solid var(--border-color);
+    z-index: var(--z-sticky);
+}
+
+.admin-header__title {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.admin-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+/* Main content area */
+.admin-main {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Tab content container */
+.admin-content {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;  /* Requirements: 1.3 - no horizontal scroll */
+    -webkit-overflow-scrolling: touch;
+    
+    /* Space for FAB and tab bar */
+    padding-bottom: calc(var(--tab-bar-height) + var(--fab-size) + var(--spacing-xl));
+}
+
+/* Individual view containers */
+.admin-view {
+    display: none;
+    padding: var(--spacing-md);
+    min-height: 100%;
+}
+
+.admin-view.active {
+    display: block;
+}
+
+/* ====================
+   4. BOTTOM TAB BAR
+   Fixed navigation in thumb-reach zone (Requirements: 2.1, 2.4)
+   ==================== */
+.admin-tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--tab-bar-height);
+    display: flex;
+    align-items: stretch;
+    background-color: var(--background-white);
+    border-top: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sticky);
+    z-index: var(--z-tab-bar);
+    
+    /* Safe area padding for notched devices */
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.admin-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    
+    /* Touch target (Requirements: 7.1, 11.2) */
+    min-height: var(--touch-target-min);
+    min-width: var(--touch-target-min);
+    
+    /* Reset button styles */
+    background: none;
+    border: none;
+    cursor: pointer;
+    
+    /* Typography */
+    font-family: var(--font-family-main);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    color: var(--text-secondary);
+    
+    /* Transitions */
+    transition: color var(--transition-fast);
+    
+    /* Touch feedback */
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+}
+
+.admin-tab:active {
+    opacity: 0.7;
+}
+
+.admin-tab.active {
+    color: var(--brand-primary);
+    font-weight: 600;
+}
+
+.admin-tab__icon {
+    font-size: 22px;
+    line-height: 1;
+}
+
+.admin-tab__label {
+    line-height: 1;
+}
+
+/* Badge on tab */
+.admin-tab__badge {
+    position: absolute;
+    top: 6px;
+    right: calc(50% - 24px);
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    background-color: var(--brand-primary);
+    color: var(--text-on-brand);
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: var(--radius-pill);
+    border: 2px solid var(--background-white);
+    
+    /* Hidden by default */
+    transform: scale(0);
+    transition: transform var(--transition-normal);
+}
+
+.admin-tab__badge.visible {
+    transform: scale(1);
+}
+
+.admin-tab__badge.pulse {
+    animation: badge-pulse 0.3s ease-out;
+}
+
+@keyframes badge-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* ====================
+   5. FLOATING ACTION BUTTON (FAB)
+   Stock management access (Requirements: 6.1)
+   ==================== */
+.admin-fab {
+    position: fixed;
+    bottom: calc(var(--tab-bar-height) + var(--fab-offset) + env(safe-area-inset-bottom, 0));
+    right: var(--fab-offset);
+    
+    width: var(--fab-size);
+    height: var(--fab-size);
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    background-color: var(--brand-primary);
+    color: var(--text-on-brand);
+    border: none;
+    border-radius: 50%;
+    box-shadow: var(--shadow-fab);
+    
+    font-size: 24px;
+    cursor: pointer;
+    z-index: var(--z-fab);
+    
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.admin-fab:hover {
+    transform: scale(1.05);
+}
+
+.admin-fab:active {
+    transform: scale(0.95);
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.admin-fab[aria-label] {
+    /* Ensure ARIA label is set for accessibility */
+    outline-offset: 2px;
+}
+
+/* ====================
+   6. TOUCH TARGET BASE STYLES
+   Minimum 48x48px for all interactive elements (Requirements: 7.1, 11.2)
+   ==================== */
+.touch-target {
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch feedback */
+.touch-target:active {
+    opacity: 0.8;
+    transform: scale(0.98);
+}
+
+/* Spacing between adjacent touch targets (Requirements: 7.2) */
+.touch-target + .touch-target {
+    margin-left: var(--touch-spacing);
+}
+
+/* ====================
+   7. CARD BASE STYLES
+   Reusable card component for orders and items
+   ==================== */
+.admin-card {
+    background-color: var(--background-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-large);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.admin-card:active {
+    transform: scale(0.99);
+}
+
+.admin-card--interactive:hover {
+    box-shadow: var(--shadow-card);
+}
+
+/* Card with left accent border */
+.admin-card--accent {
+    border-left: 4px solid var(--brand-primary);
+}
+
+/* ====================
+   8. BUTTON STYLES
+   Touch-friendly buttons with proper sizing
+   ==================== */
+.admin-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    
+    /* Touch target size (Requirements: 7.1, 11.2) */
+    min-height: var(--touch-target-min);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    
+    /* Typography */
+    font-family: var(--font-family-main);
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    text-decoration: none;
+    
+    /* Appearance */
+    border: none;
+    border-radius: var(--radius-medium);
+    cursor: pointer;
+    
+    /* Transitions */
+    transition: transform var(--transition-fast), opacity var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.admin-btn:active {
+    transform: scale(0.98);
+}
+
+.admin-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Primary button (brand color) */
+.admin-btn--primary {
+    background-color: var(--brand-primary);
+    color: var(--text-on-brand);
+}
+
+/* Success button (green) */
+.admin-btn--success {
+    background-color: var(--success-green);
+    color: var(--text-on-brand);
+}
+
+/* Secondary button (grey) */
+.admin-btn--secondary {
+    background-color: var(--inactive-grey);
+    color: var(--text-primary);
+}
+
+/* Danger button (red) */
+.admin-btn--danger {
+    background-color: var(--error-red);
+    color: var(--text-on-brand);
+}
+
+/* Full width button */
+.admin-btn--full {
+    width: 100%;
+}
+
+/* ====================
+   9. CONNECTION STATUS INDICATOR
+   Shows realtime/polling/disconnected state (Requirements: 14.4)
+   ==================== */
+.connection-status {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+}
+
+.connection-status__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--status-disconnected);
+}
+
+.connection-status--realtime .connection-status__dot {
+    background-color: var(--status-realtime);
+}
+
+.connection-status--polling .connection-status__dot {
+    background-color: var(--status-polling);
+    animation: pulse-dot 2s infinite;
+}
+
+.connection-status--disconnected .connection-status__dot {
+    background-color: var(--status-disconnected);
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ====================
+   10. TYPOGRAPHY UTILITIES
+   ==================== */
+.text-primary { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-success { color: var(--success-green); }
+.text-warning { color: var(--warning-orange); }
+.text-error { color: var(--error-red); }
+.text-brand { color: var(--brand-primary); }
+
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.font-mono { font-family: var(--font-family-mono); }
+
+/* Verification code styling (Requirements: 5.2, 9.2) */
+.verification-code {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: var(--text-primary);
+}
+
+/* ====================
+   11. UTILITY CLASSES
+   ==================== */
+.hidden { display: none !important; }
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Flexbox utilities */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.gap-xs { gap: var(--spacing-xs); }
+.gap-sm { gap: var(--spacing-sm); }
+.gap-md { gap: var(--spacing-md); }
+
+/* Spacing utilities */
+.mt-sm { margin-top: var(--spacing-sm); }
+.mt-md { margin-top: var(--spacing-md); }
+.mb-sm { margin-bottom: var(--spacing-sm); }
+.mb-md { margin-bottom: var(--spacing-md); }
+.p-md { padding: var(--spacing-md); }
+
+/* ====================
+   12. RESPONSIVE BREAKPOINTS
+   Mobile-first, then tablet/desktop (Requirements: 1.4)
+   ==================== */
+
+/* Tablet and larger (768px+) */
+@media (min-width: 768px) {
+    .admin-app {
+        max-width: 768px;
+        margin: 0 auto;
+        box-shadow: 0 0 24px rgba(0, 0, 0, 0.1);
+    }
+    
+    .admin-tab-bar {
+        max-width: 768px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    
+    .admin-fab {
+        right: calc(50% - 384px + var(--fab-offset));
+    }
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+    .admin-app {
+        max-width: 1024px;
+    }
+    
+    .admin-tab-bar {
+        max-width: 1024px;
+    }
+    
+    .admin-fab {
+        right: calc(50% - 512px + var(--fab-offset));
+    }
+    
+    /* Larger touch targets on desktop for mouse users */
+    .admin-btn {
+        min-height: 44px;
+    }
+}
+
+/* Landscape orientation support (Requirements: 11.4) */
+@media (orientation: landscape) and (max-height: 500px) {
+    :root {
+        --header-height: 48px;
+        --tab-bar-height: 56px;
+    }
+    
+    .admin-content {
+        padding-bottom: calc(var(--tab-bar-height) + var(--fab-size) + var(--spacing-md));
+    }
+}
+
+/* ====================
+   13. LOADING & OVERLAY STATES
+   ==================== */
+.admin-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-overlay);
+}
+
+.admin-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--inactive-grey);
+    border-top-color: var(--brand-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.admin-overlay__text {
+    margin-top: var(--spacing-md);
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+}
+
+/* ====================
+   14. TOAST NOTIFICATIONS
+   ==================== */
+.admin-toast {
+    position: fixed;
+    bottom: calc(var(--tab-bar-height) + var(--spacing-md) + env(safe-area-inset-bottom, 0));
+    left: var(--spacing-md);
+    right: var(--spacing-md);
+    
+    padding: var(--spacing-md);
+    background-color: var(--text-primary);
+    color: var(--text-on-brand);
+    border-radius: var(--radius-medium);
+    
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    text-align: center;
+    
+    z-index: var(--z-modal);
+    
+    /* Animation */
+    transform: translateY(100px);
+    opacity: 0;
+    transition: transform var(--transition-slow), opacity var(--transition-slow);
+}
+
+.admin-toast.visible {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.admin-toast--success {
+    background-color: var(--success-green);
+}
+
+.admin-toast--error {
+    background-color: var(--error-red);
+}
+
+/* ====================
+   15. EMPTY STATE
+   ==================== */
+.admin-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.admin-empty-state__icon {
+    font-size: 64px;
+    color: var(--inactive-grey);
+    margin-bottom: var(--spacing-md);
+}
+
+.admin-empty-state__title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.admin-empty-state__message {
+    font-size: var(--font-size-sm);
+    max-width: 280px;
+    line-height: 1.6;
+}
+
+
+/* ====================
+   16. FILTER INDICATOR
+   Shows when item filter is active in Active Orders view
+   ==================== */
+.filter-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    background-color: var(--brand-primary);
+    color: var(--text-on-brand);
+    border-radius: var(--radius-medium);
+}
+
+.filter-indicator__text {
+    font-size: var(--font-size-sm);
+}
+
+.filter-indicator__text strong {
+    font-weight: 600;
+}
+
+.filter-indicator__clear {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    color: var(--text-on-brand);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.filter-indicator__clear:active {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ====================
+   17. SEARCH INPUT
+   Verification code search in Completed Orders view (Requirements: 12.1, 12.3)
+   ==================== */
+.search-container {
+    margin-bottom: var(--spacing-md);
+}
+
+.search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-input {
+    width: 100%;
+    height: var(--touch-target-min);  /* 48px minimum (Requirements: 12.3) */
+    padding: 0 var(--touch-target-min) 0 44px;
+    
+    font-family: var(--font-family-main);
+    font-size: var(--font-size-base);
+    color: var(--text-primary);
+    
+    background-color: var(--background-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.search-input:focus {
+    border-color: var(--brand-primary);
+}
+
+.search-input::placeholder {
+    color: var(--text-secondary);
+}
+
+.search-input__icon {
+    position: absolute;
+    left: var(--spacing-md);
+    color: var(--text-secondary);
+    font-size: 16px;
+    pointer-events: none;
+}
+
+.search-input__clear {
+    position: absolute;
+    right: var(--spacing-xs);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: var(--spacing-sm);
+}
+
+.search-input__clear:active {
+    color: var(--text-primary);
+}
+
+/* ====================
+   18. STOCK PANEL
+   Slide-up modal for stock management (Requirements: 6.2, 6.3)
+   ==================== */
+.stock-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80vh;  /* 80% of viewport (Requirements: 6.2) */
+    
+    background-color: var(--background-white);
+    border-top-left-radius: var(--radius-large);
+    border-top-right-radius: var(--radius-large);
+    box-shadow: var(--shadow-modal);
+    
+    display: flex;
+    flex-direction: column;
+    
+    z-index: var(--z-modal);
+    
+    /* Animation */
+    transform: translateY(100%);
+    transition: transform var(--transition-slow);
+}
+
+.stock-panel.visible {
+    transform: translateY(0);
+}
+
+.stock-panel__header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    position: relative;
+}
+
+.stock-panel__drag-handle {
+    position: absolute;
+    top: var(--spacing-sm);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    background-color: var(--border-color);
+    border-radius: var(--radius-pill);
+}
+
+.stock-panel__title {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: var(--spacing-sm);
+}
+
+.stock-panel__close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.stock-panel__content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: var(--spacing-md);
+}
+
+/* Stock Category Header */
+.stock-category {
+    margin-bottom: var(--spacing-lg);
+}
+
+.stock-category__header {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--spacing-sm);
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Stock Item Row */
+.stock-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) 0;
+    min-height: var(--touch-target-comfortable);
+}
+
+.stock-item__info {
+    flex: 1;
+}
+
+.stock-item__name {
+    font-size: var(--font-size-base);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.stock-item__price {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+/* Stock Toggle Switch (Requirements: 6.4, 6.7) */
+.stock-toggle {
+    position: relative;
+    width: 52px;
+    height: 32px;
+    flex-shrink: 0;
+}
+
+.stock-toggle__input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.stock-toggle__slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--error-red);  /* Out of stock = red */
+    border-radius: var(--radius-pill);
+    transition: background-color var(--transition-normal);
+    
+    /* Touch target padding */
+    padding: var(--spacing-sm);
+    margin: calc(-1 * var(--spacing-sm));
+}
+
+.stock-toggle__slider::before {
+    position: absolute;
+    content: "";
+    height: 24px;
+    width: 24px;
+    left: 4px;
+    bottom: 4px;
+    background-color: var(--text-on-brand);
+    border-radius: 50%;
+    transition: transform var(--transition-normal);
+}
+
+.stock-toggle__input:checked + .stock-toggle__slider {
+    background-color: var(--success-green);  /* In stock = green */
+}
+
+.stock-toggle__input:checked + .stock-toggle__slider::before {
+    transform: translateX(20px);
+}
+
+.stock-toggle__input:focus + .stock-toggle__slider {
+    box-shadow: 0 0 0 2px var(--brand-primary);
+}
+
+/* ====================
+   19. CONFIRMATION DIALOG
+   Prevents accidental actions (Requirements: 8.1, 8.2, 8.3)
+   ==================== */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: var(--z-modal-backdrop);
+    
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.modal-backdrop.visible {
+    opacity: 1;
+}
+
+.confirm-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    
+    width: calc(100% - var(--spacing-xl));
+    max-width: 320px;
+    
+    background-color: var(--background-white);
+    border-radius: var(--radius-large);
+    padding: var(--spacing-lg);
+    
+    text-align: center;
+    z-index: var(--z-modal);
+    
+    opacity: 0;
+    transition: transform var(--transition-normal), opacity var(--transition-normal);
+}
+
+.confirm-dialog.visible {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+.confirm-dialog__title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.confirm-dialog__message {
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.confirm-dialog__order-id {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    background-color: var(--inactive-grey);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-small);
+    display: inline-block;
+    margin-bottom: var(--spacing-lg);
+}
+
+.confirm-dialog__actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+/* Success variant for pickup confirmation */
+.confirm-dialog--success .confirm-dialog__title {
+    color: var(--success-green);
+}
+
+/* ====================
+   20. ORDER CARD COMPONENT
+   Used in Active and Completed views (Requirements: 4.2, 4.3, 5.2, 5.3)
+   ==================== */
+.order-card {
+    background-color: var(--background-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-large);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    
+    min-height: 140px;  /* Requirements: 4.3 */
+}
+
+.order-card--pending {
+    opacity: 0.7;
+}
+
+.order-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-sm);
+}
+
+.order-card__id {
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    color: var(--text-primary);
+    
+    /* Truncate long IDs */
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.order-card__time {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+}
+
+/* Verification Code (Requirements: 5.2) */
+.order-card__verification {
+    text-align: center;
+    padding: var(--spacing-md) 0;
+    margin-bottom: var(--spacing-sm);
+    background-color: var(--inactive-grey);
+    border-radius: var(--radius-medium);
+}
+
+.order-card__verification-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: var(--spacing-xs);
+}
+
+.order-card__verification-code {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-2xl);  /* 32px - Requirements: 5.2 */
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 4px;
+}
+
+/* Order Items List */
+.order-card__items {
+    list-style: none;
+    margin-bottom: var(--spacing-md);
+}
+
+.order-card__item {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--spacing-xs) 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.order-card__item-name {
+    flex: 1;
+}
+
+.order-card__item-qty {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.order-card__items-more {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Order Action Button */
+.order-card__action {
+    width: 100%;
+    min-height: var(--touch-target-min);  /* 48px - Requirements: 5.3 */
+}
+
+/* ====================
+   21. ITEM CARD COMPONENT
+   Used in Items to Prepare view (Requirements: 3.5)
+   ==================== */
+.item-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    
+    background-color: var(--background-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    
+    min-height: 64px;  /* Requirements: 3.5 */
+    
+    cursor: pointer;
+    transition: transform var(--transition-fast), border-color var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.item-card:active {
+    transform: scale(0.99);
+}
+
+.item-card--selected {
+    border-color: var(--brand-primary);
+    border-left-width: 4px;
+}
+
+.item-card__info {
+    flex: 1;
+}
+
+.item-card__name {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.item-card__orders {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.item-card__quantity {
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    color: var(--brand-primary);
+    min-width: 48px;
+    text-align: right;
+}
+
+/* ====================
+   22. RESPONSIVE ADJUSTMENTS FOR TABLET
+   ==================== */
+@media (min-width: 768px) {
+    .stock-panel {
+        max-width: 480px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100%);
+    }
+    
+    .stock-panel.visible {
+        transform: translateX(-50%) translateY(0);
+    }
+    
+    .confirm-dialog {
+        max-width: 400px;
+    }
+}
+
+/* ====================
+   23. ADMIN USER DISPLAY (Requirements: 13.4)
+   ==================== */
+.admin-user {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ====================
+   24. SETTINGS MENU (Requirements: 13.5)
+   ==================== */
+.admin-header__actions {
+    position: relative;
+}
+
+.settings-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: var(--spacing-xs);
+    
+    background-color: var(--background-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-card);
+    
+    min-width: 160px;
+    z-index: var(--z-dropdown);
+    
+    /* Animation */
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+    pointer-events: none;
+}
+
+.settings-menu.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.settings-menu__item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    width: 100%;
+    padding: var(--spacing-md);
+    
+    background: none;
+    border: none;
+    font-family: var(--font-family-main);
+    font-size: var(--font-size-base);
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+    
+    min-height: var(--touch-target-min);
+}
+
+.settings-menu__item:active {
+    background-color: var(--inactive-grey);
+}
+
+.settings-menu__item i {
+    color: var(--text-secondary);
+    width: 20px;
+    text-align: center;
+}
+
+/* ====================
+   25. SESSION EXPIRED PROMPT (Requirements: 13.1, 13.2, 13.3)
+   ==================== */
+.session-prompt {
+    position: fixed;
+    bottom: calc(var(--tab-bar-height) + var(--spacing-lg) + env(safe-area-inset-bottom, 0));
+    left: var(--spacing-md);
+    right: var(--spacing-md);
+    
+    background-color: var(--background-white);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-modal);
+    
+    z-index: var(--z-modal);
+    
+    /* Animation */
+    transform: translateY(100px);
+    opacity: 0;
+    transition: transform var(--transition-slow), opacity var(--transition-slow);
+}
+
+.session-prompt.visible {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.session-prompt__content {
+    padding: var(--spacing-lg);
+    text-align: center;
+}
+
+.session-prompt__icon {
+    font-size: 48px;
+    color: var(--warning-orange);
+    margin-bottom: var(--spacing-md);
+}
+
+.session-prompt__title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.session-prompt__message {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-lg);
+}
+
+/* Tablet adjustments */
+@media (min-width: 768px) {
+    .session-prompt {
+        max-width: 400px;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%) translateY(100px);
+    }
+    
+    .session-prompt.visible {
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+
+/* ====================
+   26. TOUCH INTERACTION FEEDBACK (Requirements: 7.3, 11.5)
+   ==================== */
+
+/* Active state for all touch targets */
+.touch-target:active,
+.admin-btn:active,
+.admin-tab:active,
+.item-card:active,
+.order-card__action:active,
+.stock-toggle:active,
+.settings-menu__item:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+}
+
+/* Prevent double-tap zoom on touch targets */
+.touch-target,
+.admin-btn,
+.admin-tab,
+.item-card,
+.order-card__action,
+.stock-toggle {
+    touch-action: manipulation;
+}
+
+/* Focus visible for keyboard navigation */
+.touch-target:focus-visible,
+.admin-btn:focus-visible,
+.admin-tab:focus-visible,
+.item-card:focus-visible,
+.order-card__action:focus-visible,
+.stock-toggle__input:focus-visible + .stock-toggle__slider,
+.search-input:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+}
+
+/* Remove default focus outline (replaced with focus-visible) */
+.touch-target:focus,
+.admin-btn:focus,
+.admin-tab:focus,
+.item-card:focus,
+.order-card__action:focus {
+    outline: none;
+}
+
+/* Ripple effect for buttons (optional enhancement) */
+.admin-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s;
+}
+
+.admin-btn:active::after {
+    width: 200%;
+    height: 200%;
+}

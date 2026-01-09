@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#eb1700">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Admin Dashboard - Spoon</title>
+  
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Mobile-first Admin Styles -->
+  <link rel="stylesheet" href="../css/admin-mobile.css">
+  
+  <!-- Supabase Client Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.4/dist/umd/supabase.min.js"></script>
+  
+  <!-- Centralized configuration -->
+  <script src="../js/config.js"></script>
+  
+  <!-- Realtime Subscription Manager -->
+  <script src="../js/realtimeSubscriptionManager.js"></script>
+</head>
+<body>
+  <!-- App Shell -->
+  <div class="admin-app" role="application" aria-label="Admin Dashboard">
+    
+    <!-- Header -->
+    <header class="admin-header">
+      <h1 class="admin-header__title">Kitchen Dashboard</h1>
+      <div class="admin-header__actions">
+        <!-- Connection Status Indicator (Requirements: 14.4) -->
+        <div class="connection-status connection-status--realtime" 
+             id="connection-status"
+             role="status" 
+             aria-live="polite"
+             aria-label="Connection status: Connected">
+          <span class="connection-status__dot"></span>
+          <span class="connection-status__label sr-only">Connected</span>
+        </div>
+        
+        <!-- Admin User Display (Requirements: 13.4) -->
+        <span class="admin-user" id="admin-user" aria-label="Logged in user"></span>
+        
+        <!-- Settings Menu Button -->
+        <button class="touch-target" 
+                id="settings-btn"
+                aria-label="Settings menu"
+                aria-haspopup="true"
+                aria-expanded="false">
+          <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+        </button>
+        
+        <!-- Settings Dropdown Menu (Requirements: 13.5) -->
+        <div class="settings-menu hidden" id="settings-menu" role="menu">
+          <button class="settings-menu__item" 
+                  id="logout-btn"
+                  role="menuitem">
+            <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Main Content Area -->
+    <main class="admin-main">
+      <div class="admin-content" id="admin-content">
+        
+        <!-- Items to Prepare View -->
+        <section class="admin-view active" 
+                 id="items-view" 
+                 role="tabpanel" 
+                 aria-labelledby="tab-items"
+                 aria-label="Items to prepare">
+          <div id="items-list"></div>
+          
+          <!-- Empty State -->
+          <div class="admin-empty-state hidden" id="items-empty">
+            <div class="admin-empty-state__icon">
+              <i class="fas fa-clipboard-check" aria-hidden="true"></i>
+            </div>
+            <h2 class="admin-empty-state__title">All caught up!</h2>
+            <p class="admin-empty-state__message">No items to prepare right now. New orders will appear here.</p>
+          </div>
+        </section>
+        
+        <!-- Active Orders View -->
+        <section class="admin-view" 
+                 id="active-view" 
+                 role="tabpanel" 
+                 aria-labelledby="tab-active"
+                 aria-label="Active orders">
+          <!-- Filter Indicator (shown when item filter is active) -->
+          <div class="filter-indicator hidden" id="filter-indicator">
+            <span class="filter-indicator__text">Filtered by: <strong id="filter-item-name"></strong></span>
+            <button class="filter-indicator__clear touch-target" 
+                    id="clear-filter-btn"
+                    aria-label="Clear filter">
+              <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+          </div>
+          
+          <div id="active-orders-list"></div>
+          
+          <!-- Empty State -->
+          <div class="admin-empty-state hidden" id="active-empty">
+            <div class="admin-empty-state__icon">
+              <i class="fas fa-inbox" aria-hidden="true"></i>
+            </div>
+            <h2 class="admin-empty-state__title">No active orders</h2>
+            <p class="admin-empty-state__message">Pending orders will appear here when customers place them.</p>
+          </div>
+        </section>
+        
+        <!-- Completed Orders View -->
+        <section class="admin-view" 
+                 id="completed-view" 
+                 role="tabpanel" 
+                 aria-labelledby="tab-completed"
+                 aria-label="Completed orders">
+          <!-- Search Input (Requirements: 12.1, 12.3) -->
+          <div class="search-container" id="search-container">
+            <div class="search-input-wrapper">
+              <i class="fas fa-search search-input__icon" aria-hidden="true"></i>
+              <input type="text" 
+                     class="search-input" 
+                     id="verification-search"
+                     placeholder="Search by verification code..."
+                     aria-label="Search orders by verification code"
+                     autocomplete="off"
+                     inputmode="numeric">
+              <button class="search-input__clear touch-target hidden" 
+                      id="search-clear-btn"
+                      aria-label="Clear search">
+                <i class="fas fa-times" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div id="completed-orders-list"></div>
+          
+          <!-- Empty State -->
+          <div class="admin-empty-state hidden" id="completed-empty">
+            <div class="admin-empty-state__icon">
+              <i class="fas fa-check-circle" aria-hidden="true"></i>
+            </div>
+            <h2 class="admin-empty-state__title">No orders ready</h2>
+            <p class="admin-empty-state__message">Completed orders waiting for pickup will appear here.</p>
+          </div>
+          
+          <!-- No Search Results -->
+          <div class="admin-empty-state hidden" id="search-no-results">
+            <div class="admin-empty-state__icon">
+              <i class="fas fa-search" aria-hidden="true"></i>
+            </div>
+            <h2 class="admin-empty-state__title">No matching orders</h2>
+            <p class="admin-empty-state__message">Try a different verification code.</p>
+          </div>
+        </section>
+        
+      </div>
+    </main>
+    
+    <!-- Floating Action Button - Stock Management (Requirements: 6.1) -->
+    <button class="admin-fab" 
+            id="stock-fab"
+            aria-label="Manage stock"
+            aria-haspopup="dialog">
+      <i class="fas fa-boxes-stacked" aria-hidden="true"></i>
+    </button>
+    
+    <!-- Bottom Tab Bar (Requirements: 2.1, 2.2) -->
+    <nav class="admin-tab-bar" role="tablist" aria-label="Dashboard navigation">
+      <!-- Items Tab -->
+      <button class="admin-tab active" 
+              id="tab-items"
+              role="tab"
+              aria-selected="true"
+              aria-controls="items-view"
+              aria-label="Items to prepare"
+              data-view="items">
+        <span class="admin-tab__badge" id="badge-items" aria-label="items count">0</span>
+        <i class="admin-tab__icon fas fa-utensils" aria-hidden="true"></i>
+        <span class="admin-tab__label">Items</span>
+      </button>
+      
+      <!-- Active Orders Tab -->
+      <button class="admin-tab" 
+              id="tab-active"
+              role="tab"
+              aria-selected="false"
+              aria-controls="active-view"
+              aria-label="Active orders"
+              data-view="active">
+        <span class="admin-tab__badge" id="badge-active" aria-label="active orders count">0</span>
+        <i class="admin-tab__icon fas fa-clock" aria-hidden="true"></i>
+        <span class="admin-tab__label">Active</span>
+      </button>
+      
+      <!-- Completed Orders Tab -->
+      <button class="admin-tab" 
+              id="tab-completed"
+              role="tab"
+              aria-selected="false"
+              aria-controls="completed-view"
+              aria-label="Completed orders"
+              data-view="completed">
+        <span class="admin-tab__badge" id="badge-completed" aria-label="completed orders count">0</span>
+        <i class="admin-tab__icon fas fa-check-circle" aria-hidden="true"></i>
+        <span class="admin-tab__label">Ready</span>
+      </button>
+    </nav>
+    
+  </div>
+  
+  <!-- Stock Panel Modal (Requirements: 6.2) -->
+  <div class="modal-backdrop hidden" id="stock-backdrop" aria-hidden="true"></div>
+  <aside class="stock-panel hidden" 
+         id="stock-panel"
+         role="dialog"
+         aria-labelledby="stock-panel-title"
+         aria-modal="true">
+    <div class="stock-panel__header">
+      <div class="stock-panel__drag-handle" aria-hidden="true"></div>
+      <h2 class="stock-panel__title" id="stock-panel-title">Stock Management</h2>
+      <button class="touch-target stock-panel__close" 
+              id="stock-close-btn"
+              aria-label="Close stock panel">
+        <i class="fas fa-times" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="stock-panel__content" id="stock-items-list">
+      <!-- Stock items will be rendered here -->
+    </div>
+  </aside>
+  
+  <!-- Confirmation Dialog (Requirements: 8.1, 8.2) -->
+  <div class="modal-backdrop hidden" id="confirm-backdrop" aria-hidden="true"></div>
+  <div class="confirm-dialog hidden" 
+       id="confirm-dialog"
+       role="alertdialog"
+       aria-labelledby="confirm-title"
+       aria-describedby="confirm-message"
+       aria-modal="true">
+    <h2 class="confirm-dialog__title" id="confirm-title">Confirm Action</h2>
+    <p class="confirm-dialog__message" id="confirm-message">Are you sure?</p>
+    <p class="confirm-dialog__order-id" id="confirm-order-id"></p>
+    <div class="confirm-dialog__actions">
+      <button class="admin-btn admin-btn--secondary admin-btn--full" 
+              id="confirm-cancel-btn">
+        Cancel
+      </button>
+      <button class="admin-btn admin-btn--primary admin-btn--full" 
+              id="confirm-action-btn">
+        Confirm
+      </button>
+    </div>
+  </div>
+  
+  <!-- Toast Notification -->
+  <div class="admin-toast" id="toast" role="alert" aria-live="assertive">
+    <span id="toast-message"></span>
+  </div>
+  
+  <!-- Loading Overlay -->
+  <div class="admin-overlay" id="loading-overlay">
+    <div class="admin-spinner"></div>
+    <p class="admin-overlay__text">Verifying admin access...</p>
+  </div>
+  
+  <!-- Error Overlay -->
+  <div class="admin-overlay hidden" id="error-overlay">
+    <div class="admin-empty-state__icon">
+      <i class="fas fa-exclamation-triangle" style="color: var(--warning-orange);" aria-hidden="true"></i>
+    </div>
+    <h2 class="admin-empty-state__title" id="error-title">Connection Error</h2>
+    <p class="admin-empty-state__message" id="error-message">Unable to connect. Please try again.</p>
+    <button class="admin-btn admin-btn--primary mt-md" id="retry-btn">
+      <i class="fas fa-redo" aria-hidden="true"></i>
+      Retry
+    </button>
+  </div>
+  
+  <!-- Access Denied Modal -->
+  <div class="admin-overlay hidden" id="access-denied-overlay">
+    <div class="admin-empty-state__icon">
+      <i class="fas fa-lock" style="color: var(--error-red);" aria-hidden="true"></i>
+    </div>
+    <h2 class="admin-empty-state__title">Access Denied</h2>
+    <p class="admin-empty-state__message">You don't have admin privileges.</p>
+    <p class="text-secondary mt-sm">Contact support@spoon.com for access.</p>
+    <p class="text-secondary mt-md">Redirecting to homepage...</p>
+  </div>
+  
+  <!-- Session Expired Prompt (Requirements: 13.1, 13.2) -->
+  <div class="session-prompt hidden" id="session-prompt" role="alertdialog" aria-modal="true">
+    <div class="session-prompt__content">
+      <i class="fas fa-clock session-prompt__icon" aria-hidden="true"></i>
+      <h2 class="session-prompt__title">Session Expired</h2>
+      <p class="session-prompt__message">Your session has expired. Please log in again to continue.</p>
+      <button class="admin-btn admin-btn--primary admin-btn--full" id="reauth-btn">
+        <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
+        Log In Again
+      </button>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard JavaScript -->
+  <script src="../js/admin-mobile.js"></script>
+</body>
+</html>

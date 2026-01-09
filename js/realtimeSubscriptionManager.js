@@ -17,6 +17,9 @@ const RealtimeSubscriptionManager = {
   
   // Reference to Supabase client
   _supabase: null,
+  
+  // State change callback (Requirements: 14.1, 14.2)
+  _onStateChange: null,
 
   /**
    * Initialize the subscription manager with a Supabase client
@@ -27,6 +30,40 @@ const RealtimeSubscriptionManager = {
     this.channels = {};
     this.fallbackIntervals = {};
     this.isConnected = true;
+    this._onStateChange = null;
+  },
+
+  /**
+   * Set callback for connection state changes (Requirements: 14.1, 14.2)
+   * @param {Function} callback - Function to call with state ('realtime' | 'polling' | 'disconnected')
+   */
+  onStateChange(callback) {
+    this._onStateChange = callback;
+  },
+
+  /**
+   * Notify state change to registered callback
+   * @param {string} state - 'realtime' | 'polling' | 'disconnected'
+   */
+  _notifyStateChange(state) {
+    if (typeof this._onStateChange === 'function') {
+      this._onStateChange(state);
+    }
+  },
+
+  /**
+   * Get current connection state
+   * @returns {string} - 'realtime' | 'polling' | 'disconnected'
+   */
+  getConnectionState() {
+    if (this.isConnected) {
+      return 'realtime';
+    }
+    // Check if any fallback polling is active
+    if (Object.keys(this.fallbackIntervals).length > 0) {
+      return 'polling';
+    }
+    return 'disconnected';
   },
 
   /**
@@ -89,14 +126,26 @@ const RealtimeSubscriptionManager = {
             this.isConnected = true;
             // Stop fallback polling if it was running (Requirements: 4.2)
             this.stopFallbackPolling(tableName);
+            // Notify state change (Requirements: 14.1)
+            this._notifyStateChange('realtime');
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             // Handle subscription errors (Requirements: 4.1, 4.3)
             console.error(`❌ Realtime subscription error for ${tableName}:`, err);
             this.isConnected = false;
             // Start fallback polling (Requirements: 4.1)
             this.startFallbackPolling(tableName, onChangeCallback);
+            // Notify state change (Requirements: 14.2)
+            this._notifyStateChange('polling');
           } else if (status === 'CLOSED') {
             console.log(`🔌 Channel ${tableName} closed`);
+            // Check if all channels are closed
+            const activeChannels = Object.keys(this.channels).filter(
+              name => name !== tableName
+            );
+            if (activeChannels.length === 0) {
+              this.isConnected = false;
+              this._notifyStateChange('disconnected');
+            }
           }
         });
 
@@ -158,6 +207,9 @@ const RealtimeSubscriptionManager = {
     this.channels = {};
     this.fallbackIntervals = {};
     this.isConnected = false;
+    
+    // Notify disconnected state (Requirements: 14.3)
+    this._notifyStateChange('disconnected');
     
     console.log('✅ All subscriptions cleaned up');
   },
