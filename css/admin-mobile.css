@@ -1192,7 +1192,8 @@ body {
 
 /* ====================
    21. ITEM CARD COMPONENT
-   Used in Items to Prepare view (Requirements: 3.5)
+   Used in Items to Prepare view - READ-ONLY with delta tracking
+   Counter staff reads and shouts quantities to kitchen
    ==================== */
 .item-card {
     display: flex;
@@ -1205,20 +1206,38 @@ body {
     padding: var(--spacing-md);
     margin-bottom: var(--spacing-sm);
     
-    min-height: 64px;  /* Requirements: 3.5 */
+    min-height: 72px;
     
-    cursor: pointer;
-    transition: transform var(--transition-fast), border-color var(--transition-fast);
+    /* Read-only - no cursor pointer */
+    cursor: default;
     -webkit-tap-highlight-color: transparent;
 }
 
-.item-card:active {
-    transform: scale(0.99);
+/* Read-only modifier - removes interactive styling */
+.item-card--readonly {
+    cursor: default;
 }
 
-.item-card--selected {
-    border-color: var(--brand-primary);
-    border-left-width: 4px;
+.item-card--readonly:active {
+    transform: none;
+}
+
+/* Main content area: quantity + item info */
+.item-card__main {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex: 1;
+}
+
+/* Large quantity display - shout-friendly, quantity-first layout */
+.item-card__quantity-large {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text-primary);
+    min-width: 56px;
+    text-align: center;
+    line-height: 1;
 }
 
 .item-card__info {
@@ -1236,12 +1255,87 @@ body {
     color: var(--text-secondary);
 }
 
+/* Legacy quantity style (for backwards compatibility) */
 .item-card__quantity {
     font-size: var(--font-size-xl);
     font-weight: 700;
     color: var(--brand-primary);
     min-width: 48px;
     text-align: right;
+}
+
+/* Delta section - shows unshouted quantity and TOLD button */
+.item-card__delta-section {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-left: var(--spacing-sm);
+}
+
+/* Delta badge - shows +N or NEW */
+.item-card__delta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    
+    background-color: var(--warning-orange);
+    color: white;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    min-width: 40px;
+    
+    /* Subtle pulse animation to draw attention */
+    animation: delta-pulse 2s ease-in-out infinite;
+}
+
+.item-card__delta--new {
+    background-color: var(--brand-primary);
+}
+
+@keyframes delta-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+/* TOLD button - acknowledges quantity was shouted */
+.item-card__told-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    
+    background-color: var(--success-green);
+    color: white;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    
+    border: none;
+    border-radius: var(--radius-small);
+    padding: 8px 14px;
+    min-width: 60px;
+    min-height: var(--touch-target-min);
+    
+    cursor: pointer;
+    transition: background-color var(--transition-fast), transform var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.item-card__told-btn:active {
+    transform: scale(0.95);
+    background-color: #218838;
+}
+
+.item-card__told-btn--pending {
+    background-color: var(--text-secondary);
+    cursor: not-allowed;
+}
+
+.item-card__told-btn:disabled {
+    opacity: 0.7;
 }
 
 /* ====================

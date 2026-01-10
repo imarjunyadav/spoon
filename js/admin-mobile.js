@@ -29,7 +29,14 @@ const AdminState = {
   
   // UI state
   isStockPanelOpen: false,
-  confirmDialog: null // { orderId, action, previousStatus }
+  confirmDialog: null, // { orderId, action, previousStatus }
+  
+  // Items tab "told" tracking - stores last communicated quantity per item
+  // Key: item name, Value: quantity that was last told to kitchen
+  toldCounts: {},
+  
+  // Pending "told" actions (for optimistic updates)
+  pendingToldActions: new Set()
 };
 
 // Supabase client reference
@@ -377,12 +384,22 @@ function getItemSummary() {
 
 /**
  * Get items sorted by quantity descending (Requirements: 3.4)
- * @returns {Array} Sorted array of { name, quantity, orderCount }
+ * Includes delta calculation for "told" tracking
+ * @returns {Array} Sorted array of { name, quantity, orderCount, toldCount, delta }
  */
 function getSortedItems() {
   const summary = getItemSummary();
   return Object.entries(summary)
-    .map(([name, data]) => ({ name, ...data }))
+    .map(([name, data]) => {
+      const toldCount = AdminState.toldCounts[name] || 0;
+      const delta = data.quantity - toldCount;
+      return { 
+        name, 
+        ...data, 
+        toldCount,
+        delta: delta > 0 ? delta : 0 // Only show positive deltas
+      };
+    })
     .sort((a, b) => b.quantity - a.quantity);
 }
 
@@ -402,7 +419,8 @@ function renderAll() {
 }
 
 /**
- * Render Items to Prepare view
+ * Render Items to Prepare view (read-only with delta tracking)
+ * Counter staff reads this tab and shouts quantities to kitchen
  */
 function renderItems() {
   if (!DOM.itemsList) return;
@@ -417,29 +435,45 @@ function renderItems() {
     return;
   }
   
-  DOM.itemsList.innerHTML = items.map(item => `
-    <div class="item-card ${AdminState.selectedItemFilter === item.name ? 'item-card--selected' : ''}"
-         role="button"
-         tabindex="0"
-         aria-pressed="${AdminState.selectedItemFilter === item.name}"
-         aria-label="${item.name}, ${item.quantity} to prepare"
-         data-item="${escapeHtml(item.name)}">
-      <div class="item-card__info">
-        <div class="item-card__name">${escapeHtml(item.name)}</div>
-        <div class="item-card__orders">${item.orderCount} order${item.orderCount !== 1 ? 's' : ''}</div>
+  DOM.itemsList.innerHTML = items.map(item => {
+    const isPendingTold = AdminState.pendingToldActions.has(item.name);
+    const showDelta = item.delta > 0;
+    const isNewItem = item.toldCount === 0 && item.quantity > 0;
+    
+    return `
+    <div class="item-card item-card--readonly"
+         role="listitem"
+         aria-label="${item.quantity} ${item.name}, ${item.orderCount} order${item.orderCount !== 1 ? 's' : ''}${showDelta ? `, ${item.delta} new` : ''}">
+      <div class="item-card__main">
+        <div class="item-card__quantity-large">${item.quantity}</div>
+        <div class="item-card__info">
+          <div class="item-card__name">${escapeHtml(item.name)}</div>
+          <div class="item-card__orders">${item.orderCount} order${item.orderCount !== 1 ? 's' : ''}</div>
+        </div>
       </div>
-      <div class="item-card__quantity">${item.quantity}</div>
+      ${showDelta ? `
+        <div class="item-card__delta-section">
+          <span class="item-card__delta ${isNewItem ? 'item-card__delta--new' : ''}">
+            ${isNewItem ? 'NEW' : `+${item.delta}`}
+          </span>
+          <button class="item-card__told-btn ${isPendingTold ? 'item-card__told-btn--pending' : ''}"
+                  ${isPendingTold ? 'disabled' : ''}
+                  aria-label="Mark ${item.name} as told to kitchen"
+                  data-item-name="${escapeHtml(item.name)}"
+                  data-item-quantity="${item.quantity}">
+            ${isPendingTold ? '...' : 'TOLD'}
+          </button>
+        </div>
+      ` : ''}
     </div>
-  `).join('');
+  `;
+  }).join('');
   
-  // Add click handlers
-  DOM.itemsList.querySelectorAll('.item-card').forEach(card => {
-    card.addEventListener('click', () => handleItemClick(card.dataset.item));
-    card.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        handleItemClick(card.dataset.item);
-      }
+  // Add click handlers for TOLD buttons only
+  DOM.itemsList.querySelectorAll('.item-card__told-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleTold(btn.dataset.itemName, parseInt(btn.dataset.itemQuantity, 10));
     });
   });
 }
@@ -476,6 +510,92 @@ function clearItemFilter() {
   DOM.filterIndicator?.classList.add('hidden');
   renderItems();
   renderActiveOrders();
+}
+
+/**
+ * Handle TOLD button click - mark item quantity as communicated to kitchen
+ * Uses optimistic update with rollback on failure
+ * @param {string} itemName - The item name
+ * @param {number} currentQuantity - Current total quantity
+ */
+async function handleTold(itemName, currentQuantity) {
+  if (AdminState.pendingToldActions.has(itemName)) return;
+  
+  // Store previous value for rollback
+  const previousToldCount = AdminState.toldCounts[itemName] || 0;
+  
+  // Optimistic update
+  AdminState.pendingToldActions.add(itemName);
+  AdminState.toldCounts[itemName] = currentQuantity;
+  renderItems();
+  
+  try {
+    // Persist to localStorage for session persistence
+    saveToldCounts();
+    
+    // Simulate brief delay for visual feedback
+    await new Promise(resolve => setTimeout(resolve, 150));
+    
+    // Success - clear pending state
+    AdminState.pendingToldActions.delete(itemName);
+    renderItems();
+    
+    console.log(`✅ Marked "${itemName}" as told (qty: ${currentQuantity})`);
+  } catch (error) {
+    console.error('❌ Error saving told count:', error);
+    
+    // Rollback on failure
+    AdminState.toldCounts[itemName] = previousToldCount;
+    AdminState.pendingToldActions.delete(itemName);
+    renderItems();
+    
+    showToast('Failed to save. Please try again.', 'error');
+  }
+}
+
+/**
+ * Save told counts to localStorage for persistence
+ */
+function saveToldCounts() {
+  try {
+    localStorage.setItem('adminToldCounts', JSON.stringify(AdminState.toldCounts));
+  } catch (e) {
+    console.warn('Could not save told counts to localStorage:', e);
+  }
+}
+
+/**
+ * Load told counts from localStorage
+ */
+function loadToldCounts() {
+  try {
+    const saved = localStorage.getItem('adminToldCounts');
+    if (saved) {
+      AdminState.toldCounts = JSON.parse(saved);
+      console.log('📋 Loaded told counts from storage');
+    }
+  } catch (e) {
+    console.warn('Could not load told counts from localStorage:', e);
+    AdminState.toldCounts = {};
+  }
+}
+
+/**
+ * Clean up told counts for items no longer in pending orders
+ * Called after orders are fetched to remove stale entries
+ */
+function cleanupToldCounts() {
+  const currentItems = getItemSummary();
+  const currentItemNames = new Set(Object.keys(currentItems));
+  
+  // Remove told counts for items that are no longer in pending orders
+  Object.keys(AdminState.toldCounts).forEach(itemName => {
+    if (!currentItemNames.has(itemName)) {
+      delete AdminState.toldCounts[itemName];
+    }
+  });
+  
+  saveToldCounts();
 }
 
 /**
@@ -996,6 +1116,10 @@ async function fetchOrders() {
   
   AdminState.orders = data || [];
   console.log("📦 Orders fetched:", AdminState.orders.length);
+  
+  // Clean up told counts for items no longer in pending orders
+  cleanupToldCounts();
+  
   renderAll();
 }
 
@@ -1443,6 +1567,9 @@ async function initAdmin() {
   // Initialize event listeners
   initEventListeners();
   
+  // Load told counts from localStorage
+  loadToldCounts();
+  
   // Check session and verify admin
   const isAdmin = await checkSession();
   
@@ -1469,6 +1596,10 @@ if (typeof module !== 'undefined' && module.exports) {
     getItemSummary,
     getSortedItems,
     updateBadgeCounts,
-    handleTabSwitch
+    handleTabSwitch,
+    handleTold,
+    saveToldCounts,
+    loadToldCounts,
+    cleanupToldCounts
   };
 }
