@@ -436,12 +436,49 @@ function renderItems() {
     return;
   }
   
-  DOM.itemsList.innerHTML = items.map(item => {
-    const isPendingTold = AdminState.pendingToldActions.has(item.name);
-    const showDelta = item.delta > 0;
-    const isNewItem = item.toldCount === 0 && item.quantity > 0;
-    
-    return `
+  // Split items into "needs announcing" and "already told"
+  const needsAnnouncing = items.filter(item => item.delta > 0);
+  const alreadyTold = items.filter(item => item.delta === 0);
+  
+  // Show section dividers only when list is long (≥6 items) and both sections have items
+  const showDividers = items.length >= 6 && needsAnnouncing.length > 0 && alreadyTold.length > 0;
+  
+  let html = '';
+  
+  if (showDividers && needsAnnouncing.length > 0) {
+    html += `<div class="item-section-header">To announce</div>`;
+  }
+  
+  html += needsAnnouncing.map(item => renderItemRow(item)).join('');
+  
+  if (showDividers && alreadyTold.length > 0) {
+    html += `<div class="item-section-header item-section-header--muted">Already told</div>`;
+  }
+  
+  html += alreadyTold.map(item => renderItemRow(item)).join('');
+  
+  DOM.itemsList.innerHTML = html;
+  
+  // Add click handlers for TOLD buttons only
+  DOM.itemsList.querySelectorAll('.item-row__told').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      handleTold(btn.dataset.itemName, parseInt(btn.dataset.itemQuantity, 10));
+    });
+  });
+}
+
+/**
+ * Render a single item row
+ * @param {Object} item - Item data { name, quantity, orderCount, delta, toldCount }
+ * @returns {string} HTML string
+ */
+function renderItemRow(item) {
+  const isPendingTold = AdminState.pendingToldActions.has(item.name);
+  const showDelta = item.delta > 0;
+  const isNewItem = item.toldCount === 0 && item.quantity > 0;
+  
+  return `
     <div class="item-row ${showDelta ? 'item-row--has-delta' : ''}"
          role="listitem"
          aria-label="${item.quantity} ${item.name}${showDelta ? `, ${item.delta} new` : ''}">
@@ -451,8 +488,8 @@ function renderItems() {
         <span class="item-row__name">${escapeHtml(item.name)}</span>
         <span class="item-row__orders">(${item.orderCount})</span>
       </div>
-      ${showDelta ? `
-        <div class="item-row__action">
+      <div class="item-row__action">
+        ${showDelta ? `
           <span class="item-row__delta">${isNewItem ? 'new' : `+${item.delta}`}</span>
           <button class="item-row__told ${isPendingTold ? 'item-row__told--pending' : ''}"
                   ${isPendingTold ? 'disabled' : ''}
@@ -461,19 +498,10 @@ function renderItems() {
                   data-item-quantity="${item.quantity}">
             ${isPendingTold ? '...' : '✓'}
           </button>
-        </div>
-      ` : ''}
+        ` : ''}
+      </div>
     </div>
   `;
-  }).join('');
-  
-  // Add click handlers for TOLD buttons only
-  DOM.itemsList.querySelectorAll('.item-row__told').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      handleTold(btn.dataset.itemName, parseInt(btn.dataset.itemQuantity, 10));
-    });
-  });
 }
 
 /**

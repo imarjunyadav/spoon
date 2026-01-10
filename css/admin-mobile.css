@@ -1256,21 +1256,25 @@ body {
     min-width: 0;
 }
 
-/* Orders count - very subtle */
+/* Orders count - very subtle, fixed width to prevent jitter */
 .item-row__orders {
-    font-size: 12px;
-    color: #999;
+    font-size: 11px;
+    color: #aaa;
+    opacity: 0.8;
     flex-shrink: 0;
     margin-left: 4px;
+    min-width: 24px; /* Fixed width prevents shift when delta disappears */
 }
 
-/* Action area: delta + told button */
+/* Action area: delta + told button - fixed width to prevent jitter */
 .item-row__action {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 8px;
     flex-shrink: 0;
     margin-left: 12px;
+    min-width: 80px; /* Fixed width prevents layout shift */
 }
 
 /* Delta indicator - small, muted orange text */
@@ -1317,6 +1321,24 @@ body {
 
 .item-row__told:disabled {
     opacity: 0.6;
+}
+
+/* Section headers - subtle dividers for long lists */
+.item-section-header {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--warning-orange);
+    
+    padding: 8px var(--spacing-md) 4px;
+    background-color: var(--background-light);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.item-section-header--muted {
+    color: #999;
+    margin-top: 4px;
 }
 
 /* ====================
