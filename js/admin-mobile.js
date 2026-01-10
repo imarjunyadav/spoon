@@ -40,7 +40,10 @@ const AdminState = {
   
   // Stock panel state
   stockSearchQuery: '',
-  expandedCategories: new Set() // Track which categories are expanded
+  expandedCategories: new Set(), // Track which categories are expanded
+  
+  // Active orders sort
+  activeOrdersSort: 'oldest' // 'oldest' | 'newest' | 'costly' | 'quantity'
 };
 
 // Supabase client reference
@@ -135,6 +138,9 @@ function initDOMReferences() {
   DOM.completedOrdersList = document.getElementById('completed-orders-list');
   DOM.stockItemsList = document.getElementById('stock-items-list');
   
+  // Active orders sort
+  DOM.activeSortSelect = document.getElementById('active-sort-select');
+  
   // Badges
   DOM.badgeItems = document.getElementById('badge-items');
   DOM.badgeActive = document.getElementById('badge-active');
@@ -208,6 +214,11 @@ function initEventListeners() {
   // Filter clear
   if (DOM.clearFilterBtn) {
     DOM.clearFilterBtn.addEventListener('click', clearItemFilter);
+  }
+  
+  // Active orders sort
+  if (DOM.activeSortSelect) {
+    DOM.activeSortSelect.addEventListener('change', handleActiveOrdersSort);
   }
   
   // Search input (Requirements: 12.2)
@@ -706,6 +717,7 @@ function cleanupToldCounts() {
 
 /**
  * Render Active Orders view (Requirements: 4.1, 4.2)
+ * Shows full item list with qty× format, order age, and sorting
  */
 function renderActiveOrders() {
   if (!DOM.activeOrdersList) return;
@@ -719,6 +731,9 @@ function renderActiveOrders() {
     );
   }
   
+  // Apply sorting
+  orders = sortActiveOrders(orders, AdminState.activeOrdersSort);
+  
   // Show/hide empty state
   const showEmpty = orders.length === 0 && !AdminState.selectedItemFilter;
   DOM.activeEmpty?.classList.toggle('hidden', !showEmpty);
@@ -728,34 +743,43 @@ function renderActiveOrders() {
     return;
   }
   
+  const now = Date.now();
+  
   DOM.activeOrdersList.innerHTML = orders.map(order => {
     const isPending = AdminState.pendingActions.has(order.id);
-    const displayItems = order.items?.slice(0, 3) || [];
-    const moreCount = (order.items?.length || 0) - 3;
+    const orderAge = Math.floor((now - new Date(order.created_at).getTime()) / 60000);
+    const ageFormatted = formatWaitTime(orderAge);
+    const totalQty = order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+    const totalValue = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
     
     return `
       <article class="order-card ${isPending ? 'order-card--pending' : ''}"
                aria-label="Order ${truncateId(order.id)}">
         <div class="order-card__header">
-          <span class="order-card__id">${truncateId(order.id)}</span>
-          <span class="order-card__time">${formatTime(order.created_at)}</span>
+          <span class="order-card__id">#${truncateId(order.id)}</span>
+          <span class="order-card__age">${ageFormatted}</span>
         </div>
         <ul class="order-card__items">
-          ${displayItems.map(item => `
+          ${(order.items || []).map(item => `
             <li class="order-card__item">
+              <span class="order-card__item-qty">${item.quantity}×</span>
               <span class="order-card__item-name">${escapeHtml(item.title)}</span>
-              <span class="order-card__item-qty">×${item.quantity}</span>
             </li>
           `).join('')}
-          ${moreCount > 0 ? `<li class="order-card__items-more">and ${moreCount} more...</li>` : ''}
         </ul>
-        <button class="admin-btn admin-btn--primary order-card__action"
-                ${isPending ? 'disabled' : ''}
-                aria-label="Mark order ${truncateId(order.id)} as complete"
-                data-order-id="${order.id}"
-                data-action="complete">
-          ${isPending ? 'Processing...' : 'Mark Complete'}
-        </button>
+        <div class="order-card__footer">
+          <div class="order-card__meta">
+            <span class="order-card__total-qty">${totalQty} items</span>
+            <span class="order-card__total-value">₹${totalValue}</span>
+          </div>
+          <button class="order-card__btn order-card__btn--complete"
+                  ${isPending ? 'disabled' : ''}
+                  aria-label="Mark order ${truncateId(order.id)} as complete"
+                  data-order-id="${order.id}"
+                  data-action="complete">
+            ${isPending ? '...' : 'Complete'}
+          </button>
+        </div>
       </article>
     `;
   }).join('');
@@ -764,6 +788,45 @@ function renderActiveOrders() {
   DOM.activeOrdersList.querySelectorAll('[data-action="complete"]').forEach(btn => {
     btn.addEventListener('click', () => showConfirmDialog(btn.dataset.orderId, 'complete'));
   });
+}
+
+/**
+ * Sort active orders based on selected criteria
+ * @param {Array} orders - Orders to sort
+ * @param {string} sortBy - Sort criteria
+ * @returns {Array} Sorted orders
+ */
+function sortActiveOrders(orders, sortBy) {
+  const sorted = [...orders];
+  
+  switch (sortBy) {
+    case 'oldest':
+      return sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    case 'newest':
+      return sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    case 'costly':
+      return sorted.sort((a, b) => {
+        const valueA = a.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+        const valueB = b.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+        return valueB - valueA;
+      });
+    case 'quantity':
+      return sorted.sort((a, b) => {
+        const qtyA = a.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+        const qtyB = b.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+        return qtyB - qtyA;
+      });
+    default:
+      return sorted;
+  }
+}
+
+/**
+ * Handle active orders sort change
+ */
+function handleActiveOrdersSort() {
+  AdminState.activeOrdersSort = DOM.activeSortSelect?.value || 'oldest';
+  renderActiveOrders();
 }
 
 

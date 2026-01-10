@@ -103,6 +103,17 @@
             </button>
           </div>
           
+          <!-- Sort Options -->
+          <div class="sort-bar" id="active-sort-bar">
+            <span class="sort-bar__label">Sort:</span>
+            <select class="sort-bar__select" id="active-sort-select" aria-label="Sort orders by">
+              <option value="oldest">Oldest first</option>
+              <option value="newest">Newest first</option>
+              <option value="costly">Highest value</option>
+              <option value="quantity">Most items</option>
+            </select>
+          </div>
+          
           <div id="active-orders-list"></div>
           
           <!-- Empty State -->
