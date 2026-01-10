@@ -852,7 +852,7 @@ function renderCompletedOrders() {
     .filter(o => o.status === 'COMPLETE')
     .sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
   
-  // Apply search filter (Requirements: 12.2)
+  // Apply search filter - matches only verification code
   const searchQuery = AdminState.searchQuery.trim().toLowerCase();
   if (searchQuery) {
     orders = orders.filter(order => 
@@ -875,17 +875,16 @@ function renderCompletedOrders() {
   DOM.completedOrdersList.innerHTML = orders.map(order => {
     const isPending = AdminState.pendingActions.has(order.id);
     const code = order.verification_code || '----';
-    const isMatch = searchQuery && code.toLowerCase().includes(searchQuery);
     
-    // Highlight matching portion of verification code
+    // Highlight matching portion of verification code with yellow background only
     let displayCode = escapeHtml(code);
-    if (searchQuery && isMatch) {
+    if (searchQuery && code.toLowerCase().includes(searchQuery)) {
       const regex = new RegExp(`(${escapeHtml(searchQuery)})`, 'gi');
       displayCode = displayCode.replace(regex, '<mark class="code-highlight">$1</mark>');
     }
     
     return `
-      <article class="ready-card ${isPending ? 'ready-card--pending' : ''} ${isMatch ? 'ready-card--match' : ''}"
+      <article class="ready-card ${isPending ? 'ready-card--pending' : ''}"
                aria-label="Order verification code ${code}">
         <div class="ready-card__code-box">
           <div class="ready-card__code">${displayCode}</div>

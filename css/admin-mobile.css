@@ -1918,13 +1918,6 @@ body {
     pointer-events: none;
 }
 
-/* Highlighted match state */
-.ready-card--match {
-    border-color: var(--success-green);
-    background-color: var(--success-green-light);
-    box-shadow: 0 0 0 2px var(--success-green);
-}
-
 /* Code box - light grey rounded background */
 .ready-card__code-box {
     background-color: #f0f0f0;
@@ -1943,12 +1936,10 @@ body {
     line-height: 1;
 }
 
-/* Highlight matched text in code */
+/* Highlight matched text in code - simple yellow background only */
 .code-highlight {
     background-color: #ffeb3b;
-    color: var(--text-primary);
-    border-radius: 2px;
-    padding: 0 2px;
+    color: inherit;
 }
 
 /* Handover button - compact, right-aligned */
