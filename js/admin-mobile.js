@@ -316,9 +316,9 @@ function handleTabSwitch(viewId) {
     view.classList.toggle('active', isActive);
   });
   
-  // Hide stock FAB on Active tab (execution-only)
+  // Hide stock FAB on Active and Ready tabs (execution-only)
   if (DOM.stockFab) {
-    DOM.stockFab.classList.toggle('hidden', viewId === 'active');
+    DOM.stockFab.classList.toggle('hidden', viewId === 'active' || viewId === 'completed');
   }
   
   // Auto-focus search on Ready tab for quick verification code entry
@@ -876,6 +876,11 @@ function renderCompletedOrders() {
     const code = order.verification_code || '----';
     const isMatch = searchQuery && code.toLowerCase().includes(searchQuery);
     
+    // Calculate order details
+    const totalQty = order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+    const totalValue = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+    const itemsList = order.items || [];
+    
     // Highlight matching portion of verification code
     let displayCode = escapeHtml(code);
     if (searchQuery && isMatch) {
@@ -886,8 +891,18 @@ function renderCompletedOrders() {
     return `
       <article class="ready-card ${isPending ? 'ready-card--pending' : ''} ${isMatch ? 'ready-card--match' : ''}"
                aria-label="Order verification code ${code}">
-        <div class="ready-card__code">${displayCode}</div>
-        <div class="ready-card__time">${formatTime(order.updated_at)}</div>
+        <div class="ready-card__code-box">
+          <div class="ready-card__code">${displayCode}</div>
+        </div>
+        <div class="ready-card__details">
+          <ul class="ready-card__items">
+            ${itemsList.map(item => `<li>${item.quantity}× ${escapeHtml(item.title)}</li>`).join('')}
+          </ul>
+          <div class="ready-card__meta">
+            <span>${totalQty} items</span>
+            <span>₹${totalValue}</span>
+          </div>
+        </div>
         <button class="ready-card__btn ${isPending ? 'ready-card__btn--pending' : ''}"
                 ${isPending ? 'disabled' : ''}
                 aria-label="Confirm pickup for code ${code}"
