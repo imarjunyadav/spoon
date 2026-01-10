@@ -171,6 +171,7 @@ function initDOMReferences() {
   DOM.confirmBackdrop = document.getElementById('confirm-backdrop');
   DOM.confirmTitle = document.getElementById('confirm-title');
   DOM.confirmMessage = document.getElementById('confirm-message');
+  DOM.confirmDetails = document.getElementById('confirm-details');
   DOM.confirmOrderId = document.getElementById('confirm-order-id');
   DOM.confirmCancelBtn = document.getElementById('confirm-cancel-btn');
   DOM.confirmActionBtn = document.getElementById('confirm-action-btn');
@@ -876,11 +877,6 @@ function renderCompletedOrders() {
     const code = order.verification_code || '----';
     const isMatch = searchQuery && code.toLowerCase().includes(searchQuery);
     
-    // Calculate order details
-    const totalQty = order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
-    const totalValue = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
-    const itemsList = order.items || [];
-    
     // Highlight matching portion of verification code
     let displayCode = escapeHtml(code);
     if (searchQuery && isMatch) {
@@ -893,15 +889,6 @@ function renderCompletedOrders() {
                aria-label="Order verification code ${code}">
         <div class="ready-card__code-box">
           <div class="ready-card__code">${displayCode}</div>
-        </div>
-        <div class="ready-card__details">
-          <ul class="ready-card__items">
-            ${itemsList.map(item => `<li>${item.quantity}× ${escapeHtml(item.title)}</li>`).join('')}
-          </ul>
-          <div class="ready-card__meta">
-            <span>${totalQty} items</span>
-            <span>₹${totalValue}</span>
-          </div>
         </div>
         <button class="ready-card__btn ${isPending ? 'ready-card__btn--pending' : ''}"
                 ${isPending ? 'disabled' : ''}
@@ -974,11 +961,31 @@ function showConfirmDialog(orderId, action) {
     DOM.confirmMessage.textContent = 'This order will be moved to the Ready for Pickup list.';
     DOM.confirmActionBtn.textContent = 'Mark Complete';
     DOM.confirmActionBtn.className = 'admin-btn admin-btn--primary admin-btn--full';
+    DOM.confirmDetails?.classList.add('hidden');
   } else {
-    DOM.confirmTitle.textContent = 'Confirm Pickup?';
-    DOM.confirmMessage.textContent = 'This will mark the order as picked up by the customer.';
-    DOM.confirmActionBtn.textContent = 'Confirm Pickup';
+    // Pickup confirmation - show order details for verification
+    const totalQty = order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+    const totalValue = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+    const code = order.verification_code || '----';
+    
+    DOM.confirmTitle.textContent = 'Confirm Handover';
+    DOM.confirmMessage.textContent = `Code: ${code}`;
+    DOM.confirmActionBtn.textContent = 'Handed Over';
     DOM.confirmActionBtn.className = 'admin-btn admin-btn--success admin-btn--full';
+    
+    // Show order details
+    if (DOM.confirmDetails) {
+      DOM.confirmDetails.innerHTML = `
+        <ul class="confirm-dialog__items">
+          ${(order.items || []).map(item => `<li>${item.quantity}× ${escapeHtml(item.title)}</li>`).join('')}
+        </ul>
+        <div class="confirm-dialog__meta">
+          <span>${totalQty} items</span>
+          <span>₹${totalValue}</span>
+        </div>
+      `;
+      DOM.confirmDetails.classList.remove('hidden');
+    }
   }
   
   DOM.confirmOrderId.textContent = `Order: ${truncateId(orderId)}`;

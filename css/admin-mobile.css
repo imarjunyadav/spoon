@@ -1197,6 +1197,41 @@ body {
     margin-bottom: var(--spacing-sm);
 }
 
+/* Order details in confirmation dialog */
+.confirm-dialog__details {
+    background-color: #f8f8f8;
+    border-radius: var(--radius-small);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    text-align: left;
+}
+
+.confirm-dialog__items {
+    list-style: none;
+    margin: 0 0 var(--spacing-xs) 0;
+    padding: 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+}
+
+.confirm-dialog__items li {
+    padding: 2px 0;
+}
+
+.confirm-dialog__meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    padding-top: var(--spacing-xs);
+    border-top: 1px solid var(--border-color);
+}
+
+.confirm-dialog__meta span:last-child {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
 .confirm-dialog__order-id {
     font-family: var(--font-family-mono);
     font-size: var(--font-size-sm);
@@ -1865,12 +1900,14 @@ body {
 /* Ready card - code is the hero */
 .ready-card {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-md);
     
     background-color: var(--background-white);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-large);
-    padding: var(--spacing-md);
+    border-radius: var(--radius-medium);
+    padding: var(--spacing-sm) var(--spacing-md);
     margin-bottom: var(--spacing-sm);
     
     transition: all var(--transition-fast);
@@ -1890,21 +1927,20 @@ body {
 
 /* Code box - light grey rounded background */
 .ready-card__code-box {
-    background-color: #f5f5f5;
-    border-radius: var(--radius-medium);
-    padding: var(--spacing-sm) var(--spacing-md);
-    text-align: center;
-    margin-bottom: var(--spacing-sm);
+    background-color: #f0f0f0;
+    border-radius: var(--radius-small);
+    padding: 8px 12px;
+    flex: 1;
 }
 
-/* Verification code - large, prominent */
+/* Verification code - prominent */
 .ready-card__code {
     font-family: var(--font-family-mono);
-    font-size: 36px;
+    font-size: 28px;
     font-weight: 700;
-    letter-spacing: 5px;
+    letter-spacing: 4px;
     color: var(--text-primary);
-    line-height: 1.2;
+    line-height: 1;
 }
 
 /* Highlight matched text in code */
@@ -1915,42 +1951,10 @@ body {
     padding: 0 2px;
 }
 
-/* Order details section */
-.ready-card__details {
-    margin-bottom: var(--spacing-sm);
-}
-
-/* Item list - compact */
-.ready-card__items {
-    list-style: none;
-    margin: 0 0 var(--spacing-xs) 0;
-    padding: 0;
-    font-size: var(--font-size-sm);
-    color: var(--text-primary);
-}
-
-.ready-card__items li {
-    padding: 2px 0;
-}
-
-/* Meta info - item count and total */
-.ready-card__meta {
-    display: flex;
-    justify-content: space-between;
-    font-size: var(--font-size-xs);
-    color: var(--text-secondary);
-    padding-top: var(--spacing-xs);
-    border-top: 1px solid var(--border-color);
-}
-
-.ready-card__meta span:last-child {
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-/* Handover button - compact */
+/* Handover button - compact, right-aligned */
 .ready-card__btn {
-    padding: 10px var(--spacing-md);
+    padding: 8px 16px;
+    flex-shrink: 0;
     
     background-color: var(--success-green);
     color: white;
