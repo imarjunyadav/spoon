@@ -352,7 +352,8 @@ function updateBadge(badgeEl, count) {
 
 /**
  * Get aggregated item summary from pending orders
- * @returns {Object} Map of item name to { quantity, orderCount }
+ * Includes oldest order timestamp for wait time calculation
+ * @returns {Object} Map of item name to { quantity, orderCount, oldestOrderTime }
  */
 function getItemSummary() {
   const summary = {};
@@ -362,14 +363,25 @@ function getItemSummary() {
     .forEach(order => {
       if (!order.items) return;
       
+      const orderTime = new Date(order.created_at).getTime();
+      
       // Track which items we've seen in this order to count orders correctly
       const seenInThisOrder = new Set();
       
       order.items.forEach(item => {
         if (!summary[item.title]) {
-          summary[item.title] = { quantity: 0, orderCount: 0 };
+          summary[item.title] = { 
+            quantity: 0, 
+            orderCount: 0,
+            oldestOrderTime: orderTime
+          };
         }
         summary[item.title].quantity += item.quantity;
+        
+        // Track oldest order containing this item
+        if (orderTime < summary[item.title].oldestOrderTime) {
+          summary[item.title].oldestOrderTime = orderTime;
+        }
         
         // Only increment orderCount once per order per item type
         if (!seenInThisOrder.has(item.title)) {
@@ -383,24 +395,55 @@ function getItemSummary() {
 }
 
 /**
- * Get items sorted by quantity descending (Requirements: 3.4)
- * Includes delta calculation for "told" tracking
- * @returns {Array} Sorted array of { name, quantity, orderCount, toldCount, delta }
+ * Get items with delta calculation and wait time
+ * @returns {Array} Array of { name, quantity, orderCount, toldCount, delta, waitMinutes }
  */
 function getSortedItems() {
   const summary = getItemSummary();
+  const now = Date.now();
+  
   return Object.entries(summary)
     .map(([name, data]) => {
       const toldCount = AdminState.toldCounts[name] || 0;
       const delta = data.quantity - toldCount;
+      const waitMinutes = Math.floor((now - data.oldestOrderTime) / 60000);
+      
       return { 
         name, 
         ...data, 
         toldCount,
-        delta: delta > 0 ? delta : 0 // Only show positive deltas
+        delta: delta > 0 ? delta : 0,
+        waitMinutes
       };
     })
-    .sort((a, b) => b.quantity - a.quantity);
+    .sort((a, b) => b.quantity - a.quantity); // Default sort by quantity
+}
+
+/**
+ * Get items split into "needs announcing" and "already told" sections
+ * TO ANNOUNCE: sorted by oldest order age (primary), quantity (secondary)
+ * ALREADY TOLD: stable sort by quantity (no re-sorting)
+ * @returns {{ needsAnnouncing: Array, alreadyTold: Array }}
+ */
+function getItemSections() {
+  const items = getSortedItems();
+  
+  // Split into sections
+  const needsAnnouncing = items
+    .filter(item => item.delta > 0)
+    .sort((a, b) => {
+      // Primary: oldest order first (higher wait time = older)
+      if (a.waitMinutes !== b.waitMinutes) {
+        return b.waitMinutes - a.waitMinutes;
+      }
+      // Secondary: higher quantity first
+      return b.quantity - a.quantity;
+    });
+  
+  // Already told: keep stable quantity-based sort
+  const alreadyTold = items.filter(item => item.delta === 0);
+  
+  return { needsAnnouncing, alreadyTold };
 }
 
 
@@ -421,41 +464,38 @@ function renderAll() {
 /**
  * Render Items to Prepare view (read-only with delta tracking)
  * Counter staff reads this tab and shouts quantities to kitchen
- * Optimized for fast scanning: "5 × Item Name" format
+ * Format: 4× American Chopsuey ~7m +1 ✓ 👤4
  */
 function renderItems() {
   if (!DOM.itemsList) return;
   
-  const items = getSortedItems();
+  const { needsAnnouncing, alreadyTold } = getItemSections();
+  const totalItems = needsAnnouncing.length + alreadyTold.length;
   
   // Show/hide empty state
-  DOM.itemsEmpty?.classList.toggle('hidden', items.length > 0);
+  DOM.itemsEmpty?.classList.toggle('hidden', totalItems > 0);
   
-  if (items.length === 0) {
+  if (totalItems === 0) {
     DOM.itemsList.innerHTML = '';
     return;
   }
   
-  // Split items into "needs announcing" and "already told"
-  const needsAnnouncing = items.filter(item => item.delta > 0);
-  const alreadyTold = items.filter(item => item.delta === 0);
-  
   // Show section dividers only when list is long (≥6 items) and both sections have items
-  const showDividers = items.length >= 6 && needsAnnouncing.length > 0 && alreadyTold.length > 0;
+  const showDividers = totalItems >= 6 && needsAnnouncing.length > 0 && alreadyTold.length > 0;
   
   let html = '';
   
   if (showDividers && needsAnnouncing.length > 0) {
-    html += `<div class="item-section-header">To announce</div>`;
+    html += `<div class="item-section-header">Needs announcing</div>`;
   }
   
-  html += needsAnnouncing.map(item => renderItemRow(item)).join('');
+  html += needsAnnouncing.map(item => renderItemRow(item, true)).join('');
   
   if (showDividers && alreadyTold.length > 0) {
     html += `<div class="item-section-header item-section-header--muted">Already told</div>`;
   }
   
-  html += alreadyTold.map(item => renderItemRow(item)).join('');
+  html += alreadyTold.map(item => renderItemRow(item, false)).join('');
   
   DOM.itemsList.innerHTML = html;
   
@@ -470,35 +510,36 @@ function renderItems() {
 
 /**
  * Render a single item row
- * @param {Object} item - Item data { name, quantity, orderCount, delta, toldCount }
+ * Format: 4× American Chopsuey ~7m +1 ✓ 👤4
+ * @param {Object} item - Item data { name, quantity, orderCount, delta, waitMinutes }
+ * @param {boolean} showDelta - Whether to show delta and told button
  * @returns {string} HTML string
  */
-function renderItemRow(item) {
+function renderItemRow(item, showDelta) {
   const isPendingTold = AdminState.pendingToldActions.has(item.name);
-  const showDelta = item.delta > 0;
-  const isNewItem = item.toldCount === 0 && item.quantity > 0;
+  const showWaitHint = item.waitMinutes >= 5;
   
   return `
     <div class="item-row ${showDelta ? 'item-row--has-delta' : ''}"
          role="listitem"
          aria-label="${item.quantity} ${item.name}${showDelta ? `, ${item.delta} new` : ''}">
       <div class="item-row__main">
-        <span class="item-row__qty">${item.quantity}</span>
-        <span class="item-row__sep">×</span>
+        <span class="item-row__qty">${item.quantity}</span><span class="item-row__sep">×</span>
         <span class="item-row__name">${escapeHtml(item.name)}</span>
-        <span class="item-row__orders">(${item.orderCount})</span>
+        ${showWaitHint ? `<span class="item-row__wait">~${item.waitMinutes}m</span>` : ''}
       </div>
       <div class="item-row__action">
         ${showDelta ? `
-          <span class="item-row__delta">${isNewItem ? 'new' : `+${item.delta}`}</span>
+          <span class="item-row__delta">+${item.delta}</span>
           <button class="item-row__told ${isPendingTold ? 'item-row__told--pending' : ''}"
                   ${isPendingTold ? 'disabled' : ''}
                   aria-label="Mark ${item.name} as told"
                   data-item-name="${escapeHtml(item.name)}"
                   data-item-quantity="${item.quantity}">
-            ${isPendingTold ? '...' : '✓'}
+            ${isPendingTold ? '·' : '✓'}
           </button>
         ` : ''}
+        <span class="item-row__orders"><svg class="item-row__icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>${item.orderCount}</span>
       </div>
     </div>
   `;
@@ -1621,6 +1662,7 @@ if (typeof module !== 'undefined' && module.exports) {
     AdminState,
     getItemSummary,
     getSortedItems,
+    getItemSections,
     updateBadgeCounts,
     handleTabSwitch,
     handleTold,

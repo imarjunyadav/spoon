@@ -1192,56 +1192,52 @@ body {
 
 /* ====================
    21. ITEM ROW COMPONENT
-   Optimized for fast shout-reading: "5 × Item Name" format
+   Format: 4× American Chopsuey ~7m +1 ✓ 👤4
    Single-line, minimal visual noise, clear hierarchy
    ==================== */
 
-/* Base row - single line, fixed height */
+/* Base row - single line, consistent spacing */
 .item-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     
     background-color: var(--background-white);
-    border-bottom: 1px solid var(--border-color);
-    padding: 12px var(--spacing-md);
+    padding: 10px var(--spacing-md);
+    margin-bottom: 2px; /* Small gap between rows for scan accuracy */
     
-    min-height: 52px;
-    max-height: 52px;
+    min-height: 48px;
 }
 
-.item-row:last-child {
-    border-bottom: none;
-}
-
-/* Subtle highlight for rows with unshouted delta */
+/* Subtle highlight for rows needing announcement */
 .item-row--has-delta {
     background-color: #fffbf5;
 }
 
-/* Main content: qty × name (orders) */
+/* Main content: qty× name ~Xm */
 .item-row__main {
     display: flex;
     align-items: baseline;
-    gap: 6px;
     flex: 1;
-    min-width: 0; /* Allow truncation */
+    min-width: 0;
     overflow: hidden;
 }
 
-/* Quantity - bold but not oversized */
+/* Quantity - emphasized but not oversized */
 .item-row__qty {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     color: var(--text-primary);
     flex-shrink: 0;
 }
 
-/* Separator */
+/* Separator - normal weight, no space before */
 .item-row__sep {
     font-size: 16px;
+    font-weight: 400;
     color: var(--text-secondary);
     flex-shrink: 0;
+    margin-right: 6px; /* One space after × */
 }
 
 /* Item name - truncate if too long */
@@ -1256,50 +1252,49 @@ body {
     min-width: 0;
 }
 
-/* Orders count - very subtle, fixed width to prevent jitter */
-.item-row__orders {
-    font-size: 11px;
-    color: #aaa;
-    opacity: 0.8;
+/* Wait time hint - subtle, appears after name */
+.item-row__wait {
+    font-size: 12px;
+    font-weight: 500;
+    color: #999;
     flex-shrink: 0;
-    margin-left: 4px;
-    min-width: 24px; /* Fixed width prevents shift when delta disappears */
+    margin-left: 6px;
 }
 
-/* Action area: delta + told button - fixed width to prevent jitter */
+/* Action area - fixed width to prevent jitter */
 .item-row__action {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 8px;
+    gap: 6px;
     flex-shrink: 0;
-    margin-left: 12px;
-    min-width: 80px; /* Fixed width prevents layout shift */
+    margin-left: 8px;
+    min-width: 90px;
 }
 
-/* Delta indicator - small, muted orange text */
+/* Delta indicator - numeric only (+1, +2) */
 .item-row__delta {
     font-size: 13px;
     font-weight: 600;
     color: var(--warning-orange);
 }
 
-/* Told button - minimal checkmark, not loud */
+/* Told button - small checkmark icon */
 .item-row__told {
     display: flex;
     align-items: center;
     justify-content: center;
     
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
     
     background-color: transparent;
-    border: 2px solid var(--success-green);
+    border: 1.5px solid var(--success-green);
     border-radius: 50%;
     
     color: var(--success-green);
-    font-size: 18px;
+    font-size: 14px;
     font-weight: 700;
     
     cursor: pointer;
@@ -1314,31 +1309,49 @@ body {
 }
 
 .item-row__told--pending {
-    border-color: var(--text-secondary);
-    color: var(--text-secondary);
+    border-color: #ccc;
+    color: #ccc;
     cursor: not-allowed;
 }
 
 .item-row__told:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
 }
 
-/* Section headers - subtle dividers for long lists */
-.item-section-header {
+/* Order count with person icon - visually secondary */
+.item-row__orders {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    
     font-size: 11px;
+    font-weight: 500;
+    color: #aaa;
+    flex-shrink: 0;
+    min-width: 28px; /* Fixed width prevents shift */
+}
+
+.item-row__icon {
+    width: 12px;
+    height: 12px;
+    opacity: 0.7;
+}
+
+/* Section headers - subtle dividers */
+.item-section-header {
+    font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--warning-orange);
     
-    padding: 8px var(--spacing-md) 4px;
+    padding: 6px var(--spacing-md) 4px;
     background-color: var(--background-light);
-    border-bottom: 1px solid var(--border-color);
 }
 
 .item-section-header--muted {
     color: #999;
-    margin-top: 4px;
+    margin-top: 2px;
 }
 
 /* ====================
