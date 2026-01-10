@@ -321,6 +321,11 @@ function handleTabSwitch(viewId) {
     DOM.stockFab.classList.toggle('hidden', viewId === 'active');
   }
   
+  // Auto-focus search on Ready tab for quick verification code entry
+  if (viewId === 'completed' && DOM.searchInput) {
+    setTimeout(() => DOM.searchInput.focus(), 100);
+  }
+  
   // Clear item filter when switching away from active view
   if (viewId !== 'active' && AdminState.selectedItemFilter) {
     // Keep filter state but hide indicator
@@ -868,39 +873,27 @@ function renderCompletedOrders() {
   
   DOM.completedOrdersList.innerHTML = orders.map(order => {
     const isPending = AdminState.pendingActions.has(order.id);
-    const displayItems = order.items?.slice(0, 3) || [];
-    const moreCount = (order.items?.length || 0) - 3;
+    const code = order.verification_code || '----';
+    const isMatch = searchQuery && code.toLowerCase().includes(searchQuery);
+    
+    // Highlight matching portion of verification code
+    let displayCode = escapeHtml(code);
+    if (searchQuery && isMatch) {
+      const regex = new RegExp(`(${escapeHtml(searchQuery)})`, 'gi');
+      displayCode = displayCode.replace(regex, '<mark class="code-highlight">$1</mark>');
+    }
     
     return `
-      <article class="order-card ${isPending ? 'order-card--pending' : ''}"
-               aria-label="Order ${truncateId(order.id)}, verification code ${order.verification_code || 'none'}">
-        <div class="order-card__header">
-          <span class="order-card__id">${truncateId(order.id)}</span>
-          <span class="order-card__time">${formatTime(order.updated_at)}</span>
-        </div>
-        
-        <!-- Verification Code (Requirements: 5.2) -->
-        <div class="order-card__verification">
-          <div class="order-card__verification-label">Verification Code</div>
-          <div class="order-card__verification-code">${order.verification_code || '----'}</div>
-        </div>
-        
-        <ul class="order-card__items">
-          ${displayItems.map(item => `
-            <li class="order-card__item">
-              <span class="order-card__item-name">${escapeHtml(item.title)}</span>
-              <span class="order-card__item-qty">×${item.quantity}</span>
-            </li>
-          `).join('')}
-          ${moreCount > 0 ? `<li class="order-card__items-more">and ${moreCount} more...</li>` : ''}
-        </ul>
-        
-        <button class="admin-btn admin-btn--success order-card__action"
+      <article class="ready-card ${isPending ? 'ready-card--pending' : ''} ${isMatch ? 'ready-card--match' : ''}"
+               aria-label="Order verification code ${code}">
+        <div class="ready-card__code">${displayCode}</div>
+        <div class="ready-card__time">${formatTime(order.updated_at)}</div>
+        <button class="ready-card__btn ${isPending ? 'ready-card__btn--pending' : ''}"
                 ${isPending ? 'disabled' : ''}
-                aria-label="Mark order ${truncateId(order.id)} as picked up"
+                aria-label="Confirm pickup for code ${code}"
                 data-order-id="${order.id}"
                 data-action="pickup">
-          ${isPending ? 'Processing...' : 'Picked Up'}
+          ${isPending ? '...' : 'Handed Over'}
         </button>
       </article>
     `;
