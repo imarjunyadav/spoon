@@ -511,19 +511,23 @@ function renderItems() {
 /**
  * Render a single item row
  * Layout: Order count top-right, qty× name on main line, wait time below
- * @param {Object} item - Item data { name, quantity, orderCount, delta, waitMinutes }
- * @param {boolean} showDelta - Whether to show delta and told button
+ * States: 
+ *   - Needs announcing: highlighted bg, +N delta, outlined ✓
+ *   - Already told: normal bg, no delta, filled ✓
+ * @param {Object} item - Item data { name, quantity, orderCount, delta, waitMinutes, toldCount }
+ * @param {boolean} needsAnnouncing - Whether item needs to be announced
  * @returns {string} HTML string
  */
-function renderItemRow(item, showDelta) {
+function renderItemRow(item, needsAnnouncing) {
   const isPendingTold = AdminState.pendingToldActions.has(item.name);
   const showWaitHint = item.waitMinutes >= 5;
   const waitTimeFormatted = formatWaitTime(item.waitMinutes);
+  const hasDelta = item.delta > 0;
   
   return `
-    <div class="item-row ${showDelta ? 'item-row--has-delta' : ''}"
+    <div class="item-row ${needsAnnouncing ? 'item-row--has-delta' : ''}"
          role="listitem"
-         aria-label="${item.quantity} ${item.name}${showDelta ? `, ${item.delta} new` : ''}">
+         aria-label="${item.quantity} ${item.name}${hasDelta ? `, ${item.delta} new` : ''}">
       <div class="item-row__content">
         <div class="item-row__primary">
           <span class="item-row__qty">${item.quantity}</span><span class="item-row__sep">×</span>
@@ -533,9 +537,9 @@ function renderItemRow(item, showDelta) {
       </div>
       <div class="item-row__right">
         <span class="item-row__orders"><svg class="item-row__icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>${item.orderCount}</span>
-        ${showDelta ? `
-          <div class="item-row__action">
-            <span class="item-row__delta">+${item.delta}</span>
+        <div class="item-row__action">
+          ${hasDelta ? `<span class="item-row__delta">+${item.delta}</span>` : ''}
+          ${hasDelta ? `
             <button class="item-row__told ${isPendingTold ? 'item-row__told--pending' : ''}"
                     ${isPendingTold ? 'disabled' : ''}
                     aria-label="Mark ${item.name} as told"
@@ -543,8 +547,10 @@ function renderItemRow(item, showDelta) {
                     data-item-quantity="${item.quantity}">
               ${isPendingTold ? '·' : '✓'}
             </button>
-          </div>
-        ` : ''}
+          ` : `
+            <span class="item-row__told-done" aria-label="${item.name} already told">✓</span>
+          `}
+        </div>
       </div>
     </div>
   `;
