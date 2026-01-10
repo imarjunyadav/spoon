@@ -1312,7 +1312,7 @@ body {
     color: var(--warning-orange);
 }
 
-/* Told button - touch-friendly size (44px min), light visual */
+/* Told button - solid filled green circle with white ✓ */
 .item-row__told {
     display: flex;
     align-items: center;
@@ -1323,28 +1323,25 @@ body {
     height: 44px;
     min-width: 44px;
     
-    background-color: transparent;
-    border: 1.5px solid var(--success-green);
+    background-color: var(--success-green);
+    border: none;
     border-radius: 50%;
     
-    color: var(--success-green);
-    font-size: 16px;
+    color: white;
+    font-size: 20px;
     font-weight: 700;
     
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: transform var(--transition-fast);
     -webkit-tap-highlight-color: transparent;
 }
 
 .item-row__told:active {
-    background-color: var(--success-green);
-    color: white;
     transform: scale(0.9);
 }
 
 .item-row__told--pending {
-    border-color: #ccc;
-    color: #ccc;
+    background-color: #ccc;
     cursor: not-allowed;
 }
 
