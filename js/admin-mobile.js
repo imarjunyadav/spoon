@@ -36,7 +36,11 @@ const AdminState = {
   toldCounts: {},
   
   // Pending "told" actions (for optimistic updates)
-  pendingToldActions: new Set()
+  pendingToldActions: new Set(),
+  
+  // Stock panel state
+  stockSearchQuery: '',
+  expandedCategories: new Set() // Track which categories are expanded
 };
 
 // Supabase client reference
@@ -153,6 +157,8 @@ function initDOMReferences() {
   DOM.stockPanel = document.getElementById('stock-panel');
   DOM.stockBackdrop = document.getElementById('stock-backdrop');
   DOM.stockCloseBtn = document.getElementById('stock-close-btn');
+  DOM.stockSearchInput = document.getElementById('stock-search-input');
+  DOM.stockSearchClear = document.getElementById('stock-search-clear');
   
   // Confirm dialog
   DOM.confirmDialog = document.getElementById('confirm-dialog');
@@ -224,6 +230,15 @@ function initEventListeners() {
   
   if (DOM.stockBackdrop) {
     DOM.stockBackdrop.addEventListener('click', closeStockPanel);
+  }
+  
+  // Stock search
+  if (DOM.stockSearchInput) {
+    DOM.stockSearchInput.addEventListener('input', debounce(handleStockSearch, 150));
+  }
+  
+  if (DOM.stockSearchClear) {
+    DOM.stockSearchClear.addEventListener('click', clearStockSearch);
   }
   
   // Confirm dialog
@@ -1058,6 +1073,13 @@ async function markPickedUp(orderId) {
  */
 function openStockPanel() {
   AdminState.isStockPanelOpen = true;
+  AdminState.stockSearchQuery = '';
+  
+  // Clear search input
+  if (DOM.stockSearchInput) {
+    DOM.stockSearchInput.value = '';
+  }
+  DOM.stockSearchClear?.classList.add('hidden');
   
   DOM.stockBackdrop?.classList.remove('hidden');
   DOM.stockBackdrop?.classList.add('visible');
@@ -1070,8 +1092,8 @@ function openStockPanel() {
   
   renderStockItems();
   
-  // Focus close button for accessibility
-  DOM.stockCloseBtn?.focus();
+  // Focus search input for quick access
+  setTimeout(() => DOM.stockSearchInput?.focus(), 300);
 }
 
 /**
@@ -1090,14 +1112,25 @@ function closeStockPanel() {
 }
 
 /**
- * Render stock items grouped by category (Requirements: 6.3)
+ * Render stock items grouped by category with collapsible sections
  */
 function renderStockItems() {
   if (!DOM.stockItemsList) return;
   
+  const searchQuery = AdminState.stockSearchQuery.toLowerCase().trim();
+  
+  // Filter items by search query
+  let filteredItems = AdminState.menuItems;
+  if (searchQuery) {
+    filteredItems = AdminState.menuItems.filter(item => 
+      item.name.toLowerCase().includes(searchQuery) ||
+      item.category.toLowerCase().includes(searchQuery)
+    );
+  }
+  
   // Group by category
   const categories = {};
-  AdminState.menuItems.forEach(item => {
+  filteredItems.forEach(item => {
     if (!categories[item.category]) {
       categories[item.category] = [];
     }
@@ -1107,34 +1140,107 @@ function renderStockItems() {
   // Sort categories alphabetically
   const sortedCategories = Object.keys(categories).sort();
   
-  DOM.stockItemsList.innerHTML = sortedCategories.map(category => `
-    <div class="stock-category">
-      <h3 class="stock-category__header">${escapeHtml(category)}</h3>
-      ${categories[category].map(item => `
-        <div class="stock-item">
-          <div class="stock-item__info">
-            <div class="stock-item__name">${escapeHtml(item.name)}</div>
-            <div class="stock-item__price">₹${item.price}</div>
-          </div>
-          <label class="stock-toggle">
-            <input type="checkbox" 
-                   class="stock-toggle__input"
-                   ${item.is_available ? 'checked' : ''}
-                   aria-label="${item.name} availability"
-                   data-item-id="${item.id}">
-            <span class="stock-toggle__slider"></span>
-          </label>
-        </div>
-      `).join('')}
-    </div>
-  `).join('');
+  // If searching, expand all categories; otherwise use saved state
+  const expandAll = searchQuery.length > 0;
   
-  // Add change handlers
-  DOM.stockItemsList.querySelectorAll('.stock-toggle__input').forEach(toggle => {
-    toggle.addEventListener('change', (e) => {
-      toggleStock(e.target.dataset.itemId, e.target.checked);
+  if (sortedCategories.length === 0) {
+    DOM.stockItemsList.innerHTML = `
+      <div class="stock-empty">
+        <p>No items found</p>
+      </div>
+    `;
+    return;
+  }
+  
+  DOM.stockItemsList.innerHTML = sortedCategories.map(category => {
+    const items = categories[category];
+    const isExpanded = expandAll || AdminState.expandedCategories.has(category);
+    const availableCount = items.filter(i => i.is_available).length;
+    const totalCount = items.length;
+    
+    return `
+      <div class="stock-category ${isExpanded ? 'stock-category--expanded' : ''}">
+        <button class="stock-category__header" 
+                data-category="${escapeHtml(category)}"
+                aria-expanded="${isExpanded}">
+          <div class="stock-category__info">
+            <span class="stock-category__name">${escapeHtml(category)}</span>
+            <span class="stock-category__count">${availableCount}/${totalCount} available</span>
+          </div>
+          <span class="stock-category__arrow">
+            <i class="fas fa-chevron-down" aria-hidden="true"></i>
+          </span>
+        </button>
+        <div class="stock-category__items ${isExpanded ? '' : 'hidden'}">
+          ${items.map(item => `
+            <div class="stock-item ${item.is_available ? '' : 'stock-item--unavailable'}">
+              <div class="stock-item__info">
+                <div class="stock-item__name">${escapeHtml(item.name)}</div>
+                <div class="stock-item__price">₹${item.price}</div>
+              </div>
+              <button class="stock-btn ${item.is_available ? 'stock-btn--available' : 'stock-btn--unavailable'}"
+                      data-item-id="${item.id}"
+                      data-available="${item.is_available}"
+                      aria-label="${item.is_available ? 'Mark ' + item.name + ' as unavailable' : 'Mark ' + item.name + ' as available'}">
+                ${item.is_available ? 'Available' : 'Out'}
+              </button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Add category toggle handlers
+  DOM.stockItemsList.querySelectorAll('.stock-category__header').forEach(header => {
+    header.addEventListener('click', () => toggleCategory(header.dataset.category));
+  });
+  
+  // Add stock button handlers
+  DOM.stockItemsList.querySelectorAll('.stock-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const isAvailable = btn.dataset.available === 'true';
+      toggleStock(btn.dataset.itemId, !isAvailable);
     });
   });
+}
+
+/**
+ * Toggle category expansion
+ * @param {string} category - Category name
+ */
+function toggleCategory(category) {
+  if (AdminState.expandedCategories.has(category)) {
+    AdminState.expandedCategories.delete(category);
+  } else {
+    AdminState.expandedCategories.add(category);
+  }
+  renderStockItems();
+}
+
+/**
+ * Handle stock search input
+ */
+function handleStockSearch() {
+  const query = DOM.stockSearchInput?.value || '';
+  AdminState.stockSearchQuery = query;
+  
+  // Show/hide clear button
+  DOM.stockSearchClear?.classList.toggle('hidden', !query);
+  
+  renderStockItems();
+}
+
+/**
+ * Clear stock search
+ */
+function clearStockSearch() {
+  if (DOM.stockSearchInput) {
+    DOM.stockSearchInput.value = '';
+  }
+  AdminState.stockSearchQuery = '';
+  DOM.stockSearchClear?.classList.add('hidden');
+  renderStockItems();
 }
 
 /**

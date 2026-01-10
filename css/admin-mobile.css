@@ -849,7 +849,7 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    height: 80vh;  /* 80% of viewport (Requirements: 6.2) */
+    height: 85vh;
     
     background-color: var(--background-white);
     border-top-left-radius: var(--radius-large);
@@ -906,27 +906,107 @@ body {
     cursor: pointer;
 }
 
+/* Stock Search */
+.stock-panel__search {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--background-light);
+}
+
+.stock-panel__search-input {
+    flex: 1;
+    height: 40px;
+    padding: 0 var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-medium);
+    font-size: var(--font-size-base);
+    background-color: var(--background-white);
+}
+
+.stock-panel__search-input:focus {
+    outline: none;
+    border-color: var(--brand-primary);
+}
+
+.stock-panel__search-clear {
+    width: 40px;
+    height: 40px;
+    margin-left: var(--spacing-sm);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 16px;
+    cursor: pointer;
+}
+
 .stock-panel__content {
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
 }
 
-/* Stock Category Header */
+/* Stock Empty State */
+.stock-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-secondary);
+}
+
+/* Stock Category - Collapsible */
 .stock-category {
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-sm);
+    background-color: var(--background-white);
+    border-radius: var(--radius-medium);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
 }
 
 .stock-category__header {
-    font-size: var(--font-size-xs);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: var(--spacing-md);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+}
+
+.stock-category__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.stock-category__name {
+    font-size: var(--font-size-base);
     font-weight: 600;
+    color: var(--text-primary);
+}
+
+.stock-category__count {
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: var(--spacing-sm);
-    padding-bottom: var(--spacing-xs);
-    border-bottom: 1px solid var(--border-color);
+}
+
+.stock-category__arrow {
+    color: var(--text-secondary);
+    transition: transform var(--transition-fast);
+}
+
+.stock-category--expanded .stock-category__arrow {
+    transform: rotate(180deg);
+}
+
+.stock-category__items {
+    border-top: 1px solid var(--border-color);
 }
 
 /* Stock Item Row */
@@ -934,18 +1014,35 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--spacing-sm) 0;
-    min-height: var(--touch-target-comfortable);
+    padding: var(--spacing-sm) var(--spacing-md);
+    min-height: 56px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.stock-item:last-child {
+    border-bottom: none;
+}
+
+.stock-item--unavailable {
+    background-color: #fafafa;
+}
+
+.stock-item--unavailable .stock-item__name {
+    color: var(--text-secondary);
 }
 
 .stock-item__info {
     flex: 1;
+    min-width: 0;
 }
 
 .stock-item__name {
     font-size: var(--font-size-base);
     font-weight: 500;
     color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .stock-item__price {
@@ -953,7 +1050,43 @@ body {
     color: var(--text-secondary);
 }
 
-/* Stock Toggle Switch (Requirements: 6.4, 6.7) */
+/* Stock Button - Improved */
+.stock-btn {
+    flex-shrink: 0;
+    min-width: 80px;
+    height: 36px;
+    padding: 0 var(--spacing-md);
+    border-radius: var(--radius-small);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: none;
+}
+
+.stock-btn--available {
+    background-color: var(--success-green-light);
+    color: var(--success-green);
+    border: 1px solid var(--success-green);
+}
+
+.stock-btn--available:active {
+    background-color: var(--success-green);
+    color: white;
+}
+
+.stock-btn--unavailable {
+    background-color: var(--error-red-light);
+    color: var(--error-red);
+    border: 1px solid var(--error-red);
+}
+
+.stock-btn--unavailable:active {
+    background-color: var(--error-red);
+    color: white;
+}
+
+/* Legacy Stock Toggle (kept for compatibility) */
 .stock-toggle {
     position: relative;
     width: 52px;
@@ -974,11 +1107,9 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: var(--error-red);  /* Out of stock = red */
+    background-color: var(--error-red);
     border-radius: var(--radius-pill);
     transition: background-color var(--transition-normal);
-    
-    /* Touch target padding */
     padding: var(--spacing-sm);
     margin: calc(-1 * var(--spacing-sm));
 }
@@ -996,7 +1127,7 @@ body {
 }
 
 .stock-toggle__input:checked + .stock-toggle__slider {
-    background-color: var(--success-green);  /* In stock = green */
+    background-color: var(--success-green);
 }
 
 .stock-toggle__input:checked + .stock-toggle__slider::before {
