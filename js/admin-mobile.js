@@ -316,6 +316,11 @@ function handleTabSwitch(viewId) {
     view.classList.toggle('active', isActive);
   });
   
+  // Hide stock FAB on Active tab (execution-only)
+  if (DOM.stockFab) {
+    DOM.stockFab.classList.toggle('hidden', viewId === 'active');
+  }
+  
   // Clear item filter when switching away from active view
   if (viewId !== 'active' && AdminState.selectedItemFilter) {
     // Keep filter state but hide indicator
