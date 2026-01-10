@@ -421,6 +421,7 @@ function renderAll() {
 /**
  * Render Items to Prepare view (read-only with delta tracking)
  * Counter staff reads this tab and shouts quantities to kitchen
+ * Optimized for fast scanning: "5 × Item Name" format
  */
 function renderItems() {
   if (!DOM.itemsList) return;
@@ -441,27 +442,24 @@ function renderItems() {
     const isNewItem = item.toldCount === 0 && item.quantity > 0;
     
     return `
-    <div class="item-card item-card--readonly"
+    <div class="item-row ${showDelta ? 'item-row--has-delta' : ''}"
          role="listitem"
-         aria-label="${item.quantity} ${item.name}, ${item.orderCount} order${item.orderCount !== 1 ? 's' : ''}${showDelta ? `, ${item.delta} new` : ''}">
-      <div class="item-card__main">
-        <div class="item-card__quantity-large">${item.quantity}</div>
-        <div class="item-card__info">
-          <div class="item-card__name">${escapeHtml(item.name)}</div>
-          <div class="item-card__orders">${item.orderCount} order${item.orderCount !== 1 ? 's' : ''}</div>
-        </div>
+         aria-label="${item.quantity} ${item.name}${showDelta ? `, ${item.delta} new` : ''}">
+      <div class="item-row__main">
+        <span class="item-row__qty">${item.quantity}</span>
+        <span class="item-row__sep">×</span>
+        <span class="item-row__name">${escapeHtml(item.name)}</span>
+        <span class="item-row__orders">(${item.orderCount})</span>
       </div>
       ${showDelta ? `
-        <div class="item-card__delta-section">
-          <span class="item-card__delta ${isNewItem ? 'item-card__delta--new' : ''}">
-            ${isNewItem ? 'NEW' : `+${item.delta}`}
-          </span>
-          <button class="item-card__told-btn ${isPendingTold ? 'item-card__told-btn--pending' : ''}"
+        <div class="item-row__action">
+          <span class="item-row__delta">${isNewItem ? 'new' : `+${item.delta}`}</span>
+          <button class="item-row__told ${isPendingTold ? 'item-row__told--pending' : ''}"
                   ${isPendingTold ? 'disabled' : ''}
-                  aria-label="Mark ${item.name} as told to kitchen"
+                  aria-label="Mark ${item.name} as told"
                   data-item-name="${escapeHtml(item.name)}"
                   data-item-quantity="${item.quantity}">
-            ${isPendingTold ? '...' : 'TOLD'}
+            ${isPendingTold ? '...' : '✓'}
           </button>
         </div>
       ` : ''}
@@ -470,7 +468,7 @@ function renderItems() {
   }).join('');
   
   // Add click handlers for TOLD buttons only
-  DOM.itemsList.querySelectorAll('.item-card__told-btn').forEach(btn => {
+  DOM.itemsList.querySelectorAll('.item-row__told').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       handleTold(btn.dataset.itemName, parseInt(btn.dataset.itemQuantity, 10));
