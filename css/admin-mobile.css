@@ -1192,21 +1192,22 @@ body {
 
 /* ====================
    21. ITEM ROW COMPONENT
-   Format: 4× American Chopsuey ~7m +1 ✓ 👤4
-   Single-line, minimal visual noise, clear hierarchy
+   Layout: Order count top-right, qty× name primary, wait time secondary
    ==================== */
 
-/* Base row - single line, consistent spacing */
+/* Base row - increased height for breathing room */
 .item-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    position: relative;
     
     background-color: var(--background-white);
-    padding: 10px var(--spacing-md);
-    margin-bottom: 2px; /* Small gap between rows for scan accuracy */
+    padding: 12px var(--spacing-md);
+    margin-bottom: 6px; /* Larger gap between rows */
+    border-radius: 4px;
     
-    min-height: 48px;
+    min-height: 56px;
 }
 
 /* Subtle highlight for rows needing announcement */
@@ -1214,16 +1215,22 @@ body {
     background-color: #fffbf5;
 }
 
-/* Main content: qty× name ~Xm */
-.item-row__main {
+/* Left content area */
+.item-row__content {
     display: flex;
-    align-items: baseline;
+    flex-direction: column;
     flex: 1;
     min-width: 0;
-    overflow: hidden;
+    padding-right: 60px; /* Space for order count */
 }
 
-/* Quantity - emphasized but not oversized */
+/* Primary line: qty× name */
+.item-row__primary {
+    display: flex;
+    align-items: baseline;
+}
+
+/* Quantity - emphasized */
 .item-row__qty {
     font-size: 18px;
     font-weight: 700;
@@ -1237,10 +1244,10 @@ body {
     font-weight: 400;
     color: var(--text-secondary);
     flex-shrink: 0;
-    margin-right: 6px; /* One space after × */
+    margin-right: 6px;
 }
 
-/* Item name - truncate if too long */
+/* Item name - more horizontal space, truncate if needed */
 .item-row__name {
     font-size: 16px;
     font-weight: 500;
@@ -1252,34 +1259,60 @@ body {
     min-width: 0;
 }
 
-/* Wait time hint - subtle, appears after name */
+/* Wait time - secondary line below name */
 .item-row__wait {
     font-size: 12px;
     font-weight: 500;
     color: #999;
-    flex-shrink: 0;
-    margin-left: 6px;
+    margin-top: 2px;
 }
 
-/* Action area - fixed width to prevent jitter */
+/* Right side container */
+.item-row__right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+/* Order count - top-right corner, fixed position */
+.item-row__orders {
+    position: absolute;
+    top: 8px;
+    right: var(--spacing-md);
+    
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    
+    font-size: 11px;
+    font-weight: 500;
+    color: #aaa;
+}
+
+.item-row__icon {
+    width: 11px;
+    height: 11px;
+    opacity: 0.7;
+}
+
+/* Action area: delta + told button, vertically centered */
 .item-row__action {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
     gap: 6px;
-    flex-shrink: 0;
-    margin-left: 8px;
-    min-width: 90px;
+    margin-top: 4px;
 }
 
-/* Delta indicator - numeric only (+1, +2) */
+/* Delta indicator - numeric only */
 .item-row__delta {
     font-size: 13px;
     font-weight: 600;
     color: var(--warning-orange);
 }
 
-/* Told button - small checkmark icon */
+/* Told button - small checkmark */
 .item-row__told {
     display: flex;
     align-items: center;
@@ -1318,25 +1351,6 @@ body {
     opacity: 0.5;
 }
 
-/* Order count with person icon - visually secondary */
-.item-row__orders {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    
-    font-size: 11px;
-    font-weight: 500;
-    color: #aaa;
-    flex-shrink: 0;
-    min-width: 28px; /* Fixed width prevents shift */
-}
-
-.item-row__icon {
-    width: 12px;
-    height: 12px;
-    opacity: 0.7;
-}
-
 /* Section headers - subtle dividers */
 .item-section-header {
     font-size: 10px;
@@ -1345,13 +1359,13 @@ body {
     letter-spacing: 0.5px;
     color: var(--warning-orange);
     
-    padding: 6px var(--spacing-md) 4px;
+    padding: 8px var(--spacing-md) 6px;
     background-color: var(--background-light);
 }
 
 .item-section-header--muted {
     color: #999;
-    margin-top: 2px;
+    margin-top: 4px;
 }
 
 /* ====================

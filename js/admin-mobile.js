@@ -510,7 +510,7 @@ function renderItems() {
 
 /**
  * Render a single item row
- * Format: 4× American Chopsuey ~7m +1 ✓ 👤4
+ * Layout: Order count top-right, qty× name on main line, wait time below
  * @param {Object} item - Item data { name, quantity, orderCount, delta, waitMinutes }
  * @param {boolean} showDelta - Whether to show delta and told button
  * @returns {string} HTML string
@@ -518,31 +518,55 @@ function renderItems() {
 function renderItemRow(item, showDelta) {
   const isPendingTold = AdminState.pendingToldActions.has(item.name);
   const showWaitHint = item.waitMinutes >= 5;
+  const waitTimeFormatted = formatWaitTime(item.waitMinutes);
   
   return `
     <div class="item-row ${showDelta ? 'item-row--has-delta' : ''}"
          role="listitem"
          aria-label="${item.quantity} ${item.name}${showDelta ? `, ${item.delta} new` : ''}">
-      <div class="item-row__main">
-        <span class="item-row__qty">${item.quantity}</span><span class="item-row__sep">×</span>
-        <span class="item-row__name">${escapeHtml(item.name)}</span>
-        ${showWaitHint ? `<span class="item-row__wait">~${item.waitMinutes}m</span>` : ''}
+      <div class="item-row__content">
+        <div class="item-row__primary">
+          <span class="item-row__qty">${item.quantity}</span><span class="item-row__sep">×</span>
+          <span class="item-row__name">${escapeHtml(item.name)}</span>
+        </div>
+        ${showWaitHint ? `<div class="item-row__wait">${waitTimeFormatted}</div>` : ''}
       </div>
-      <div class="item-row__action">
-        ${showDelta ? `
-          <span class="item-row__delta">+${item.delta}</span>
-          <button class="item-row__told ${isPendingTold ? 'item-row__told--pending' : ''}"
-                  ${isPendingTold ? 'disabled' : ''}
-                  aria-label="Mark ${item.name} as told"
-                  data-item-name="${escapeHtml(item.name)}"
-                  data-item-quantity="${item.quantity}">
-            ${isPendingTold ? '·' : '✓'}
-          </button>
-        ` : ''}
+      <div class="item-row__right">
         <span class="item-row__orders"><svg class="item-row__icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>${item.orderCount}</span>
+        ${showDelta ? `
+          <div class="item-row__action">
+            <span class="item-row__delta">+${item.delta}</span>
+            <button class="item-row__told ${isPendingTold ? 'item-row__told--pending' : ''}"
+                    ${isPendingTold ? 'disabled' : ''}
+                    aria-label="Mark ${item.name} as told"
+                    data-item-name="${escapeHtml(item.name)}"
+                    data-item-quantity="${item.quantity}">
+              ${isPendingTold ? '·' : '✓'}
+            </button>
+          </div>
+        ` : ''}
       </div>
     </div>
   `;
+}
+
+/**
+ * Format wait time for display
+ * < 60 min → ~18m
+ * >= 60 min → ~1h 5m, ~2h 10m
+ * @param {number} minutes - Wait time in minutes
+ * @returns {string} Formatted wait time
+ */
+function formatWaitTime(minutes) {
+  if (minutes < 60) {
+    return `~${minutes}m`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (mins === 0) {
+    return `~${hours}h`;
+  }
+  return `~${hours}h ${mins}m`;
 }
 
 /**
