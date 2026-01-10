@@ -1909,8 +1909,6 @@ body {
     border-radius: var(--radius-medium);
     padding: var(--spacing-sm) var(--spacing-md);
     margin-bottom: var(--spacing-sm);
-    
-    transition: all var(--transition-fast);
 }
 
 .ready-card--pending {
