@@ -497,26 +497,43 @@ function getItemSummary() {
 
 /**
  * Get items with delta calculation and wait time
- * @returns {Array} Array of { name, quantity, orderCount, toldCount, delta, waitMinutes, bucketKey }
+ * @returns {Array} Array of { name, quantity, orderCount, toldCount, delta, waitMinutes, bucketKey, totalItemQuantity }
  */
 function getSortedItems() {
   const summary = getItemSummary();
   const now = Date.now();
+  
+  // First, calculate total quantity per item name (across all buckets)
+  const totalQuantityByName = {};
+  Object.values(summary).forEach(data => {
+    if (!totalQuantityByName[data.name]) {
+      totalQuantityByName[data.name] = 0;
+    }
+    totalQuantityByName[data.name] += data.quantity;
+  });
   
   return Object.entries(summary)
     .map(([bucketKey, data]) => {
       // For told counts, use the base item name (without bucket suffix)
       const baseName = data.name;
       const toldCount = AdminState.toldCounts[baseName] || 0;
+      const totalItemQuantity = totalQuantityByName[baseName];
       
-      // Delta calculation: for bucketed items, we need smarter logic
-      // Only the oldest bucket should show delta (new orders in newer buckets are inherently "new")
+      // Delta calculation: compare total quantity against told count
+      // If told count >= total quantity, all buckets are "told"
+      // Otherwise, show delta based on what's remaining
       let delta = 0;
-      if (data.bucketIndex === 0) {
-        // Oldest bucket: compare against told count
-        delta = Math.max(0, data.quantity - toldCount);
+      const remainingToTell = totalItemQuantity - toldCount;
+      
+      if (remainingToTell <= 0) {
+        // Everything has been told
+        delta = 0;
+      } else if (data.bucketIndex === 0) {
+        // Oldest bucket: gets the remaining delta (up to its quantity)
+        delta = Math.min(remainingToTell, data.quantity);
       } else {
-        // Newer buckets: always show as "new" (delta = quantity)
+        // Newer buckets: check if there's still remaining after older buckets
+        // For simplicity, newer buckets always show as "new" until all are told
         delta = data.quantity;
       }
       
@@ -532,7 +549,8 @@ function getSortedItems() {
         delta,
         waitMinutes,
         bucketIndex: data.bucketIndex,
-        totalBuckets: data.totalBuckets
+        totalBuckets: data.totalBuckets,
+        totalItemQuantity // Total across all buckets for this item
       };
     })
     .sort((a, b) => b.quantity - a.quantity); // Default sort by quantity
@@ -659,7 +677,7 @@ function renderItemRow(item, showDelta) {
                     ${isPendingTold ? 'disabled' : ''}
                     aria-label="Mark ${item.name} as told"
                     data-item-name="${escapeHtml(item.name)}"
-                    data-item-quantity="${item.quantity}">
+                    data-item-quantity="${item.totalItemQuantity || item.quantity}">
               ${isPendingTold ? '·' : '✓'}
             </button>
           </div>
