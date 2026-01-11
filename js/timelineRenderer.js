@@ -2,14 +2,13 @@
  * HorizontalStepperRenderer
  * Renders a modern horizontal status stepper for order tracking.
  * 
- * Design: Horizontal progress bar at top with hero verification code in center.
- * Inspired by modern delivery apps (Uber Eats, DoorDash, etc.)
+ * Design: Simple 3-step flow - Preparing → Ready → Picked Up
+ * Clean, honest status without complex timing logic.
  */
 const HorizontalStepperRenderer = {
-  // Stepper stages configuration (Modern/Foodie icons - Free version)
+  // Stepper stages configuration - Simple 3-step flow
   STAGES: [
-    { dbStatus: 'PENDING', displayName: 'Order Placed', icon: 'fa-receipt' },
-    { dbStatus: 'PREPARING', displayName: 'In the Kitchen', icon: 'fa-fire' },
+    { dbStatus: 'PENDING', displayName: 'Preparing', icon: 'fa-fire' },
     { dbStatus: 'COMPLETE', displayName: 'Ready', icon: 'fa-bowl-food' },
     { dbStatus: 'PICKED_UP', displayName: 'Picked Up', icon: 'fa-circle-check' }
   ],
@@ -23,10 +22,9 @@ const HorizontalStepperRenderer = {
   /**
    * Calculates the visual state for each stepper step.
    * 
-   * Special logic:
-   * - PENDING/PLACED: Auto-check both "Order Placed" AND "In the Kitchen"
-   * - PREPARING: First two steps checked
-   * - COMPLETE: First 3 steps complete/current
+   * Simple 3-step logic:
+   * - PENDING/PLACED/PREPARING: Step 1 (Preparing) is current
+   * - COMPLETE: Steps 1-2 complete, Step 2 (Ready) is current
    * - PICKED_UP: All steps complete
    * 
    * @param {string} currentStatus - Current order status
@@ -37,16 +35,16 @@ const HorizontalStepperRenderer = {
       let state = 'pending';
       let showTimestamp = false;
 
-      // Special handling for PENDING status - auto-check "In the Kitchen" too
-      if (currentStatus === 'PENDING' || currentStatus === 'PLACED') {
-        if (index <= 1) {
-          state = index === 1 ? 'current' : 'complete';
+      // PENDING/PLACED/PREPARING: First step is current
+      if (currentStatus === 'PENDING' || currentStatus === 'PLACED' || currentStatus === 'PREPARING') {
+        if (index === 0) {
+          state = 'current';
           showTimestamp = true;
         }
       }
-      // PREPARING status
-      else if (currentStatus === 'PREPARING') {
-        if (index < 1) {
+      // COMPLETE: First step complete, second is current
+      else if (currentStatus === 'COMPLETE') {
+        if (index === 0) {
           state = 'complete';
           showTimestamp = true;
         } else if (index === 1) {
@@ -54,17 +52,7 @@ const HorizontalStepperRenderer = {
           showTimestamp = true;
         }
       }
-      // COMPLETE status
-      else if (currentStatus === 'COMPLETE') {
-        if (index < 2) {
-          state = 'complete';
-          showTimestamp = true;
-        } else if (index === 2) {
-          state = 'current';
-          showTimestamp = true;
-        }
-      }
-      // PICKED_UP status
+      // PICKED_UP: All steps complete
       else if (currentStatus === 'PICKED_UP') {
         state = 'complete';
         showTimestamp = true;
@@ -83,8 +71,7 @@ const HorizontalStepperRenderer = {
    * - Pending steps: Theme red (#eb1700) static
    * 
    * Timestamps:
-   * - Order Placed: order.created_at
-   * - In the Kitchen: order.created_at (auto-checked)
+   * - Preparing: order.created_at
    * - Ready: order.ready_at
    * - Picked Up: order.picked_up_at
    * 
@@ -105,10 +92,9 @@ const HorizontalStepperRenderer = {
       });
     };
     
-    // Map each step to its correct timestamp
+    // Map each step to its correct timestamp (simple 3-step)
     const stepTimestamps = {
-      'PENDING': order.created_at,      // Order Placed
-      'PREPARING': order.created_at,    // In the Kitchen (auto-checked, same as placed)
+      'PENDING': order.created_at,      // Preparing
       'COMPLETE': order.ready_at,       // Ready
       'PICKED_UP': order.picked_up_at   // Picked Up
     };

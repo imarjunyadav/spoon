@@ -3,6 +3,8 @@
  * 
  * Feature: order-status-optimization
  * Tests the horizontal stepper rendering logic for order status display.
+ * 
+ * Simple 3-step flow: Preparing → Ready → Picked Up
  */
 const fc = require('fast-check');
 const { HorizontalStepperRenderer } = require('./timelineRenderer');
@@ -13,35 +15,30 @@ describe('HorizontalStepperRenderer', () => {
      * Feature: order-status-optimization, Property 2: Timeline step state calculation
      * Validates: Requirements 3.1, 3.2, 3.3
      * 
-     * For any order with PENDING status, the stepper should mark
-     * "Order Placed" and "In the Kitchen" as complete/current, and rest as pending.
+     * For any order with PENDING/PLACED/PREPARING status, the stepper should mark
+     * "Preparing" as current, and rest as pending.
      */
-    test('Property 2: PENDING status marks Order Placed and In the Kitchen as complete/current', () => {
+    test('Property 2: PENDING/PLACED/PREPARING status marks Preparing as current', () => {
       fc.assert(
         fc.property(
-          fc.constantFrom('PENDING', 'PLACED'),
+          fc.constantFrom('PENDING', 'PLACED', 'PREPARING'),
           (status) => {
             const states = HorizontalStepperRenderer.calculateStepStates(status);
             
-            // Order Placed (index 0) should be complete
-            const orderPlacedState = states[0];
-            expect(orderPlacedState.state).toBe('complete');
-            expect(orderPlacedState.showTimestamp).toBe(true);
-            
-            // In the Kitchen (index 1) should be current (auto-checked)
-            const preparingState = states[1];
+            // Preparing (index 0) should be current
+            const preparingState = states[0];
             expect(preparingState.state).toBe('current');
             expect(preparingState.showTimestamp).toBe(true);
             
-            // Ready for Pickup (index 2) should be pending
-            const readyState = states[2];
+            // Ready (index 1) should be pending
+            const readyState = states[1];
             expect(readyState.state).toBe('pending');
             expect(readyState.showTimestamp).toBe(false);
             
-            // Picked Up (index 3) should be pending
-            const completedState = states[3];
-            expect(completedState.state).toBe('pending');
-            expect(completedState.showTimestamp).toBe(false);
+            // Picked Up (index 2) should be pending
+            const pickedUpState = states[2];
+            expect(pickedUpState.state).toBe('pending');
+            expect(pickedUpState.showTimestamp).toBe(false);
             
             return true;
           }
@@ -55,26 +52,22 @@ describe('HorizontalStepperRenderer', () => {
      * Validates: Requirements 4.1, 4.2
      * 
      * For any order with COMPLETE status, the stepper should mark
-     * "Order Placed", "In the Kitchen", and "Ready for Pickup" as complete/current.
+     * "Preparing" as complete and "Ready" as current.
      */
-    test('Property 3: COMPLETE status marks first 3 steps as complete/current', () => {
+    test('Property 3: COMPLETE status marks Preparing complete and Ready current', () => {
       const states = HorizontalStepperRenderer.calculateStepStates('COMPLETE');
       
-      // Order Placed (index 0) should be complete
+      // Preparing (index 0) should be complete
       expect(states[0].state).toBe('complete');
       expect(states[0].showTimestamp).toBe(true);
       
-      // In the Kitchen (index 1) should be complete
-      expect(states[1].state).toBe('complete');
+      // Ready (index 1) should be current
+      expect(states[1].state).toBe('current');
       expect(states[1].showTimestamp).toBe(true);
       
-      // Ready for Pickup (index 2) should be current
-      expect(states[2].state).toBe('current');
-      expect(states[2].showTimestamp).toBe(true);
-      
-      // Picked Up (index 3) should be pending
-      expect(states[3].state).toBe('pending');
-      expect(states[3].showTimestamp).toBe(false);
+      // Picked Up (index 2) should be pending
+      expect(states[2].state).toBe('pending');
+      expect(states[2].showTimestamp).toBe(false);
     });
 
     /**
@@ -94,18 +87,18 @@ describe('HorizontalStepperRenderer', () => {
     });
 
     /**
-     * Feature: order-status-optimization, Property 2: Always returns exactly 4 steps
+     * Feature: order-status-optimization, Property 2: Always returns exactly 3 steps
      * Validates: Requirements 2.4
      * 
-     * For any status, the stepper should always have exactly 4 steps.
+     * For any status, the stepper should always have exactly 3 steps.
      */
-    test('Property 2: Always returns exactly 4 steps', () => {
+    test('Property 2: Always returns exactly 3 steps', () => {
       fc.assert(
         fc.property(
           fc.constantFrom('PENDING', 'PLACED', 'PREPARING', 'COMPLETE', 'PICKED_UP'),
           (status) => {
             const states = HorizontalStepperRenderer.calculateStepStates(status);
-            return states.length === 4;
+            return states.length === 3;
           }
         ),
         { numRuns: 100 }
@@ -167,7 +160,7 @@ describe('HorizontalStepperRenderer', () => {
      * Feature: order-status-optimization, Property 5: Stepper contains all stage labels
      * Validates: Requirements 2.1, 2.2
      * 
-     * For any rendered stepper, the output should contain all 4 stage labels.
+     * For any rendered stepper, the output should contain all 3 stage labels.
      */
     test('Property 5: Rendered stepper contains all stage labels', () => {
       fc.assert(
@@ -177,8 +170,7 @@ describe('HorizontalStepperRenderer', () => {
             const order = createMockOrder(status);
             const html = HorizontalStepperRenderer.renderStepper(order);
             
-            return html.includes('Order Placed') && 
-                   html.includes('In the Kitchen') &&
+            return html.includes('Preparing') && 
                    html.includes('Ready') &&
                    html.includes('Picked Up');
           }
@@ -212,9 +204,9 @@ describe('HorizontalStepperRenderer', () => {
           (status) => {
             const order = createMockOrder(status);
             const html = HorizontalStepperRenderer.renderStepper(order);
-            // Should have 3 connector lines (between 4 steps)
+            // Should have 2 connector lines (between 3 steps)
             const connectorCount = (html.match(/stepper-connector/g) || []).length;
-            return connectorCount === 3;
+            return connectorCount === 2;
           }
         ),
         { numRuns: 100 }
@@ -248,9 +240,9 @@ describe('HorizontalStepperRenderer', () => {
       const order = createMockOrder('PICKED_UP');
       const html = HorizontalStepperRenderer.renderStepper(order);
       
-      // Should have 4 complete steps
+      // Should have 3 complete steps
       const completeCount = (html.match(/stepper-step--complete/g) || []).length;
-      expect(completeCount).toBe(4);
+      expect(completeCount).toBe(3);
       
       // Should NOT have any current or pending steps
       expect(html).not.toContain('stepper-step--current');
@@ -358,11 +350,11 @@ describe('HorizontalStepperRenderer', () => {
 
   describe('STAGES configuration', () => {
     /**
-     * Feature: order-status-optimization, Property 5: Exactly 4 stages
+     * Feature: order-status-optimization, Property 5: Exactly 3 stages
      * Validates: Requirements 2.4
      */
-    test('Property 5: STAGES has exactly 4 entries', () => {
-      expect(HorizontalStepperRenderer.STAGES.length).toBe(4);
+    test('Property 5: STAGES has exactly 3 entries', () => {
+      expect(HorizontalStepperRenderer.STAGES.length).toBe(3);
     });
 
     /**
@@ -380,10 +372,10 @@ describe('HorizontalStepperRenderer', () => {
 
     /**
      * Feature: order-status-optimization, Property 5: Stages have correct display names
-     * Validates: New horizontal stepper stage names
+     * Validates: Simple 3-step flow stage names
      */
     test('Property 5: Stages have correct display names', () => {
-      const expectedNames = ['Order Placed', 'In the Kitchen', 'Ready', 'Picked Up'];
+      const expectedNames = ['Preparing', 'Ready', 'Picked Up'];
       HorizontalStepperRenderer.STAGES.forEach((stage, index) => {
         expect(stage.displayName).toBe(expectedNames[index]);
       });
