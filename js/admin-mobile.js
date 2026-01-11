@@ -388,12 +388,12 @@ function updateBadge(badgeEl, count) {
 // ITEM AGGREGATION (Requirements: 3.1, 3.2, 3.4)
 // ============================================
 
-// Time bucket threshold in milliseconds (30 minutes)
-const TIME_BUCKET_THRESHOLD_MS = 30 * 60 * 1000;
+// Time bucket threshold in milliseconds (10 minutes)
+const TIME_BUCKET_THRESHOLD_MS = 10 * 60 * 1000;
 
 /**
  * Get aggregated item summary from pending orders with time-bucket splitting.
- * Items are split into separate rows when order age gap exceeds 30 minutes.
+ * Items are split into separate rows when order age gap exceeds 10 minutes.
  * This prevents new orders from being hidden inside very old backlog.
  * 
  * @returns {Object} Map of bucket key to { name, quantity, orderCount, oldestOrderTime, newestOrderTime }
