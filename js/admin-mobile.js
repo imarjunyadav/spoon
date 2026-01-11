@@ -1950,6 +1950,9 @@ async function initAdmin() {
   // Load told counts from localStorage
   loadToldCounts();
   
+  // Start UI timer for wait time updates
+  startWaitTimeTimer();
+  
   // Check session and verify admin
   const isAdmin = await checkSession();
   
@@ -1961,8 +1964,50 @@ async function initAdmin() {
   }
 }
 
+// ============================================
+// UI TIMER FOR WAIT TIME UPDATES
+// ============================================
+
+let waitTimeTimerId = null;
+
+/**
+ * Start a UI-only timer that re-renders wait times every 60 seconds.
+ * No DB writes or API calls - just recomputes relative times from existing timestamps.
+ */
+function startWaitTimeTimer() {
+  // Clear any existing timer
+  if (waitTimeTimerId) {
+    clearInterval(waitTimeTimerId);
+  }
+  
+  // Update every 60 seconds
+  waitTimeTimerId = setInterval(() => {
+    // Only re-render if we have orders loaded
+    if (AdminState.orders.length > 0) {
+      console.log('⏱️ Refreshing wait times');
+      renderItems();
+      renderActiveOrders();
+      renderCompletedOrders();
+    }
+  }, 60000);
+  
+  console.log('⏱️ Wait time timer started (60s interval)');
+}
+
+/**
+ * Stop the wait time timer
+ */
+function stopWaitTimeTimer() {
+  if (waitTimeTimerId) {
+    clearInterval(waitTimeTimerId);
+    waitTimeTimerId = null;
+    console.log('⏱️ Wait time timer stopped');
+  }
+}
+
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
+  stopWaitTimeTimer();
   RealtimeSubscriptionManager.cleanup();
 });
 
