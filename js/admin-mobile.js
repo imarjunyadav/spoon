@@ -350,9 +350,10 @@ function updateBadgeCounts() {
   const pendingOrders = AdminState.orders.filter(o => o.status === 'PENDING');
   const completedOrders = AdminState.orders.filter(o => o.status === 'COMPLETE');
   
-  // Items badge: count of unique items across pending orders
+  // Items badge: count of unique item names (not bucket keys)
   const itemSummary = getItemSummary();
-  const itemCount = Object.keys(itemSummary).length;
+  const uniqueItemNames = new Set(Object.values(itemSummary).map(item => item.name));
+  const itemCount = uniqueItemNames.size;
   updateBadge(DOM.badgeItems, itemCount);
   
   // Active badge: count of pending orders
@@ -387,13 +388,19 @@ function updateBadge(badgeEl, count) {
 // ITEM AGGREGATION (Requirements: 3.1, 3.2, 3.4)
 // ============================================
 
+// Time bucket threshold in milliseconds (30 minutes)
+const TIME_BUCKET_THRESHOLD_MS = 30 * 60 * 1000;
+
 /**
- * Get aggregated item summary from pending orders
- * Includes oldest order timestamp for wait time calculation
- * @returns {Object} Map of item name to { quantity, orderCount, oldestOrderTime }
+ * Get aggregated item summary from pending orders with time-bucket splitting.
+ * Items are split into separate rows when order age gap exceeds 30 minutes.
+ * This prevents new orders from being hidden inside very old backlog.
+ * 
+ * @returns {Object} Map of bucket key to { name, quantity, orderCount, oldestOrderTime, newestOrderTime }
  */
 function getItemSummary() {
-  const summary = {};
+  // First, collect all item instances with their order times
+  const itemInstances = [];
   
   AdminState.orders
     .filter(o => o.status === 'PENDING')
@@ -402,55 +409,130 @@ function getItemSummary() {
       
       const orderTime = new Date(order.created_at).getTime();
       
-      // Track which items we've seen in this order to count orders correctly
-      const seenInThisOrder = new Set();
-      
       order.items.forEach(item => {
-        if (!summary[item.title]) {
-          summary[item.title] = { 
-            quantity: 0, 
-            orderCount: 0,
-            oldestOrderTime: orderTime
-          };
-        }
-        summary[item.title].quantity += item.quantity;
-        
-        // Track oldest order containing this item
-        if (orderTime < summary[item.title].oldestOrderTime) {
-          summary[item.title].oldestOrderTime = orderTime;
-        }
-        
-        // Only increment orderCount once per order per item type
-        if (!seenInThisOrder.has(item.title)) {
-          summary[item.title].orderCount += 1;
-          seenInThisOrder.add(item.title);
-        }
+        itemInstances.push({
+          name: item.title,
+          quantity: item.quantity,
+          orderTime,
+          orderId: order.id
+        });
       });
     });
+  
+  // Group by item name first
+  const itemsByName = {};
+  itemInstances.forEach(instance => {
+    if (!itemsByName[instance.name]) {
+      itemsByName[instance.name] = [];
+    }
+    itemsByName[instance.name].push(instance);
+  });
+  
+  // Now create time buckets for each item
+  const summary = {};
+  
+  Object.entries(itemsByName).forEach(([itemName, instances]) => {
+    // Sort by order time (oldest first)
+    instances.sort((a, b) => a.orderTime - b.orderTime);
+    
+    // Create buckets based on time gaps
+    const buckets = [];
+    let currentBucket = null;
+    
+    instances.forEach(instance => {
+      if (!currentBucket) {
+        // Start first bucket
+        currentBucket = {
+          name: itemName,
+          quantity: instance.quantity,
+          orderCount: 1,
+          oldestOrderTime: instance.orderTime,
+          newestOrderTime: instance.orderTime,
+          orderIds: new Set([instance.orderId])
+        };
+      } else if (instance.orderTime - currentBucket.newestOrderTime > TIME_BUCKET_THRESHOLD_MS) {
+        // Gap too large, start new bucket
+        buckets.push(currentBucket);
+        currentBucket = {
+          name: itemName,
+          quantity: instance.quantity,
+          orderCount: 1,
+          oldestOrderTime: instance.orderTime,
+          newestOrderTime: instance.orderTime,
+          orderIds: new Set([instance.orderId])
+        };
+      } else {
+        // Add to current bucket
+        currentBucket.quantity += instance.quantity;
+        currentBucket.newestOrderTime = instance.orderTime;
+        if (!currentBucket.orderIds.has(instance.orderId)) {
+          currentBucket.orderCount += 1;
+          currentBucket.orderIds.add(instance.orderId);
+        }
+      }
+    });
+    
+    // Don't forget the last bucket
+    if (currentBucket) {
+      buckets.push(currentBucket);
+    }
+    
+    // Add buckets to summary with unique keys
+    buckets.forEach((bucket, index) => {
+      const bucketKey = buckets.length > 1 ? `${itemName}__bucket${index}` : itemName;
+      summary[bucketKey] = {
+        name: bucket.name,
+        quantity: bucket.quantity,
+        orderCount: bucket.orderCount,
+        oldestOrderTime: bucket.oldestOrderTime,
+        newestOrderTime: bucket.newestOrderTime,
+        bucketIndex: index,
+        totalBuckets: buckets.length
+      };
+    });
+  });
   
   return summary;
 }
 
 /**
  * Get items with delta calculation and wait time
- * @returns {Array} Array of { name, quantity, orderCount, toldCount, delta, waitMinutes }
+ * @returns {Array} Array of { name, quantity, orderCount, toldCount, delta, waitMinutes, bucketKey }
  */
 function getSortedItems() {
   const summary = getItemSummary();
   const now = Date.now();
   
   return Object.entries(summary)
-    .map(([name, data]) => {
-      const toldCount = AdminState.toldCounts[name] || 0;
-      const delta = data.quantity - toldCount;
+    .map(([bucketKey, data]) => {
+      // For told counts, use the base item name (without bucket suffix)
+      const baseName = data.name;
+      const toldCount = AdminState.toldCounts[baseName] || 0;
+      
+      // Delta calculation: for bucketed items, we need smarter logic
+      // Only the oldest bucket should show delta (new orders in newer buckets are inherently "new")
+      let delta = 0;
+      if (data.bucketIndex === 0) {
+        // Oldest bucket: compare against told count
+        delta = Math.max(0, data.quantity - toldCount);
+      } else {
+        // Newer buckets: always show as "new" (delta = quantity)
+        delta = data.quantity;
+      }
+      
       const waitMinutes = Math.floor((now - data.oldestOrderTime) / 60000);
       
       return { 
-        name, 
-        ...data, 
-        toldCount,
-        delta: delta > 0 ? delta : 0,
-        waitMinutes
+        bucketKey,
+        name: data.name,
+        quantity: data.quantity,
+        orderCount: data.orderCount,
+        oldestOrderTime: data.oldestOrderTime,
+        toldCount: data.bucketIndex === 0 ? toldCount : 0,
+        delta,
+        waitMinutes,
+        bucketIndex: data.bucketIndex,
+        totalBuckets: data.totalBuckets
       };
     })
     .sort((a, b) => b.quantity - a.quantity); // Default sort by quantity
@@ -714,7 +796,8 @@ function loadToldCounts() {
  */
 function cleanupToldCounts() {
   const currentItems = getItemSummary();
-  const currentItemNames = new Set(Object.keys(currentItems));
+  // Get unique base item names (not bucket keys)
+  const currentItemNames = new Set(Object.values(currentItems).map(item => item.name));
   
   // Remove told counts for items that are no longer in pending orders
   Object.keys(AdminState.toldCounts).forEach(itemName => {
@@ -1872,6 +1955,7 @@ document.addEventListener('DOMContentLoaded', initAdmin);
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     AdminState,
+    TIME_BUCKET_THRESHOLD_MS,
     getItemSummary,
     getSortedItems,
     getItemSections,
