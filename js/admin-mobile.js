@@ -2310,6 +2310,7 @@ function openSettingsMenu() {
  */
 function closeSettingsMenu() {
   DOM.settingsMenu?.classList.remove('visible');
+  DOM.settingsMenu?.classList.add('hidden');
   DOM.settingsBtn?.setAttribute('aria-expanded', 'false');
 }
 
