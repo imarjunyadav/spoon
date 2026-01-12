@@ -2365,12 +2365,7 @@ body {
     pointer-events: none;
 }
 
-/* Dimmed state for non-matching cards */
-.ready-card--dimmed {
-    opacity: 0.35;
-}
-
-/* Matched card - stays prominent */
+/* Matched card - exact match highlight */
 .ready-card--matched {
     border-color: var(--success-green);
     background-color: #f8fff8;

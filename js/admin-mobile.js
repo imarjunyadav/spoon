@@ -1485,6 +1485,7 @@ function handleActiveOrdersSort() {
 /**
  * Render Completed Orders view (Requirements: 5.1, 5.2, 5.6)
  * OTP-first design: fast type → read → tap handover
+ * Strict filtering: only show matching orders when searching
  */
 function renderCompletedOrders() {
   if (!DOM.completedOrdersList) return;
@@ -1494,45 +1495,38 @@ function renderCompletedOrders() {
     .filter(o => o.status === 'COMPLETE')
     .sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
   
-  // Apply search filter - matches only verification code
+  // Apply strict search filter - only show matching orders
   const searchQuery = AdminState.searchQuery.trim().toUpperCase();
-  let matchedOrders = [];
-  let unmatchedOrders = [];
   
   if (searchQuery) {
-    orders.forEach(order => {
-      if (order.verification_code?.toUpperCase().includes(searchQuery)) {
-        matchedOrders.push(order);
-      } else {
-        unmatchedOrders.push(order);
-      }
-    });
-  } else {
-    matchedOrders = orders;
+    orders = orders.filter(order => 
+      order.verification_code?.toUpperCase().includes(searchQuery)
+    );
   }
   
   // Show/hide empty states
   const hasOrders = AdminState.orders.some(o => o.status === 'COMPLETE');
-  const hasResults = matchedOrders.length > 0;
+  const hasResults = orders.length > 0;
   
   DOM.completedEmpty?.classList.toggle('hidden', hasOrders || searchQuery);
   DOM.searchNoResults?.classList.toggle('hidden', !searchQuery || hasResults);
   
-  if (matchedOrders.length === 0 && unmatchedOrders.length === 0) {
+  if (orders.length === 0) {
     DOM.completedOrdersList.innerHTML = '';
     return;
   }
   
-  // Single match isolation: if exactly one match, show it prominently and dim others
-  const isSingleMatch = searchQuery && matchedOrders.length === 1;
+  // Check if we have an exact match (full code entered)
+  const isExactMatch = searchQuery && orders.length === 1 && 
+    orders[0].verification_code?.toUpperCase() === searchQuery;
   
-  const renderCard = (order, isMatched, isDimmed) => {
+  DOM.completedOrdersList.innerHTML = orders.map(order => {
     const isPending = AdminState.pendingActions.has(order.id);
     const code = order.verification_code || '----';
     
     // Highlight matching portion of verification code
     let displayCode = escapeHtml(code);
-    if (searchQuery && isMatched) {
+    if (searchQuery) {
       const regex = new RegExp(`(${escapeHtml(searchQuery)})`, 'gi');
       displayCode = displayCode.replace(regex, '<mark class="code-highlight">$1</mark>');
     }
@@ -1540,8 +1534,7 @@ function renderCompletedOrders() {
     const cardClasses = [
       'ready-card',
       isPending ? 'ready-card--pending' : '',
-      isSingleMatch && isMatched ? 'ready-card--matched' : '',
-      isDimmed ? 'ready-card--dimmed' : ''
+      isExactMatch ? 'ready-card--matched' : ''
     ].filter(Boolean).join(' ');
     
     return `
@@ -1559,22 +1552,7 @@ function renderCompletedOrders() {
         </button>
       </article>
     `;
-  };
-  
-  // Render matched orders first (at top), then dimmed unmatched orders
-  let html = '';
-  matchedOrders.forEach(order => {
-    html += renderCard(order, true, false);
-  });
-  
-  // Show dimmed unmatched orders only when searching
-  if (searchQuery && unmatchedOrders.length > 0) {
-    unmatchedOrders.forEach(order => {
-      html += renderCard(order, false, true);
-    });
-  }
-  
-  DOM.completedOrdersList.innerHTML = html;
+  }).join('');
   
   // Add click handlers
   DOM.completedOrdersList.querySelectorAll('[data-action="pickup"]').forEach(btn => {
@@ -1806,6 +1784,10 @@ async function markPickedUp(orderId) {
       console.log('✅ Order marked as PICKED_UP');
       AdminState.pendingActions.delete(orderId);
       showToast('Order picked up successfully', 'success');
+      
+      // Clear search input and restore full list after handover
+      clearSearch();
+      
       await fetchOrders();
     } else {
       throw new Error(result.error || 'Failed to update order');
