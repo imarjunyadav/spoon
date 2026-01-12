@@ -2013,3 +2013,240 @@ body {
 #completed-view .search-input__icon {
     display: none;
 }
+
+
+/* ====================
+   28. PRE-ORDER ITEMS SEPARATION
+   Two-section Items tab: Needs Announcing + Pre-orders
+   Requirements: 1.4, 1.5, 2.3, 2.6, 3.3, 3.4
+   ==================== */
+
+/* Needs Announcing row - modern calm card style
+   No border, subtle shadow, focus on quantity × item name */
+.item-row--announcing {
+    background-color: var(--background-white);
+    border-radius: var(--radius-small);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    margin: 4px var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+}
+
+/* Item name is the strongest visual element */
+.item-row--announcing .item-row__name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Quantity is prominent but secondary to name */
+.item-row--announcing .item-row__qty {
+    font-weight: 600;
+    font-size: 16px;
+}
+
+/* Delta is tertiary - visible but not dominant */
+.item-row--announcing .item-row__delta {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* TOLD button - filled, confident, clearly tappable */
+.item-row--announcing .item-row__told {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--success-green);
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.1s ease, background-color 0.15s ease;
+}
+
+.item-row--announcing .item-row__told:active {
+    transform: scale(0.95);
+    background-color: #218838;
+}
+
+.item-row--announcing .item-row__told:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.item-row--announcing .item-row__told svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* PRE-ORDER badge - very subtle, secondary indicator */
+.item-row__preorder-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    
+    color: var(--text-secondary);
+    background-color: var(--background-light);
+    
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+/* Time row - contains time hint + PRE-ORDER badge inline */
+.item-row__time-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+/* Time hint - always shown in Needs Announcing */
+.item-row__time-hint {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+/* Told filter toggle button */
+.told-filter-toggle {
+    display: block;
+    width: 100%;
+    
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background-color: var(--background-light);
+    
+    border: none;
+    padding: 10px var(--spacing-md);
+    margin: 4px 0;
+    
+    cursor: pointer;
+    text-align: center;
+    
+    transition: background-color var(--transition-fast);
+}
+
+.told-filter-toggle:hover {
+    background-color: #e8e8e8;
+}
+
+.told-filter-toggle--active {
+    color: var(--brand-primary);
+    background-color: #fff5f5;
+}
+
+.told-filter-toggle:active {
+    transform: scale(0.98);
+}
+
+/* Told item row - muted appearance */
+.item-row--told {
+    background-color: var(--background-light);
+    opacity: 0.7;
+}
+
+.item-row--told .item-row__qty,
+.item-row--told .item-row__name {
+    color: var(--text-secondary);
+}
+
+/* Told indicator */
+.item-row__told-indicator {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--success-green);
+    
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+/* Pre-orders section - planning only */
+.preorders-section {
+    margin-top: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+    padding-top: var(--spacing-sm);
+}
+
+.preorders-section__header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    
+    padding: 8px var(--spacing-md) 6px;
+    background-color: var(--background-light);
+}
+
+.preorders-section__icon {
+    width: 12px;
+    height: 12px;
+    opacity: 0.7;
+}
+
+/* Pre-order time slot card */
+.preorder-slot {
+    background-color: var(--background-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-small);
+    
+    margin: var(--spacing-sm) var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.preorder-slot__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.preorder-slot__time {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.preorder-slot__count {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* Compact item list within slot */
+.preorder-slot__items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.preorder-slot__item {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    
+    background-color: var(--background-light);
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+/* Tablet adjustments for pre-order section */
+@media (min-width: 768px) {
+    .preorder-slot {
+        margin: var(--spacing-sm) var(--spacing-lg);
+    }
+    
+    .preorders-section__header {
+        padding-left: var(--spacing-lg);
+        padding-right: var(--spacing-lg);
+    }
+}

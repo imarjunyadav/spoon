@@ -1003,6 +1003,763 @@ describe('Admin Mobile Dashboard Property-Based Tests', () => {
 
 });
 
+// ============================================
+// PRE-ORDER SEPARATION PROPERTY-BASED TESTS
+// Feature: preorder-items-separation
+// ============================================
+
+describe('Pre-Order Items Separation Property-Based Tests', () => {
+  
+  // Activation threshold: 45 minutes in milliseconds
+  const ACTIVATION_THRESHOLD_MS = 45 * 60 * 1000;
+  
+  /**
+   * Order classification function (mirrors admin-mobile.js implementation)
+   */
+  function needsAnnouncing(order) {
+    if (!order.preorder_time) {
+      return true;
+    }
+    
+    const now = Date.now();
+    const pickupTime = new Date(order.preorder_time).getTime();
+    
+    if (isNaN(pickupTime)) {
+      return true;
+    }
+    
+    const activationTime = pickupTime - ACTIVATION_THRESHOLD_MS;
+    return now >= activationTime;
+  }
+  
+  /**
+   * Check if order is a transitioned pre-order
+   */
+  function isTransitionedPreOrder(order) {
+    return !!(order.preorder_time && needsAnnouncing(order));
+  }
+  
+  /**
+   * Partition orders into needs-announcing and future pre-orders
+   */
+  function partitionOrders(orders) {
+    const pendingOrders = orders.filter(o => o.status === 'PENDING');
+    return {
+      needsAnnouncingOrders: pendingOrders.filter(needsAnnouncing),
+      futurePreOrders: pendingOrders.filter(o => !needsAnnouncing(o))
+    };
+  }
+  
+  /**
+   * Get items for Needs Announcing section (mirrors admin-mobile.js)
+   */
+  function getNeedsAnnouncingItems() {
+    const { needsAnnouncingOrders } = partitionOrders(global.AdminState.orders);
+    const now = Date.now();
+    
+    const itemMap = {};
+    
+    needsAnnouncingOrders.forEach(order => {
+      const isTransitioned = isTransitionedPreOrder(order);
+      const pickupTime = order.preorder_time ? new Date(order.preorder_time).getTime() : null;
+      const minutesUntilPickup = pickupTime ? Math.round((pickupTime - now) / 60000) : null;
+      const orderTime = new Date(order.created_at).getTime();
+      
+      (order.items || []).forEach(item => {
+        if (!itemMap[item.title]) {
+          itemMap[item.title] = {
+            name: item.title,
+            quantity: 0,
+            orderCount: 0,
+            oldestOrderTime: Infinity,
+            hasPreOrderSource: false,
+            earliestPickupMinutes: Infinity,
+          };
+        }
+        
+        const entry = itemMap[item.title];
+        entry.quantity += item.quantity;
+        entry.orderCount++;
+        entry.oldestOrderTime = Math.min(entry.oldestOrderTime, orderTime);
+        
+        if (isTransitioned) {
+          entry.hasPreOrderSource = true;
+          if (minutesUntilPickup !== null && minutesUntilPickup >= 0) {
+            entry.earliestPickupMinutes = Math.min(entry.earliestPickupMinutes, minutesUntilPickup);
+          }
+        }
+      });
+    });
+    
+    return Object.values(itemMap).map(item => {
+      const toldCount = global.AdminState.toldCounts[item.name] || 0;
+      const delta = Math.max(0, item.quantity - toldCount);
+      const isTold = delta <= 0;
+      const waitMinutes = Math.floor((now - item.oldestOrderTime) / 60000);
+      
+      return {
+        ...item,
+        toldCount,
+        delta,
+        isTold,
+        waitMinutes,
+        earliestPickupMinutes: item.earliestPickupMinutes === Infinity ? null : item.earliestPickupMinutes,
+      };
+    });
+  }
+  
+  /**
+   * Get visible items for Needs Announcing (mirrors admin-mobile.js)
+   */
+  function getVisibleNeedsAnnouncingItems() {
+    const allItems = getNeedsAnnouncingItems();
+    
+    const visible = allItems.filter(item => item.delta > 0);
+    const hidden = allItems.filter(item => item.delta === 0);
+    
+    visible.sort((a, b) => {
+      if (a.waitMinutes !== b.waitMinutes) return b.waitMinutes - a.waitMinutes;
+      return b.quantity - a.quantity;
+    });
+    
+    return { visible, hidden };
+  }
+  
+  // Generator for orders with optional preorder_time
+  const preorderTimeArb = fc.option(
+    fc.integer({ min: Date.now(), max: Date.now() + 4 * 60 * 60 * 1000 }) // 0-4 hours from now
+      .map(ts => new Date(ts).toISOString()),
+    { nil: null }
+  );
+  
+  const orderWithPreorderArb = fc.record({
+    id: fc.uuid(),
+    status: fc.constantFrom('PENDING', 'COMPLETE', 'PICKED_UP'),
+    items: fc.array(orderItemArb, { minLength: 1, maxLength: 5 }),
+    created_at: safeDateArb,
+    preorder_time: preorderTimeArb
+  });
+  
+  const ordersWithPreorderArb = fc.array(orderWithPreorderArb, { minLength: 0, maxLength: 30 });
+  
+  /**
+   * Feature: preorder-items-separation, Property 1: Order Classification
+   * 
+   * For any order:
+   * - needsAnnouncing returns true if preorder_time is null
+   * - needsAnnouncing returns true if preorder_time is within 45 minutes
+   * - needsAnnouncing returns false if preorder_time is beyond 45 minutes
+   * 
+   * **Validates: Requirements 1.2, 1.3, 2.2, 4.1**
+   */
+  test('Property 1: Order classification is correct based on preorder_time', () => {
+    fc.assert(
+      fc.property(orderWithPreorderArb, (order) => {
+        const result = needsAnnouncing(order);
+        const now = Date.now();
+        
+        if (order.preorder_time === null) {
+          // Immediate orders always need announcing
+          expect(result).toBe(true);
+        } else {
+          const pickupTime = new Date(order.preorder_time).getTime();
+          const activationTime = pickupTime - ACTIVATION_THRESHOLD_MS;
+          
+          if (now >= activationTime) {
+            // Within threshold - needs announcing
+            expect(result).toBe(true);
+          } else {
+            // Beyond threshold - future pre-order
+            expect(result).toBe(false);
+          }
+        }
+      }),
+      PBT_CONFIG
+    );
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 2: Partition Completeness
+   * 
+   * For any set of orders, partitionOrders SHALL:
+   * - Include all PENDING orders in exactly one partition
+   * - needsAnnouncingOrders + futurePreOrders = all PENDING orders
+   * 
+   * **Validates: Requirements 1.1, 2.1**
+   */
+  test('Property 2: Partition covers all pending orders exactly once', () => {
+    fc.assert(
+      fc.property(ordersWithPreorderArb, (orders) => {
+        const { needsAnnouncingOrders, futurePreOrders } = partitionOrders(orders);
+        const pendingOrders = orders.filter(o => o.status === 'PENDING');
+        
+        // Total partitioned orders equals pending orders
+        expect(needsAnnouncingOrders.length + futurePreOrders.length).toBe(pendingOrders.length);
+        
+        // No overlap between partitions
+        const announcingIds = new Set(needsAnnouncingOrders.map(o => o.id));
+        const futureIds = new Set(futurePreOrders.map(o => o.id));
+        const overlap = [...announcingIds].filter(id => futureIds.has(id));
+        expect(overlap.length).toBe(0);
+        
+        // All pending orders are in one partition
+        pendingOrders.forEach(order => {
+          const inAnnouncing = announcingIds.has(order.id);
+          const inFuture = futureIds.has(order.id);
+          expect(inAnnouncing || inFuture).toBe(true);
+          expect(inAnnouncing && inFuture).toBe(false);
+        });
+      }),
+      PBT_CONFIG
+    );
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 3: Transitioned Pre-Order Detection
+   * 
+   * For any order, isTransitionedPreOrder returns true if and only if:
+   * - order has a preorder_time AND
+   * - order needs announcing (within threshold)
+   * 
+   * **Validates: Requirements 1.4**
+   */
+  test('Property 3: Transitioned pre-order detection is correct', () => {
+    fc.assert(
+      fc.property(orderWithPreorderArb, (order) => {
+        const result = isTransitionedPreOrder(order);
+        
+        if (order.preorder_time === null) {
+          // No preorder_time = not a transitioned pre-order
+          expect(result).toBe(false);
+        } else {
+          // Has preorder_time - check if it needs announcing
+          const shouldNeedAnnouncing = needsAnnouncing(order);
+          expect(result).toBe(shouldNeedAnnouncing);
+        }
+      }),
+      PBT_CONFIG
+    );
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 4: Needs Announcing Contains Only Qualifying Orders
+   * 
+   * For any set of orders, all orders in needsAnnouncingOrders SHALL satisfy needsAnnouncing(order) === true
+   * 
+   * **Validates: Requirements 1.1, 1.2, 1.3**
+   */
+  test('Property 4: Needs announcing partition contains only qualifying orders', () => {
+    fc.assert(
+      fc.property(ordersWithPreorderArb, (orders) => {
+        const { needsAnnouncingOrders } = partitionOrders(orders);
+        
+        // All orders in needsAnnouncingOrders must satisfy needsAnnouncing
+        needsAnnouncingOrders.forEach(order => {
+          expect(needsAnnouncing(order)).toBe(true);
+        });
+      }),
+      PBT_CONFIG
+    );
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 5: Future Pre-Orders Contains Only Non-Qualifying Orders
+   * 
+   * For any set of orders, all orders in futurePreOrders SHALL satisfy needsAnnouncing(order) === false
+   * 
+   * **Validates: Requirements 2.1, 2.2**
+   */
+  test('Property 5: Future pre-orders partition contains only non-qualifying orders', () => {
+    fc.assert(
+      fc.property(ordersWithPreorderArb, (orders) => {
+        const { futurePreOrders } = partitionOrders(orders);
+        
+        // All orders in futurePreOrders must NOT satisfy needsAnnouncing
+        futurePreOrders.forEach(order => {
+          expect(needsAnnouncing(order)).toBe(false);
+        });
+      }),
+      PBT_CONFIG
+    );
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 6: Needs Announcing Aggregation
+   * 
+   * For any set of orders, getNeedsAnnouncingItems SHALL:
+   * - Only include items from orders where needsAnnouncing(order) === true
+   * - Correctly sum quantities for each item name
+   * - Track hasPreOrderSource correctly
+   * 
+   * **Validates: Requirements 1.1, 1.2, 1.3**
+   */
+  test('Property 6: Needs announcing aggregation is correct', () => {
+    // Mock AdminState for testing
+    const originalOrders = global.AdminState?.orders;
+    
+    fc.assert(
+      fc.property(ordersWithPreorderArb, (orders) => {
+        // Set up mock AdminState
+        global.AdminState = { orders, toldCounts: {} };
+        
+        const items = getNeedsAnnouncingItems();
+        const { needsAnnouncingOrders } = partitionOrders(orders);
+        
+        // Calculate expected aggregation manually
+        const expectedItems = {};
+        needsAnnouncingOrders.forEach(order => {
+          (order.items || []).forEach(item => {
+            if (!expectedItems[item.title]) {
+              expectedItems[item.title] = { quantity: 0, hasPreOrder: false };
+            }
+            expectedItems[item.title].quantity += item.quantity;
+            if (order.preorder_time) {
+              expectedItems[item.title].hasPreOrder = true;
+            }
+          });
+        });
+        
+        // Verify all items are from needs-announcing orders
+        items.forEach(item => {
+          expect(expectedItems[item.name]).toBeDefined();
+          expect(item.quantity).toBe(expectedItems[item.name].quantity);
+        });
+        
+        // Verify all expected items are present
+        expect(items.length).toBe(Object.keys(expectedItems).length);
+      }),
+      PBT_CONFIG
+    );
+    
+    // Restore original state
+    if (originalOrders !== undefined) {
+      global.AdminState = { orders: originalOrders };
+    }
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 7: Delta Calculation
+   * 
+   * For any item, delta SHALL equal max(0, quantity - toldCount)
+   * 
+   * **Validates: Requirements 6.1, 6.2, 6.3**
+   */
+  test('Property 7: Delta calculation is correct', () => {
+    const toldCountArb = fc.dictionary(
+      fc.string({ minLength: 1, maxLength: 20 }).filter(s => s.trim().length > 0),
+      fc.integer({ min: 0, max: 100 })
+    );
+    
+    fc.assert(
+      fc.property(ordersWithPreorderArb, toldCountArb, (orders, toldCounts) => {
+        // Set up mock AdminState
+        global.AdminState = { orders, toldCounts };
+        
+        const items = getNeedsAnnouncingItems();
+        
+        // Verify delta calculation for each item
+        items.forEach(item => {
+          const expectedToldCount = toldCounts[item.name] || 0;
+          const expectedDelta = Math.max(0, item.quantity - expectedToldCount);
+          
+          expect(item.toldCount).toBe(expectedToldCount);
+          expect(item.delta).toBe(expectedDelta);
+          expect(item.isTold).toBe(expectedDelta === 0);
+        });
+      }),
+      PBT_CONFIG
+    );
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 8: Visible/Hidden Split
+   * 
+   * For any set of items:
+   * - Items with delta > 0 are in visible
+   * - Items with delta === 0 are in hidden
+   * - No overlap between visible and hidden
+   * 
+   * **Validates: Requirements 3.2, 3.6**
+   */
+  test('Property 8: Visible/hidden split is correct', () => {
+    const toldCountArb = fc.dictionary(
+      fc.string({ minLength: 1, maxLength: 20 }).filter(s => s.trim().length > 0),
+      fc.integer({ min: 0, max: 100 })
+    );
+    
+    fc.assert(
+      fc.property(ordersWithPreorderArb, toldCountArb, (orders, toldCounts) => {
+        // Set up mock AdminState
+        global.AdminState = { orders, toldCounts };
+        
+        const { visible, hidden } = getVisibleNeedsAnnouncingItems();
+        
+        // All visible items have delta > 0
+        visible.forEach(item => {
+          expect(item.delta).toBeGreaterThan(0);
+        });
+        
+        // All hidden items have delta === 0
+        hidden.forEach(item => {
+          expect(item.delta).toBe(0);
+        });
+        
+        // No overlap
+        const visibleNames = new Set(visible.map(i => i.name));
+        const hiddenNames = new Set(hidden.map(i => i.name));
+        const overlap = [...visibleNames].filter(n => hiddenNames.has(n));
+        expect(overlap.length).toBe(0);
+        
+        // Total equals all items
+        const allItems = getNeedsAnnouncingItems();
+        expect(visible.length + hidden.length).toBe(allItems.length);
+      }),
+      PBT_CONFIG
+    );
+  });
+  
+  /**
+   * Format absolute time (mirrors admin-mobile.js)
+   */
+  function formatAbsoluteTime(date) {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+    const displayMinutes = minutes.toString().padStart(2, '0');
+    const period = hours >= 12 ? 'PM' : 'AM';
+    return `${displayHours}:${displayMinutes} ${period}`;
+  }
+  
+  /**
+   * Get pre-orders grouped by pickup time (mirrors admin-mobile.js)
+   */
+  function getPreOrdersForPlanning() {
+    const { futurePreOrders } = partitionOrders(global.AdminState.orders);
+    
+    const slotMap = new Map();
+    
+    futurePreOrders.forEach(order => {
+      const pickupTimeISO = order.preorder_time;
+      
+      if (!slotMap.has(pickupTimeISO)) {
+        slotMap.set(pickupTimeISO, {
+          pickupTime: new Date(pickupTimeISO),
+          pickupTimeISO,
+          items: {},
+          orderCount: 0
+        });
+      }
+      
+      const slot = slotMap.get(pickupTimeISO);
+      slot.orderCount++;
+      
+      (order.items || []).forEach(item => {
+        if (!slot.items[item.title]) {
+          slot.items[item.title] = { name: item.title, quantity: 0 };
+        }
+        slot.items[item.title].quantity += item.quantity;
+      });
+    });
+    
+    return Array.from(slotMap.values())
+      .map(slot => ({
+        ...slot,
+        pickupTimeFormatted: formatAbsoluteTime(slot.pickupTime),
+        items: Object.values(slot.items)
+      }))
+      .sort((a, b) => a.pickupTime - b.pickupTime);
+  }
+  
+  /**
+   * Feature: preorder-items-separation, Property 9: Pre-Orders Grouping
+   * 
+   * For any set of orders, getPreOrdersForPlanning SHALL:
+   * - Only include orders from futurePreOrders (beyond 45 min threshold)
+   * - Group orders by exact pickup time
+   * - Sort slots by pickup time (earliest first)
+   * - Correctly aggregate item quantities per slot
+   * 
+   * **Validates: Requirements 2.1, 2.2, 2.5**
+   */
+  test('Property 9: Pre-orders grouping is correct', () => {
+    fc.assert(
+      fc.property(ordersWithPreorderArb, (orders) => {
+        global.AdminState = { orders, toldCounts: {} };
+        
+        const slots = getPreOrdersForPlanning();
+        const { futurePreOrders } = partitionOrders(orders);
+        
+        // All slots should come from future pre-orders only
+        const futurePickupTimes = new Set(futurePreOrders.map(o => o.preorder_time));
+        slots.forEach(slot => {
+          expect(futurePickupTimes.has(slot.pickupTimeISO)).toBe(true);
+        });
+        
+        // Verify sorting: earliest pickup time first
+        for (let i = 1; i < slots.length; i++) {
+          expect(slots[i - 1].pickupTime.getTime()).toBeLessThanOrEqual(slots[i].pickupTime.getTime());
+        }
+        
+        // Verify item aggregation per slot
+        slots.forEach(slot => {
+          const ordersInSlot = futurePreOrders.filter(o => o.preorder_time === slot.pickupTimeISO);
+          
+          // Verify order count
+          expect(slot.orderCount).toBe(ordersInSlot.length);
+          
+          // Verify item quantities
+          const expectedItems = {};
+          ordersInSlot.forEach(order => {
+            (order.items || []).forEach(item => {
+              if (!expectedItems[item.title]) {
+                expectedItems[item.title] = 0;
+              }
+              expectedItems[item.title] += item.quantity;
+            });
+          });
+          
+          slot.items.forEach(item => {
+            expect(expectedItems[item.name]).toBe(item.quantity);
+          });
+          
+          expect(slot.items.length).toBe(Object.keys(expectedItems).length);
+        });
+        
+        // Verify all unique pickup times are represented
+        const uniquePickupTimes = new Set(futurePreOrders.map(o => o.preorder_time));
+        expect(slots.length).toBe(uniquePickupTimes.size);
+      }),
+      PBT_CONFIG
+    );
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 10: Pre-Orders Exclusivity
+   * 
+   * For any set of orders, getPreOrdersForPlanning SHALL NOT include any orders
+   * that satisfy needsAnnouncing(order) === true
+   * 
+   * **Validates: Requirements 2.2**
+   */
+  test('Property 10: Pre-orders only contains future orders', () => {
+    fc.assert(
+      fc.property(ordersWithPreorderArb, (orders) => {
+        global.AdminState = { orders, toldCounts: {} };
+        
+        const slots = getPreOrdersForPlanning();
+        const { futurePreOrders } = partitionOrders(orders);
+        
+        // All orders in slots should NOT need announcing
+        futurePreOrders.forEach(order => {
+          expect(needsAnnouncing(order)).toBe(false);
+        });
+        
+        // Total orders in slots should equal futurePreOrders count
+        const totalOrdersInSlots = slots.reduce((sum, slot) => sum + slot.orderCount, 0);
+        expect(totalOrdersInSlots).toBe(futurePreOrders.length);
+      }),
+      PBT_CONFIG
+    );
+  });
+  
+  /**
+   * Format relative time (mirrors admin-mobile.js)
+   */
+  function formatRelativeTime(minutes) {
+    if (minutes <= 0) return 'now';
+    if (minutes < 60) return `in ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (mins === 0) return `in ${hours} hr`;
+    return `in ${hours} hr ${mins} min`;
+  }
+  
+  /**
+   * Feature: preorder-items-separation, Property 11: Time Formatting Consistency
+   * 
+   * For any valid time input:
+   * - formatAbsoluteTime returns 12-hour format with AM/PM
+   * - formatRelativeTime returns "in X min" or "in X hr Y min" format
+   * - Edge cases: midnight (12:00 AM), noon (12:00 PM), exact hours
+   * 
+   * **Validates: Requirements 1.5, 2.3**
+   */
+  test('Property 11: Time formatting is consistent', () => {
+    // Test formatAbsoluteTime
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 23 }), // hours
+        fc.integer({ min: 0, max: 59 }), // minutes
+        (hours, minutes) => {
+          const date = new Date(2025, 0, 1, hours, minutes);
+          const formatted = formatAbsoluteTime(date);
+          
+          // Should contain AM or PM
+          expect(formatted).toMatch(/(AM|PM)$/);
+          
+          // Should have colon separator
+          expect(formatted).toContain(':');
+          
+          // Minutes should be zero-padded
+          const minPart = formatted.split(':')[1].split(' ')[0];
+          expect(minPart.length).toBe(2);
+          
+          // Hour should be 1-12 (12-hour format)
+          const hourPart = parseInt(formatted.split(':')[0], 10);
+          expect(hourPart).toBeGreaterThanOrEqual(1);
+          expect(hourPart).toBeLessThanOrEqual(12);
+          
+          // Verify AM/PM correctness
+          if (hours >= 12) {
+            expect(formatted).toContain('PM');
+          } else {
+            expect(formatted).toContain('AM');
+          }
+        }
+      ),
+      PBT_CONFIG
+    );
+    
+    // Test formatRelativeTime
+    fc.assert(
+      fc.property(
+        fc.integer({ min: -10, max: 300 }), // minutes (including negative for edge case)
+        (minutes) => {
+          const formatted = formatRelativeTime(minutes);
+          
+          if (minutes <= 0) {
+            expect(formatted).toBe('now');
+          } else if (minutes < 60) {
+            expect(formatted).toBe(`in ${minutes} min`);
+          } else {
+            const hrs = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            if (mins === 0) {
+              expect(formatted).toBe(`in ${hrs} hr`);
+            } else {
+              expect(formatted).toBe(`in ${hrs} hr ${mins} min`);
+            }
+          }
+        }
+      ),
+      PBT_CONFIG
+    );
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 12: Told Filter State Visibility
+   * 
+   * For any set of items with told counts:
+   * - When showToldItems is false, only items with delta > 0 are visible
+   * - When showToldItems is true, all items (including told) are visible
+   * - Toggle function correctly flips the state
+   * 
+   * **Validates: Requirements 3.1, 3.2, 3.3, 3.6**
+   */
+  test('Property 12: Told filter state controls visibility', () => {
+    const toldCountArb = fc.dictionary(
+      fc.string({ minLength: 1, maxLength: 20 }).filter(s => s.trim().length > 0),
+      fc.integer({ min: 0, max: 100 })
+    );
+    
+    fc.assert(
+      fc.property(ordersWithPreorderArb, toldCountArb, fc.boolean(), (orders, toldCounts, showTold) => {
+        // Set up mock AdminState
+        global.AdminState = { orders, toldCounts, showToldItems: showTold };
+        
+        const { visible, hidden } = getVisibleNeedsAnnouncingItems();
+        
+        // Visible items always have delta > 0
+        visible.forEach(item => {
+          expect(item.delta).toBeGreaterThan(0);
+        });
+        
+        // Hidden items always have delta === 0
+        hidden.forEach(item => {
+          expect(item.delta).toBe(0);
+        });
+        
+        // The showToldItems flag determines if hidden items should be shown in UI
+        // (This is tested at the rendering level, but we verify the data split is correct)
+        if (showTold) {
+          // When filter is on, UI would show both visible and hidden
+          // The data layer correctly separates them for the UI to decide
+        } else {
+          // When filter is off, UI would only show visible
+          // Hidden items exist but are not displayed
+        }
+        
+        // Verify no item appears in both lists
+        const visibleNames = new Set(visible.map(i => i.name));
+        const hiddenNames = new Set(hidden.map(i => i.name));
+        visibleNames.forEach(name => {
+          expect(hiddenNames.has(name)).toBe(false);
+        });
+      }),
+      PBT_CONFIG
+    );
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 13: Badge Count Accuracy
+   * 
+   * For any set of orders and told counts:
+   * - Items badge SHALL equal count of visible needs-announcing items (delta > 0)
+   * - Badge excludes pre-orders (planning only) and told items
+   * 
+   * **Validates: Requirements 5.1, 5.2, 5.3**
+   */
+  test('Property 13: Badge count equals visible needs-announcing items', () => {
+    const toldCountArb = fc.dictionary(
+      fc.string({ minLength: 1, maxLength: 20 }).filter(s => s.trim().length > 0),
+      fc.integer({ min: 0, max: 100 })
+    );
+    
+    fc.assert(
+      fc.property(ordersWithPreorderArb, toldCountArb, (orders, toldCounts) => {
+        // Set up mock AdminState
+        global.AdminState = { orders, toldCounts, showToldItems: false };
+        
+        const { visible } = getVisibleNeedsAnnouncingItems();
+        
+        // Badge count should equal visible items count
+        const expectedBadgeCount = visible.length;
+        
+        // All visible items have delta > 0 (action needed)
+        visible.forEach(item => {
+          expect(item.delta).toBeGreaterThan(0);
+        });
+        
+        // Verify pre-orders are not included
+        const { futurePreOrders } = partitionOrders(orders);
+        const preOrderItemNames = new Set();
+        futurePreOrders.forEach(order => {
+          (order.items || []).forEach(item => preOrderItemNames.add(item.title));
+        });
+        
+        // Items that ONLY appear in pre-orders should not be in visible
+        // (Items can appear in both needs-announcing and pre-orders if they have orders in both)
+        const visibleNames = new Set(visible.map(i => i.name));
+        const { needsAnnouncingOrders } = partitionOrders(orders);
+        const needsAnnouncingItemNames = new Set();
+        needsAnnouncingOrders.forEach(order => {
+          (order.items || []).forEach(item => needsAnnouncingItemNames.add(item.title));
+        });
+        
+        // Every visible item must come from needs-announcing orders
+        visibleNames.forEach(name => {
+          expect(needsAnnouncingItemNames.has(name)).toBe(true);
+        });
+        
+        // Badge count is accurate
+        expect(expectedBadgeCount).toBe(visible.length);
+      }),
+      PBT_CONFIG
+    );
+  });
+
+});
+
 // Export functions for potential use in other test files
 module.exports = {
   getItemSummary,

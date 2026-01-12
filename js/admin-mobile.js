@@ -43,7 +43,10 @@ const AdminState = {
   expandedCategories: new Set(), // Track which categories are expanded
   
   // Active orders sort
-  activeOrdersSort: 'oldest' // 'oldest' | 'newest' | 'costly' | 'quantity'
+  activeOrdersSort: 'oldest', // 'oldest' | 'newest' | 'costly' | 'quantity'
+  
+  // Show/hide told items filter (told items hidden by default)
+  showToldItems: false
 };
 
 // Supabase client reference
@@ -350,10 +353,10 @@ function updateBadgeCounts() {
   const pendingOrders = AdminState.orders.filter(o => o.status === 'PENDING');
   const completedOrders = AdminState.orders.filter(o => o.status === 'COMPLETE');
   
-  // Items badge: count of unique item names (not bucket keys)
-  const itemSummary = getItemSummary();
-  const uniqueItemNames = new Set(Object.values(itemSummary).map(item => item.name));
-  const itemCount = uniqueItemNames.size;
+  // Items badge: count of visible needs-announcing items (delta > 0)
+  // Excludes pre-orders (planning only) and told items (already communicated)
+  const { visible } = getVisibleNeedsAnnouncingItems();
+  const itemCount = visible.length;
   updateBadge(DOM.badgeItems, itemCount);
   
   // Active badge: count of pending orders
@@ -390,6 +393,323 @@ function updateBadge(badgeEl, count) {
 
 // Time bucket threshold in milliseconds (10 minutes)
 const TIME_BUCKET_THRESHOLD_MS = 10 * 60 * 1000;
+
+// Pre-order activation threshold in milliseconds (45 minutes before pickup)
+// Pre-orders become "needs announcing" when: now >= preorder_time - ACTIVATION_THRESHOLD_MS
+const ACTIVATION_THRESHOLD_MS = 45 * 60 * 1000;
+
+// ============================================
+// ORDER CLASSIFICATION (Pre-order separation)
+// ============================================
+
+/**
+ * Determine if an order needs announcing (cook now)
+ * Returns true for:
+ * - Immediate orders (no preorder_time)
+ * - Pre-orders within 45 minutes of their scheduled pickup time
+ * 
+ * @param {Object} order - Order object with optional preorder_time
+ * @returns {boolean} True if order needs announcing, false if future pre-order
+ */
+function needsAnnouncing(order) {
+  // No preorder_time = immediate order (always needs announcing)
+  if (!order.preorder_time) {
+    return true;
+  }
+  
+  const now = Date.now();
+  const pickupTime = new Date(order.preorder_time).getTime();
+  
+  // Handle invalid dates - treat as immediate order
+  if (isNaN(pickupTime)) {
+    console.warn('Invalid preorder_time format:', order.preorder_time);
+    return true;
+  }
+  
+  const activationTime = pickupTime - ACTIVATION_THRESHOLD_MS;
+  
+  // Needs announcing if current time is at or past activation time
+  return now >= activationTime;
+}
+
+/**
+ * Check if an order is a transitioned pre-order
+ * (has preorder_time but is now within the activation threshold)
+ * 
+ * @param {Object} order - Order object
+ * @returns {boolean} True if transitioned pre-order
+ */
+function isTransitionedPreOrder(order) {
+  return !!(order.preorder_time && needsAnnouncing(order));
+}
+
+/**
+ * Partition orders into needs-announcing and future pre-orders
+ * 
+ * @param {Array} orders - All orders
+ * @returns {{ needsAnnouncingOrders: Array, futurePreOrders: Array }}
+ */
+function partitionOrders(orders) {
+  const pendingOrders = orders.filter(o => o.status === 'PENDING');
+  
+  return {
+    needsAnnouncingOrders: pendingOrders.filter(needsAnnouncing),
+    futurePreOrders: pendingOrders.filter(o => !needsAnnouncing(o))
+  };
+}
+
+// ============================================
+// NEEDS ANNOUNCING AGGREGATION (Pre-order separation)
+// ============================================
+
+// Normal order merge threshold: orders within 3 minutes can merge
+const NORMAL_ORDER_MERGE_THRESHOLD_MS = 3 * 60 * 1000;
+
+/**
+ * Get items for Needs Announcing section
+ * CRITICAL: Never merge PRE-ORDER and normal orders into the same row.
+ * - Normal orders: show "~Xm ago", can merge if same item + within 3 min
+ * - Pre-orders: show "in Xm · PRE-ORDER", never merge with normal orders
+ * 
+ * @returns {Array} Items with quantity, delta, preOrderInfo, etc.
+ */
+function getNeedsAnnouncingItems() {
+  const { needsAnnouncingOrders } = partitionOrders(AdminState.orders);
+  const now = Date.now();
+  
+  // Separate into normal orders and transitioned pre-orders
+  const normalOrders = needsAnnouncingOrders.filter(o => !isTransitionedPreOrder(o));
+  const preOrders = needsAnnouncingOrders.filter(o => isTransitionedPreOrder(o));
+  
+  const items = [];
+  
+  // Process NORMAL orders - can merge by item name + time proximity
+  const normalItemBuckets = {}; // key: itemName, value: array of time buckets
+  
+  normalOrders.forEach(order => {
+    const orderTime = new Date(order.created_at).getTime();
+    
+    (order.items || []).forEach(item => {
+      if (!normalItemBuckets[item.title]) {
+        normalItemBuckets[item.title] = [];
+      }
+      
+      const buckets = normalItemBuckets[item.title];
+      
+      // Find a bucket this order can merge into (within 3 min of newest order in bucket)
+      let merged = false;
+      for (const bucket of buckets) {
+        if (Math.abs(orderTime - bucket.newestOrderTime) <= NORMAL_ORDER_MERGE_THRESHOLD_MS) {
+          bucket.quantity += item.quantity;
+          bucket.orderCount++;
+          bucket.oldestOrderTime = Math.min(bucket.oldestOrderTime, orderTime);
+          bucket.newestOrderTime = Math.max(bucket.newestOrderTime, orderTime);
+          merged = true;
+          break;
+        }
+      }
+      
+      if (!merged) {
+        // Create new bucket
+        buckets.push({
+          name: item.title,
+          quantity: item.quantity,
+          orderCount: 1,
+          oldestOrderTime: orderTime,
+          newestOrderTime: orderTime,
+          isPreOrder: false,
+          earliestPickupMinutes: null,
+        });
+      }
+    });
+  });
+  
+  // Convert normal buckets to items
+  Object.values(normalItemBuckets).forEach(buckets => {
+    buckets.forEach(bucket => {
+      const waitMinutes = Math.floor((now - bucket.oldestOrderTime) / 60000);
+      const toldCount = AdminState.toldCounts[bucket.name] || 0;
+      // For normal orders, told count applies per-bucket
+      const delta = Math.max(0, bucket.quantity - toldCount);
+      
+      items.push({
+        ...bucket,
+        waitMinutes,
+        toldCount,
+        delta,
+        isTold: delta <= 0,
+        hasPreOrderSource: false,
+      });
+    });
+  });
+  
+  // Process PRE-ORDERS - never merge with normal, group by item name only
+  const preOrderItems = {};
+  
+  preOrders.forEach(order => {
+    const pickupTime = new Date(order.preorder_time).getTime();
+    const minutesUntilPickup = Math.round((pickupTime - now) / 60000);
+    const orderTime = new Date(order.created_at).getTime();
+    
+    (order.items || []).forEach(item => {
+      const key = `preorder_${item.title}`;
+      
+      if (!preOrderItems[key]) {
+        preOrderItems[key] = {
+          name: item.title,
+          quantity: 0,
+          orderCount: 0,
+          oldestOrderTime: Infinity,
+          isPreOrder: true,
+          earliestPickupMinutes: Infinity,
+        };
+      }
+      
+      const entry = preOrderItems[key];
+      entry.quantity += item.quantity;
+      entry.orderCount++;
+      entry.oldestOrderTime = Math.min(entry.oldestOrderTime, orderTime);
+      if (minutesUntilPickup >= 0) {
+        entry.earliestPickupMinutes = Math.min(entry.earliestPickupMinutes, minutesUntilPickup);
+      }
+    });
+  });
+  
+  // Convert pre-order items to array
+  Object.values(preOrderItems).forEach(item => {
+    const toldCount = AdminState.toldCounts[`preorder_${item.name}`] || 0;
+    const delta = Math.max(0, item.quantity - toldCount);
+    
+    items.push({
+      ...item,
+      waitMinutes: 0, // Not used for pre-orders
+      toldCount,
+      delta,
+      isTold: delta <= 0,
+      hasPreOrderSource: true,
+      earliestPickupMinutes: item.earliestPickupMinutes === Infinity ? null : item.earliestPickupMinutes,
+    });
+  });
+  
+  return items;
+}
+
+/**
+ * Get visible items for Needs Announcing (respecting told filter)
+ * Items with delta > 0 are always visible
+ * Items with delta === 0 (fully told) are hidden by default
+ * 
+ * @returns {{ visible: Array, hidden: Array }}
+ */
+function getVisibleNeedsAnnouncingItems() {
+  const allItems = getNeedsAnnouncingItems();
+  
+  // Split by told state - items with delta > 0 are visible, fully told items are hidden
+  const visible = allItems.filter(item => item.delta > 0);
+  const hidden = allItems.filter(item => item.delta === 0);
+  
+  // Sort visible: oldest order first (higher wait time), then by quantity
+  visible.sort((a, b) => {
+    if (a.waitMinutes !== b.waitMinutes) return b.waitMinutes - a.waitMinutes;
+    return b.quantity - a.quantity;
+  });
+  
+  return { visible, hidden };
+}
+
+// ============================================
+// PRE-ORDERS AGGREGATION (Planning section)
+// ============================================
+
+/**
+ * Format absolute time (e.g., "1:45 PM")
+ * @param {Date} date - Date object
+ * @returns {string} Formatted time
+ */
+function formatAbsoluteTime(date) {
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+  const displayMinutes = minutes.toString().padStart(2, '0');
+  const period = hours >= 12 ? 'PM' : 'AM';
+  return `${displayHours}:${displayMinutes} ${period}`;
+}
+
+/**
+ * Format relative time (e.g., "in 43 min")
+ * @param {number} minutes - Minutes until pickup
+ * @returns {string} Formatted relative time
+ */
+function formatRelativeTime(minutes) {
+  if (minutes <= 0) return 'now';
+  if (minutes < 60) return `in ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (mins === 0) return `in ${hours} hr`;
+  return `in ${hours} hr ${mins} min`;
+}
+
+/**
+ * Get pre-orders grouped by pickup time for planning section
+ * Only includes orders beyond the 45-minute activation threshold
+ * 
+ * @returns {Array<{ pickupTime: Date, pickupTimeISO: string, pickupTimeFormatted: string, items: Array, orderCount: number }>}
+ */
+function getPreOrdersForPlanning() {
+  const { futurePreOrders } = partitionOrders(AdminState.orders);
+  
+  // Group by pickup time (exact ISO string for stability)
+  const slotMap = new Map();
+  
+  futurePreOrders.forEach(order => {
+    const pickupTimeISO = order.preorder_time;
+    
+    if (!slotMap.has(pickupTimeISO)) {
+      slotMap.set(pickupTimeISO, {
+        pickupTime: new Date(pickupTimeISO),
+        pickupTimeISO,
+        items: {},
+        orderCount: 0
+      });
+    }
+    
+    const slot = slotMap.get(pickupTimeISO);
+    slot.orderCount++;
+    
+    (order.items || []).forEach(item => {
+      if (!slot.items[item.title]) {
+        slot.items[item.title] = { name: item.title, quantity: 0 };
+      }
+      slot.items[item.title].quantity += item.quantity;
+    });
+  });
+  
+  // Convert to array, format time, sort by pickup time (earliest first)
+  return Array.from(slotMap.values())
+    .map(slot => ({
+      ...slot,
+      pickupTimeFormatted: formatAbsoluteTime(slot.pickupTime),
+      items: Object.values(slot.items)
+    }))
+    .sort((a, b) => a.pickupTime - b.pickupTime);
+}
+
+// ============================================
+// TOLD FILTER STATE (Pre-order separation)
+// ============================================
+
+/**
+ * Toggle the told items filter and re-render
+ * When enabled, shows items that have been fully told (delta === 0)
+ */
+function toggleToldFilter() {
+  AdminState.showToldItems = !AdminState.showToldItems;
+  renderItems();
+}
+
+// ============================================
+// ITEM AGGREGATION (Original)
+// ============================================
 
 /**
  * Get aggregated item summary from pending orders with time-bucket splitting.
@@ -599,50 +919,69 @@ function renderAll() {
 }
 
 /**
- * Render Items to Prepare view (read-only with delta tracking)
- * Counter staff reads this tab and shouts quantities to kitchen
- * Format: 4× American Chopsuey ~7m +1 ✓ 👤4
+ * Render Items to Prepare view with pre-order separation
+ * Two sections: "Needs Announcing" (action items) and "Pre-orders" (planning only)
+ * Told items hidden by default with optional filter to show them
  */
 function renderItems() {
   if (!DOM.itemsList) return;
   
-  const { needsAnnouncing, alreadyTold } = getItemSections();
-  const totalItems = needsAnnouncing.length + alreadyTold.length;
+  // Get data for both sections
+  const { visible, hidden } = getVisibleNeedsAnnouncingItems();
+  const preOrderSlots = getPreOrdersForPlanning();
+  
+  const hasNeedsAnnouncing = visible.length > 0;
+  const hasToldItems = hidden.length > 0;
+  const hasPreOrders = preOrderSlots.length > 0;
+  const hasAnyContent = hasNeedsAnnouncing || hasToldItems || hasPreOrders;
   
   // Show/hide empty state
-  DOM.itemsEmpty?.classList.toggle('hidden', totalItems > 0);
+  DOM.itemsEmpty?.classList.toggle('hidden', hasAnyContent);
   
-  if (totalItems === 0) {
+  if (!hasAnyContent) {
     DOM.itemsList.innerHTML = '';
     return;
   }
   
-  // Show section dividers only when list is long (≥6 items) and both sections have items
-  const showDividers = totalItems >= 6 && needsAnnouncing.length > 0 && alreadyTold.length > 0;
-  
   let html = '';
   
-  if (showDividers && needsAnnouncing.length > 0) {
+  // Section 1: Needs Announcing (action items with TOLD button)
+  if (hasNeedsAnnouncing) {
     html += `<div class="item-section-header">Needs announcing</div>`;
+    html += visible.map(item => renderNeedsAnnouncingRow(item)).join('');
   }
   
-  html += needsAnnouncing.map(item => renderItemRow(item, true)).join('');
-  
-  if (showDividers && alreadyTold.length > 0) {
-    html += `<div class="item-section-header item-section-header--muted">Already told</div>`;
+  // Told filter toggle (only show if there are hidden items)
+  if (hasToldItems) {
+    html += renderToldFilterToggle(hidden.length);
+    
+    // Show told items if filter is active
+    if (AdminState.showToldItems) {
+      html += `<div class="item-section-header item-section-header--muted">Already told</div>`;
+      html += hidden.map(item => renderToldRow(item)).join('');
+    }
   }
   
-  html += alreadyTold.map(item => renderItemRow(item, false)).join('');
+  // Section 2: Pre-orders (planning only, no action buttons)
+  if (hasPreOrders) {
+    html += renderPreOrdersSection(preOrderSlots);
+  }
   
   DOM.itemsList.innerHTML = html;
   
-  // Add click handlers for TOLD buttons only
+  // Add click handlers for TOLD buttons
   DOM.itemsList.querySelectorAll('.item-row__told').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       handleTold(btn.dataset.itemName, parseInt(btn.dataset.itemQuantity, 10));
     });
   });
+  
+  // Add click handler for told filter toggle
+  const toldToggle = DOM.itemsList.querySelector('.told-filter-toggle');
+  if (toldToggle) {
+    toldToggle.addEventListener('click', toggleToldFilter);
+  }
 }
 
 /**
@@ -685,6 +1024,175 @@ function renderItemRow(item, showDelta) {
       </div>
     </div>
   `;
+}
+
+// ============================================
+// PRE-ORDER SEPARATION RENDERING
+// ============================================
+
+/**
+ * Render a needs-announcing item row
+ * Shows qty× name, PRE-ORDER badge if applicable, time hint, delta and TOLD button
+ * Time hint: "~Xm ago" for live orders, "in Xm" for pre-orders
+ * @param {Object} item - Item data from getNeedsAnnouncingItems()
+ * @returns {string} HTML string
+ */
+function renderNeedsAnnouncingRow(item) {
+  // Use different key for pre-orders to keep told counts separate
+  const toldKey = item.hasPreOrderSource ? `preorder_${item.name}` : item.name;
+  const isPendingTold = AdminState.pendingToldActions.has(toldKey);
+  
+  // Always show time hint:
+  // - Pre-orders: "in Xm" (time until pickup)
+  // - Live orders: "~Xm ago" (time since oldest order)
+  let timeHint = '';
+  if (item.hasPreOrderSource && item.earliestPickupMinutes !== null) {
+    // Pre-order: show time until pickup
+    timeHint = formatRelativeTime(item.earliestPickupMinutes);
+  } else if (item.waitMinutes !== undefined) {
+    // Live order: show time since oldest order
+    timeHint = `~${item.waitMinutes}m ago`;
+  }
+  
+  // PRE-ORDER badge sits inline with time, not near item name
+  const timeRow = timeHint || item.hasPreOrderSource ? `
+    <div class="item-row__time-row">
+      ${timeHint ? `<span class="item-row__time-hint">${timeHint}</span>` : ''}
+      ${item.hasPreOrderSource ? '<span class="item-row__preorder-badge">PRE-ORDER</span>' : ''}
+    </div>
+  ` : '';
+  
+  // SVG check icon for TOLD button (filled, confident, clearly tappable)
+  const checkIcon = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg>`;
+  const pendingIcon = `<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="2"/></svg>`;
+  
+  return `
+    <div class="item-row item-row--announcing"
+         role="listitem"
+         aria-label="${item.quantity} ${item.name}, ${item.delta} new${timeHint ? `, ${timeHint}` : ''}">
+      <div class="item-row__content">
+        <div class="item-row__primary">
+          <span class="item-row__qty">${item.quantity}</span><span class="item-row__sep">×</span>
+          <span class="item-row__name">${escapeHtml(item.name)}</span>
+        </div>
+        ${timeRow}
+      </div>
+      <div class="item-row__right">
+        <div class="item-row__action">
+          <span class="item-row__delta">+${item.delta}</span>
+          <button class="item-row__told ${isPendingTold ? 'item-row__told--pending' : ''}"
+                  ${isPendingTold ? 'disabled' : ''}
+                  aria-label="Mark ${item.name} as told"
+                  data-item-name="${escapeHtml(toldKey)}"
+                  data-item-quantity="${item.quantity}">
+            ${isPendingTold ? pendingIcon : checkIcon}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Render the told filter toggle button
+ * @param {number} hiddenCount - Number of hidden (told) items
+ * @returns {string} HTML string
+ */
+function renderToldFilterToggle(hiddenCount) {
+  if (hiddenCount === 0) return '';
+  
+  const isActive = AdminState.showToldItems;
+  const label = isActive ? `Hide told (${hiddenCount})` : `Show told (${hiddenCount})`;
+  
+  return `
+    <button class="told-filter-toggle ${isActive ? 'told-filter-toggle--active' : ''}"
+            aria-pressed="${isActive}"
+            aria-label="${label}">
+      ${label}
+    </button>
+  `;
+}
+
+/**
+ * Render a told item row (muted style, no TOLD button)
+ * Uses same time logic as Needs Announcing, just visually muted
+ * @param {Object} item - Item data from getNeedsAnnouncingItems()
+ * @returns {string} HTML string
+ */
+function renderToldRow(item) {
+  // Same time hint logic as renderNeedsAnnouncingRow:
+  // - Pre-orders: "in Xm" (time until pickup)
+  // - Live orders: "~Xm ago" (time since oldest order)
+  let timeHint = '';
+  if (item.hasPreOrderSource && item.earliestPickupMinutes !== null) {
+    timeHint = formatRelativeTime(item.earliestPickupMinutes);
+  } else if (item.waitMinutes !== undefined) {
+    timeHint = `~${item.waitMinutes}m ago`;
+  }
+  
+  // PRE-ORDER badge sits inline with time, not near item name
+  const timeRow = timeHint || item.hasPreOrderSource ? `
+    <div class="item-row__time-row">
+      ${timeHint ? `<span class="item-row__time-hint">${timeHint}</span>` : ''}
+      ${item.hasPreOrderSource ? '<span class="item-row__preorder-badge">PRE-ORDER</span>' : ''}
+    </div>
+  ` : '';
+  
+  return `
+    <div class="item-row item-row--told"
+         role="listitem"
+         aria-label="${item.quantity} ${item.name}, told${timeHint ? `, ${timeHint}` : ''}">
+      <div class="item-row__content">
+        <div class="item-row__primary">
+          <span class="item-row__qty">${item.quantity}</span><span class="item-row__sep">×</span>
+          <span class="item-row__name">${escapeHtml(item.name)}</span>
+        </div>
+        ${timeRow}
+      </div>
+      <div class="item-row__right">
+        <span class="item-row__told-indicator">✓ told</span>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Render the pre-orders planning section
+ * @param {Array} slots - Pre-order time slots from getPreOrdersForPlanning()
+ * @returns {string} HTML string
+ */
+function renderPreOrdersSection(slots) {
+  if (!slots || slots.length === 0) return '';
+  
+  let html = `
+    <div class="preorders-section">
+      <div class="preorders-section__header">
+        <svg class="preorders-section__icon" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+          <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+        </svg>
+        <span>Pre-orders</span>
+      </div>
+  `;
+  
+  slots.forEach(slot => {
+    const itemsList = slot.items.map(item => 
+      `<span class="preorder-slot__item">${item.quantity}× ${escapeHtml(item.name)}</span>`
+    ).join('');
+    
+    html += `
+      <div class="preorder-slot">
+        <div class="preorder-slot__header">
+          <span class="preorder-slot__time">${slot.pickupTimeFormatted}</span>
+          <span class="preorder-slot__count">${slot.orderCount} order${slot.orderCount !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="preorder-slot__items">${itemsList}</div>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  return html;
 }
 
 /**
@@ -2019,6 +2527,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     AdminState,
     TIME_BUCKET_THRESHOLD_MS,
+    ACTIVATION_THRESHOLD_MS,
     getItemSummary,
     getSortedItems,
     getItemSections,
@@ -2027,6 +2536,16 @@ if (typeof module !== 'undefined' && module.exports) {
     handleTold,
     saveToldCounts,
     loadToldCounts,
-    cleanupToldCounts
+    cleanupToldCounts,
+    // Pre-order separation exports
+    needsAnnouncing,
+    isTransitionedPreOrder,
+    partitionOrders,
+    getNeedsAnnouncingItems,
+    getVisibleNeedsAnnouncingItems,
+    getPreOrdersForPlanning,
+    formatAbsoluteTime,
+    formatRelativeTime,
+    toggleToldFilter
   };
 }
