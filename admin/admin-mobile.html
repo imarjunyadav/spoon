@@ -297,18 +297,19 @@
        aria-labelledby="confirm-title"
        aria-describedby="confirm-message"
        aria-modal="true">
-    <div class="confirm-dialog__header">
-      <h2 class="confirm-dialog__title" id="confirm-title">Confirm Action</h2>
-      <div class="confirm-dialog__header-actions" id="confirm-header-actions">
-        <button class="confirm-dialog__cancel-btn" id="confirm-cancel-btn">Cancel</button>
-        <button class="confirm-dialog__action-btn" id="confirm-action-btn">Confirm</button>
-      </div>
+    <div class="confirm-dialog__header" id="confirm-header">
+      <!-- Header content built dynamically -->
     </div>
     <div class="confirm-dialog__body">
+      <h2 class="confirm-dialog__title hidden" id="confirm-title">Confirm Action</h2>
       <p class="confirm-dialog__message hidden" id="confirm-message">Are you sure?</p>
       <div class="confirm-dialog__details hidden" id="confirm-details">
         <!-- Order details for pickup verification -->
       </div>
+    </div>
+    <div class="confirm-dialog__footer">
+      <button class="confirm-dialog__cancel-btn" id="confirm-cancel-btn">Cancel</button>
+      <button class="confirm-dialog__action-btn" id="confirm-action-btn">Confirm</button>
     </div>
   </div>
   

@@ -1568,7 +1568,7 @@ body {
     transform: translate(-50%, -50%) scale(0.9);
     
     width: calc(100% - var(--spacing-lg));
-    max-width: 340px;
+    max-width: 360px;
     
     background-color: var(--background-white);
     border-radius: var(--radius-large);
@@ -1585,71 +1585,54 @@ body {
     opacity: 1;
 }
 
-/* Header with title and action buttons */
+/* Backdrop with blur effect */
+.modal-backdrop.visible {
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* Header: OTP (largest) | Order ID (muted) | Time (right) */
 .confirm-dialog__header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 16px;
+    align-items: baseline;
+    gap: 10px;
+    padding: 14px 16px;
+    background-color: #f8f8f8;
     border-bottom: 1px solid var(--border-color);
-    background-color: #fafafa;
 }
 
-.confirm-dialog__title {
-    font-size: var(--font-size-base);
-    font-weight: 600;
+.confirm-dialog__header-otp {
+    font-family: var(--font-family-mono);
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 2px;
     color: var(--text-primary);
-    margin: 0;
 }
 
-.confirm-dialog__header-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.confirm-dialog__cancel-btn {
-    padding: 6px 12px;
-    font-size: 13px;
-    font-weight: 500;
+.confirm-dialog__header-order-id {
+    font-family: var(--font-family-mono);
+    font-size: 12px;
     color: var(--text-secondary);
-    background: none;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background var(--transition-fast);
 }
 
-.confirm-dialog__cancel-btn:active {
-    background: var(--inactive-grey);
-}
-
-.confirm-dialog__action-btn {
-    padding: 6px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    color: white;
-    background: var(--success-green);
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background var(--transition-fast);
-}
-
-.confirm-dialog__action-btn--primary {
-    background: var(--brand-primary);
-}
-
-.confirm-dialog__action-btn--success {
-    background: var(--success-green);
-}
-
-.confirm-dialog__action-btn:active {
-    opacity: 0.9;
+.confirm-dialog__header-time {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-secondary);
 }
 
 /* Body content */
 .confirm-dialog__body {
     padding: 16px;
+}
+
+.confirm-dialog__title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-sm) 0;
+    text-align: center;
 }
 
 .confirm-dialog__message {
@@ -1664,46 +1647,71 @@ body {
     text-align: left;
 }
 
-/* Items list - largest, most readable */
+/* Items container */
+.confirm-dialog__items-container {
+    margin-bottom: 12px;
+}
+
+/* Items list - largest, high contrast, no dividers */
 .confirm-dialog__items {
     list-style: none;
-    margin: 0 0 12px 0;
+    margin: 0;
     padding: 0;
-    max-height: 180px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
 }
 
 .confirm-dialog__items li {
     display: flex;
     align-items: baseline;
-    padding: 8px 0;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.confirm-dialog__items li:last-child {
-    border-bottom: none;
+    padding: 6px 0;
 }
 
 .confirm-dialog__item-qty {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
     color: var(--text-primary);
-    min-width: 44px;
+    min-width: 48px;
 }
 
 .confirm-dialog__item-name {
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 500;
     color: var(--text-primary);
     flex: 1;
 }
 
-/* Total item count */
+/* Expand button for long lists */
+.confirm-dialog__expand-container {
+    margin-top: 4px;
+}
+
+.confirm-dialog__expand-btn {
+    width: 100%;
+    padding: 10px;
+    margin-top: 8px;
+    
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--brand-primary);
+    
+    background: #fef5f5;
+    border: 1px dashed var(--brand-primary);
+    border-radius: 6px;
+    cursor: pointer;
+    
+    transition: background var(--transition-fast);
+}
+
+.confirm-dialog__expand-btn:active {
+    background: #fde8e8;
+}
+
+/* Summary: item count + price */
 .confirm-dialog__summary {
-    padding: 8px 0;
-    border-top: 1px solid #e0e0e0;
-    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-top: 1px solid #e8e8e8;
 }
 
 .confirm-dialog__total-qty {
@@ -1712,46 +1720,61 @@ body {
     color: var(--text-secondary);
 }
 
-/* Order ID + OTP code - clear, bold */
-.confirm-dialog__codes {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 8px;
-}
-
-.confirm-dialog__order-id {
-    font-family: var(--font-family-mono);
-    font-size: 12px;
-    color: var(--text-secondary);
-}
-
-.confirm-dialog__otp {
-    font-family: var(--font-family-mono);
-    font-size: 18px;
+.confirm-dialog__total-price {
+    font-size: 16px;
     font-weight: 700;
-    letter-spacing: 2px;
     color: var(--text-primary);
-    background: #f5f5f5;
-    padding: 4px 10px;
-    border-radius: 4px;
 }
 
-/* Price + time - secondary */
-.confirm-dialog__meta {
+/* Footer with action buttons */
+.confirm-dialog__footer {
     display: flex;
-    justify-content: space-between;
-    font-size: 13px;
-    color: var(--text-secondary);
+    gap: 10px;
+    padding: 12px 16px;
+    background-color: #fafafa;
+    border-top: 1px solid var(--border-color);
 }
 
-.confirm-dialog__price {
+.confirm-dialog__cancel-btn {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--background-white);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.confirm-dialog__cancel-btn:active {
+    background: var(--inactive-grey);
+}
+
+.confirm-dialog__action-btn {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 14px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: white;
+    background: var(--success-green);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background var(--transition-fast);
 }
 
-.confirm-dialog__time {
-    color: var(--text-secondary);
+.confirm-dialog__action-btn--primary {
+    background: var(--brand-primary);
+}
+
+.confirm-dialog__action-btn--success {
+    background: var(--success-green);
+}
+
+.confirm-dialog__action-btn:active {
+    opacity: 0.9;
 }
 
 /* ====================

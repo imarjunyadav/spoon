@@ -1607,10 +1607,14 @@ function showConfirmDialog(orderId, action) {
     previousStatus: order.status
   };
   
+  const confirmHeader = document.getElementById('confirm-header');
+  
   // Update dialog content (Requirements: 8.2)
   if (action === 'complete') {
     // Simple confirmation for marking complete (not used anymore, but kept for safety)
+    confirmHeader.innerHTML = '';
     DOM.confirmTitle.textContent = 'Mark as Complete?';
+    DOM.confirmTitle.classList.remove('hidden');
     DOM.confirmMessage.textContent = 'This order will be moved to the Ready for Pickup list.';
     DOM.confirmMessage.classList.remove('hidden');
     DOM.confirmActionBtn.textContent = 'Mark Complete';
@@ -1622,51 +1626,89 @@ function showConfirmDialog(orderId, action) {
     const totalValue = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
     const code = order.verification_code || '----';
     
-    // Time display: pre-order shows scheduled time, normal shows wait time
+    // Time display: pre-order shows scheduled time, normal shows wait time since Ready
     let timeDisplay = '';
     const now = Date.now();
     if (order.preorder_time) {
       const pickupTime = new Date(order.preorder_time);
       timeDisplay = formatAbsoluteTime(pickupTime);
     } else {
-      const readyTime = new Date(order.updated_at).getTime();
-      const waitMinutes = Math.floor((now - readyTime) / 60000);
-      timeDisplay = `~${waitMinutes} min ago`;
+      // Use updated_at as "ready time" (when order moved to COMPLETE status)
+      const readyTime = order.updated_at ? new Date(order.updated_at).getTime() : null;
+      if (readyTime && !isNaN(readyTime)) {
+        const waitMinutes = Math.floor((now - readyTime) / 60000);
+        timeDisplay = waitMinutes >= 0 ? `~${waitMinutes} min` : '';
+      }
     }
     
-    DOM.confirmTitle.textContent = 'Confirm Handover';
+    // Hide title/message for pickup dialog
+    DOM.confirmTitle.classList.add('hidden');
     DOM.confirmMessage.classList.add('hidden');
     DOM.confirmActionBtn.textContent = 'Handed Over';
     DOM.confirmActionBtn.className = 'confirm-dialog__action-btn confirm-dialog__action-btn--success';
     
-    // Build reading-first layout
+    // Build header: OTP (largest) | Order ID (muted) | Time (right)
+    confirmHeader.innerHTML = `
+      <span class="confirm-dialog__header-otp">${code}</span>
+      <span class="confirm-dialog__header-order-id">#${truncateId(orderId)}</span>
+      <span class="confirm-dialog__header-time">${timeDisplay}</span>
+    `;
+    
+    // Build body: items list (expandable if long), then summary
+    const itemCount = order.items?.length || 0;
+    const maxVisibleItems = 5;
+    const needsExpand = itemCount > maxVisibleItems;
+    
     if (DOM.confirmDetails) {
+      const visibleItems = needsExpand ? order.items.slice(0, maxVisibleItems) : order.items;
+      const hiddenItems = needsExpand ? order.items.slice(maxVisibleItems) : [];
+      
       DOM.confirmDetails.innerHTML = `
-        <ul class="confirm-dialog__items">
-          ${(order.items || []).map(item => `
-            <li>
-              <span class="confirm-dialog__item-qty">${item.quantity}×</span>
-              <span class="confirm-dialog__item-name">${escapeHtml(item.title)}</span>
-            </li>
-          `).join('')}
-        </ul>
+        <div class="confirm-dialog__items-container">
+          <ul class="confirm-dialog__items">
+            ${visibleItems.map(item => `
+              <li>
+                <span class="confirm-dialog__item-qty">${item.quantity}×</span>
+                <span class="confirm-dialog__item-name">${escapeHtml(item.title)}</span>
+              </li>
+            `).join('')}
+          </ul>
+          ${needsExpand ? `
+            <div class="confirm-dialog__expand-container hidden" id="confirm-hidden-items">
+              <ul class="confirm-dialog__items">
+                ${hiddenItems.map(item => `
+                  <li>
+                    <span class="confirm-dialog__item-qty">${item.quantity}×</span>
+                    <span class="confirm-dialog__item-name">${escapeHtml(item.title)}</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+            <button class="confirm-dialog__expand-btn" id="confirm-expand-btn" type="button">
+              Show all ${itemCount} items
+            </button>
+          ` : ''}
+        </div>
         <div class="confirm-dialog__summary">
           <span class="confirm-dialog__total-qty">${totalQty} items</span>
-        </div>
-        <div class="confirm-dialog__codes">
-          <span class="confirm-dialog__order-id">#${truncateId(orderId)}</span>
-          <span class="confirm-dialog__otp">${code}</span>
-        </div>
-        <div class="confirm-dialog__meta">
-          <span class="confirm-dialog__price">₹${totalValue}</span>
-          <span class="confirm-dialog__time">${timeDisplay}</span>
+          <span class="confirm-dialog__total-price">₹${totalValue}</span>
         </div>
       `;
       DOM.confirmDetails.classList.remove('hidden');
+      
+      // Set up expand button handler
+      if (needsExpand) {
+        const expandBtn = document.getElementById('confirm-expand-btn');
+        const hiddenItemsEl = document.getElementById('confirm-hidden-items');
+        expandBtn?.addEventListener('click', () => {
+          hiddenItemsEl?.classList.remove('hidden');
+          expandBtn.classList.add('hidden');
+        });
+      }
     }
   }
   
-  // Show dialog
+  // Show dialog with backdrop blur
   DOM.confirmBackdrop?.classList.remove('hidden');
   DOM.confirmBackdrop?.classList.add('visible');
   DOM.confirmDialog?.classList.remove('hidden');
