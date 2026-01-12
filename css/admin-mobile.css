@@ -1665,50 +1665,11 @@ body {
 }
 
 /* ====================
-   20. ORDER SECTIONS & CARDS
+   20. ORDER CARD COMPONENT
    Used in Active and Completed views (Requirements: 4.2, 4.3, 5.2, 5.3)
    ==================== */
 
-/* Section grouping for orders */
-.orders-section {
-    margin-bottom: var(--spacing-lg);
-}
-
-.orders-section__header {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm) 0;
-    margin-bottom: var(--spacing-sm);
-}
-
-.orders-section__title {
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    color: var(--text-primary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.orders-section__count {
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    color: var(--text-secondary);
-    background: var(--inactive-grey);
-    padding: 2px 8px;
-    border-radius: var(--radius-pill);
-}
-
-.orders-section--preorder .orders-section__title {
-    color: var(--warning-orange);
-}
-
-.orders-section--preorder .orders-section__count {
-    background: var(--warning-orange-light);
-    color: var(--warning-orange);
-}
-
-/* Order Card */
+/* Order Card - Simple, items-focused */
 .order-card {
     background-color: var(--background-white);
     border: 1px solid var(--border-color);
@@ -1726,32 +1687,23 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--spacing-sm);
-    padding-bottom: var(--spacing-sm);
-    border-bottom: 1px solid var(--border-color);
 }
 
-.order-card__id {
-    font-size: var(--font-size-base);
-    font-weight: 700;
-    color: var(--text-primary);
+.order-card__info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
 }
 
 .order-card__time {
-    font-size: var(--font-size-xs);
-    color: var(--text-secondary);
-}
-
-.order-card__age {
     font-size: var(--font-size-sm);
     font-weight: 600;
     color: var(--text-primary);
 }
 
-/* Pre-order styling */
-.order-card__time-info {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
+.order-card__qty {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
 }
 
 .order-card__preorder-badge {
@@ -1765,9 +1717,26 @@ body {
     letter-spacing: 0.3px;
 }
 
-.order-card__age--preorder {
-    color: var(--warning-orange);
-    font-weight: 600;
+/* Done button - subtle */
+.order-card__btn--done {
+    padding: 6px 14px;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+    background: var(--inactive-grey);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.order-card__btn--done:active {
+    background: var(--border-color);
+}
+
+.order-card__btn--done:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* Verification Code (Requirements: 5.2) */

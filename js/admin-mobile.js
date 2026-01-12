@@ -1343,8 +1343,9 @@ function cleanupToldCounts() {
 
 /**
  * Render Active Orders view (Requirements: 4.1, 4.2)
- * Shows full item list with qty× format, order age, and sorting
- * Separates pre-orders (informational) from active cooking orders
+ * Simple card layout focused on items readability
+ * Header: time, pre-order label (if applicable), items count, done button
+ * Body: items list
  */
 function renderActiveOrders() {
   if (!DOM.activeOrdersList) return;
@@ -1372,18 +1373,12 @@ function renderActiveOrders() {
   
   const now = Date.now();
   
-  // Separate pre-orders from regular orders for visual grouping
-  const regularOrders = orders.filter(o => !o.preorder_time);
-  const preOrders = orders.filter(o => !!o.preorder_time);
-  
-  // Helper to render a single order card
-  const renderOrderCard = (order) => {
+  DOM.activeOrdersList.innerHTML = orders.map(order => {
     const isPending = AdminState.pendingActions.has(order.id);
     const isPreOrder = !!order.preorder_time;
     const totalQty = order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
-    const totalValue = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
     
-    // Time display: pre-orders show "in Xm", regular orders show "~Xm ago"
+    // Time display: pre-orders show "in Xm", regular orders show "~Xm"
     let timeDisplay = '';
     if (isPreOrder) {
       const pickupTime = new Date(order.preorder_time).getTime();
@@ -1395,14 +1390,21 @@ function renderActiveOrders() {
     }
     
     return `
-      <article class="order-card ${isPending ? 'order-card--pending' : ''} ${isPreOrder ? 'order-card--preorder' : ''}"
-               aria-label="Order ${truncateId(order.id)}">
+      <article class="order-card ${isPending ? 'order-card--pending' : ''}"
+               data-order-id="${order.id}">
         <div class="order-card__header">
-          <span class="order-card__id">#${truncateId(order.id)}</span>
-          <div class="order-card__time-info">
+          <div class="order-card__info">
+            <span class="order-card__time">${timeDisplay}</span>
             ${isPreOrder ? '<span class="order-card__preorder-badge">PRE-ORDER</span>' : ''}
-            <span class="order-card__age ${isPreOrder ? 'order-card__age--preorder' : ''}">${timeDisplay}</span>
+            <span class="order-card__qty">${totalQty} items</span>
           </div>
+          <button class="order-card__btn order-card__btn--done"
+                  ${isPending ? 'disabled' : ''}
+                  aria-label="Mark order as complete"
+                  data-order-id="${order.id}"
+                  data-action="complete">
+            ${isPending ? '...' : 'Done'}
+          </button>
         </div>
         <ul class="order-card__items">
           ${(order.items || []).map(item => `
@@ -1412,53 +1414,9 @@ function renderActiveOrders() {
             </li>
           `).join('')}
         </ul>
-        <div class="order-card__footer">
-          <div class="order-card__meta">
-            <span class="order-card__total-qty">${totalQty} items</span>
-            <span class="order-card__total-value">₹${totalValue}</span>
-          </div>
-          <button class="order-card__btn order-card__btn--complete"
-                  ${isPending ? 'disabled' : ''}
-                  aria-label="Mark order ${truncateId(order.id)} as complete"
-                  data-order-id="${order.id}"
-                  data-action="complete">
-            ${isPending ? '...' : 'Done'}
-          </button>
-        </div>
       </article>
     `;
-  };
-  
-  // Build HTML with sections
-  let html = '';
-  
-  // Regular orders section (cooking now)
-  if (regularOrders.length > 0) {
-    html += `
-      <div class="orders-section">
-        <div class="orders-section__header">
-          <span class="orders-section__title">Cooking Now</span>
-          <span class="orders-section__count">${regularOrders.length}</span>
-        </div>
-        ${regularOrders.map(renderOrderCard).join('')}
-      </div>
-    `;
-  }
-  
-  // Pre-orders section (upcoming)
-  if (preOrders.length > 0) {
-    html += `
-      <div class="orders-section orders-section--preorder">
-        <div class="orders-section__header">
-          <span class="orders-section__title">Upcoming Pre-orders</span>
-          <span class="orders-section__count">${preOrders.length}</span>
-        </div>
-        ${preOrders.map(renderOrderCard).join('')}
-      </div>
-    `;
-  }
-  
-  DOM.activeOrdersList.innerHTML = html;
+  }).join('');
   
   // Add click handlers
   DOM.activeOrdersList.querySelectorAll('[data-action="complete"]').forEach(btn => {
