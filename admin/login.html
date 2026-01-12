@@ -142,29 +142,40 @@
     
     /* Login Button */
     .login-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       width: 100%;
-      height: 52px;
+      height: 44px;
       margin-top: 8px;
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 15px;
+      font-weight: 500;
       color: #fff;
       background: var(--brand-primary);
       border: none;
       border-radius: var(--radius-sm);
       cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
+      transition: background 0.2s, opacity 0.2s;
       -webkit-tap-highlight-color: transparent;
     }
     
     .login-btn:active {
-      transform: scale(0.98);
-      background: var(--brand-primary-dark);
+      opacity: 0.9;
     }
     
     .login-btn:disabled {
-      opacity: 0.6;
+      opacity: 0.7;
       cursor: not-allowed;
-      transform: none;
+    }
+    
+    .login-btn .btn-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
     }
     
     /* Footer */
@@ -365,7 +376,7 @@
           required>
       </div>
       
-      <button type="submit" id="login-btn" class="login-btn">Sign in</button>
+      <button type="submit" id="login-btn" class="login-btn"><span class="btn-text">Sign in</span></button>
     </form>
     
     <footer class="login-footer">
@@ -431,7 +442,11 @@
     function setLoginButtonState(disabled) {
       const btn = document.getElementById('login-btn');
       btn.disabled = disabled;
-      btn.textContent = disabled ? 'Signing in...' : 'Sign in';
+      if (disabled) {
+        btn.innerHTML = '<span class="btn-spinner"></span><span class="btn-text">Signing in</span>';
+      } else {
+        btn.innerHTML = '<span class="btn-text">Sign in</span>';
+      }
     }
 
     async function verifyAdminAccess(accessToken) {
