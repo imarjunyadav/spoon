@@ -1707,10 +1707,6 @@ body {
 }
 
 /* Pre-order styling */
-.order-card--preorder {
-    border-left: 3px solid var(--warning-orange);
-}
-
 .order-card__time-info {
     display: flex;
     align-items: center;
