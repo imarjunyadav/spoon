@@ -1418,9 +1418,9 @@ function renderActiveOrders() {
     `;
   }).join('');
   
-  // Add click handlers
+  // Add click handlers - single-tap action, no confirmation dialog
   DOM.activeOrdersList.querySelectorAll('[data-action="complete"]').forEach(btn => {
-    btn.addEventListener('click', () => showConfirmDialog(btn.dataset.orderId, 'complete'));
+    btn.addEventListener('click', () => markComplete(btn.dataset.orderId));
   });
 }
 
