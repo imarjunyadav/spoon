@@ -175,7 +175,6 @@ function initDOMReferences() {
   DOM.confirmTitle = document.getElementById('confirm-title');
   DOM.confirmMessage = document.getElementById('confirm-message');
   DOM.confirmDetails = document.getElementById('confirm-details');
-  DOM.confirmOrderId = document.getElementById('confirm-order-id');
   DOM.confirmCancelBtn = document.getElementById('confirm-cancel-btn');
   DOM.confirmActionBtn = document.getElementById('confirm-action-btn');
   
@@ -1610,38 +1609,62 @@ function showConfirmDialog(orderId, action) {
   
   // Update dialog content (Requirements: 8.2)
   if (action === 'complete') {
+    // Simple confirmation for marking complete (not used anymore, but kept for safety)
     DOM.confirmTitle.textContent = 'Mark as Complete?';
     DOM.confirmMessage.textContent = 'This order will be moved to the Ready for Pickup list.';
+    DOM.confirmMessage.classList.remove('hidden');
     DOM.confirmActionBtn.textContent = 'Mark Complete';
-    DOM.confirmActionBtn.className = 'admin-btn admin-btn--primary admin-btn--full';
+    DOM.confirmActionBtn.className = 'confirm-dialog__action-btn confirm-dialog__action-btn--primary';
     DOM.confirmDetails?.classList.add('hidden');
   } else {
-    // Pickup confirmation - show order details for verification
+    // Pickup confirmation - reading-first layout for fast verification
     const totalQty = order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
     const totalValue = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
     const code = order.verification_code || '----';
     
-    DOM.confirmTitle.textContent = 'Confirm Handover';
-    DOM.confirmMessage.textContent = `Code: ${code}`;
-    DOM.confirmActionBtn.textContent = 'Handed Over';
-    DOM.confirmActionBtn.className = 'admin-btn admin-btn--success admin-btn--full';
+    // Time display: pre-order shows scheduled time, normal shows wait time
+    let timeDisplay = '';
+    const now = Date.now();
+    if (order.preorder_time) {
+      const pickupTime = new Date(order.preorder_time);
+      timeDisplay = formatAbsoluteTime(pickupTime);
+    } else {
+      const readyTime = new Date(order.updated_at).getTime();
+      const waitMinutes = Math.floor((now - readyTime) / 60000);
+      timeDisplay = `~${waitMinutes} min ago`;
+    }
     
-    // Show order details
+    DOM.confirmTitle.textContent = 'Confirm Handover';
+    DOM.confirmMessage.classList.add('hidden');
+    DOM.confirmActionBtn.textContent = 'Handed Over';
+    DOM.confirmActionBtn.className = 'confirm-dialog__action-btn confirm-dialog__action-btn--success';
+    
+    // Build reading-first layout
     if (DOM.confirmDetails) {
       DOM.confirmDetails.innerHTML = `
         <ul class="confirm-dialog__items">
-          ${(order.items || []).map(item => `<li>${item.quantity}× ${escapeHtml(item.title)}</li>`).join('')}
+          ${(order.items || []).map(item => `
+            <li>
+              <span class="confirm-dialog__item-qty">${item.quantity}×</span>
+              <span class="confirm-dialog__item-name">${escapeHtml(item.title)}</span>
+            </li>
+          `).join('')}
         </ul>
+        <div class="confirm-dialog__summary">
+          <span class="confirm-dialog__total-qty">${totalQty} items</span>
+        </div>
+        <div class="confirm-dialog__codes">
+          <span class="confirm-dialog__order-id">#${truncateId(orderId)}</span>
+          <span class="confirm-dialog__otp">${code}</span>
+        </div>
         <div class="confirm-dialog__meta">
-          <span>${totalQty} items</span>
-          <span>₹${totalValue}</span>
+          <span class="confirm-dialog__price">₹${totalValue}</span>
+          <span class="confirm-dialog__time">${timeDisplay}</span>
         </div>
       `;
       DOM.confirmDetails.classList.remove('hidden');
     }
   }
-  
-  DOM.confirmOrderId.textContent = `Order: ${truncateId(orderId)}`;
   
   // Show dialog
   DOM.confirmBackdrop?.classList.remove('hidden');
@@ -1651,9 +1674,10 @@ function showConfirmDialog(orderId, action) {
   
   // Set up confirm action
   DOM.confirmActionBtn.onclick = () => executeConfirmedAction();
+  DOM.confirmCancelBtn.onclick = () => closeConfirmDialog();
   
-  // Focus the cancel button for accessibility
-  DOM.confirmCancelBtn?.focus();
+  // Focus the action button for quick confirmation
+  DOM.confirmActionBtn?.focus();
 }
 
 /**
@@ -1787,6 +1811,9 @@ async function markPickedUp(orderId) {
       
       // Clear search input and restore full list after handover
       clearSearch();
+      
+      // Auto-focus search field for next order
+      setTimeout(() => DOM.searchInput?.focus(), 100);
       
       await fetchOrders();
     } else {
