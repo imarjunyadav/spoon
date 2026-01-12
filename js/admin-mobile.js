@@ -279,6 +279,12 @@ function initEventListeners() {
     DOM.logoutBtn.addEventListener('click', handleLogout);
   }
   
+  // User menu close button
+  const userMenuClose = document.getElementById('user-menu-close');
+  if (userMenuClose) {
+    userMenuClose.addEventListener('click', closeSettingsMenu);
+  }
+  
   // Re-authentication button (Requirements: 13.2)
   if (DOM.reauthBtn) {
     DOM.reauthBtn.addEventListener('click', handleReauth);
