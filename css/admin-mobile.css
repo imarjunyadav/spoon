@@ -1291,7 +1291,7 @@ body {
     font-size: var(--font-size-sm);
 }
 
-/* Category divider - subtle, not collapsible */
+/* Category divider - subtle, scrolls with content */
 .stock-divider {
     padding: var(--spacing-sm) var(--spacing-md);
     font-size: 11px;
@@ -1301,9 +1301,6 @@ body {
     color: var(--text-secondary);
     background-color: var(--background-light);
     border-bottom: 1px solid var(--border-color);
-    position: sticky;
-    top: 0;
-    z-index: 1;
 }
 
 /* Stock row - flat list item with toggle */
