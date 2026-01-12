@@ -519,6 +519,103 @@ body {
     50% { opacity: 0.5; }
 }
 
+/* Wi-Fi style connection indicator */
+.connection-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--success-green);
+}
+
+.connection-indicator__icon {
+    transition: color var(--transition-fast);
+}
+
+.connection-indicator__icon--live {
+    color: var(--success-green);
+}
+
+.connection-indicator__icon--offline {
+    color: var(--error-red);
+}
+
+.connection-indicator--offline .connection-indicator__icon--live {
+    display: none;
+}
+
+.connection-indicator--offline .connection-indicator__icon--offline {
+    display: block;
+}
+
+/* Profile button in header */
+.admin-header__profile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--background-light);
+    color: var(--text-secondary);
+    border: none;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.admin-header__profile:active {
+    background-color: var(--border-color);
+}
+
+/* User dropdown menu */
+.user-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: var(--spacing-md);
+    min-width: 200px;
+    background-color: var(--background-white);
+    border-radius: var(--radius-medium);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    z-index: var(--z-modal);
+    overflow: hidden;
+}
+
+.user-menu__email {
+    padding: var(--spacing-md);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    background-color: var(--background-light);
+    word-break: break-all;
+}
+
+.user-menu__divider {
+    height: 1px;
+    background-color: var(--border-color);
+}
+
+.user-menu__item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    width: 100%;
+    padding: var(--spacing-md);
+    font-family: var(--font-family-main);
+    font-size: var(--font-size-base);
+    color: var(--text-primary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color var(--transition-fast);
+}
+
+.user-menu__item:active {
+    background-color: var(--background-light);
+}
+
+.user-menu__item svg {
+    color: var(--text-secondary);
+}
+
 /* ====================
    10. TYPOGRAPHY UTILITIES
    ==================== */

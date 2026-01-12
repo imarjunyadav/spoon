@@ -2100,6 +2100,7 @@ function initRealtimeSubscriptions() {
 
 /**
  * Update connection status indicator (Requirements: 14.4)
+ * Wi-Fi style icon: live (green) or offline (red with slash)
  * @param {string} status - 'realtime' | 'polling' | 'disconnected'
  */
 function updateConnectionStatus(status) {
@@ -2107,7 +2108,17 @@ function updateConnectionStatus(status) {
   
   if (!DOM.connectionStatus) return;
   
-  DOM.connectionStatus.className = `connection-status connection-status--${status}`;
+  const isOffline = status === 'disconnected';
+  
+  // Toggle offline class for icon switching
+  DOM.connectionStatus.classList.toggle('connection-indicator--offline', isOffline);
+  
+  // Show/hide appropriate icon
+  const liveIcon = DOM.connectionStatus.querySelector('.connection-indicator__icon--live');
+  const offlineIcon = DOM.connectionStatus.querySelector('.connection-indicator__icon--offline');
+  
+  if (liveIcon) liveIcon.classList.toggle('hidden', isOffline);
+  if (offlineIcon) offlineIcon.classList.toggle('hidden', !isOffline);
   
   const labels = {
     realtime: 'Connected',

@@ -29,36 +29,44 @@
     
     <!-- Header -->
     <header class="admin-header">
-      <h1 class="admin-header__title">Kitchen Dashboard</h1>
+      <h1 class="admin-header__title">SPOON Admin</h1>
       <div class="admin-header__actions">
-        <!-- Connection Status Indicator (Requirements: 14.4) -->
-        <div class="connection-status connection-status--realtime" 
+        <!-- Connection Status Indicator - Wi-Fi style (Requirements: 14.4) -->
+        <div class="connection-indicator" 
              id="connection-status"
              role="status" 
              aria-live="polite"
              aria-label="Connection status: Connected">
-          <span class="connection-status__dot"></span>
-          <span class="connection-status__label sr-only">Connected</span>
+          <svg class="connection-indicator__icon connection-indicator__icon--live" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+            <path d="M12 21l-1.5-1.5c-3.1-3.1-5-5-5-7.5 0-2.5 2-4.5 4.5-4.5 1.4 0 2.7.6 3.5 1.6.8-1 2.1-1.6 3.5-1.6 2.5 0 4.5 2 4.5 4.5 0 2.5-1.9 4.4-5 7.5L12 21z" opacity="0"/>
+            <path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/>
+          </svg>
+          <svg class="connection-indicator__icon connection-indicator__icon--offline hidden" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+            <path d="M22.99 9C19.15 5.16 13.8 3.76 8.84 4.78l2.52 2.52c3.47-.17 6.99 1.05 9.63 3.7l2-2zm-4 4c-1.29-1.29-2.84-2.13-4.49-2.56l3.53 3.53.96-.97zM2 3.05L5.07 6.1C3.6 6.82 2.22 7.78 1 9l2 2c1.02-1.02 2.17-1.85 3.41-2.5l2.52 2.52C7.14 11.98 5.63 13.07 4.37 14.33L7 17c1.65-1.65 3.98-2.31 6.17-1.98l7.88 7.88 1.41-1.41L3.41 1.64 2 3.05zM9 17l3 3 3-3c-1.65-1.66-4.34-1.66-6 0z"/>
+          </svg>
         </div>
         
-        <!-- Admin User Display (Requirements: 13.4) -->
-        <span class="admin-user" id="admin-user" aria-label="Logged in user"></span>
-        
-        <!-- Settings Menu Button -->
-        <button class="touch-target" 
+        <!-- User Profile Button -->
+        <button class="admin-header__profile touch-target" 
                 id="settings-btn"
-                aria-label="Settings menu"
+                aria-label="User menu"
                 aria-haspopup="true"
                 aria-expanded="false">
-          <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+          <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          </svg>
         </button>
         
-        <!-- Settings Dropdown Menu (Requirements: 13.5) -->
-        <div class="settings-menu hidden" id="settings-menu" role="menu">
-          <button class="settings-menu__item" 
+        <!-- User Dropdown Menu (Requirements: 13.5) -->
+        <div class="user-menu hidden" id="settings-menu" role="menu">
+          <div class="user-menu__email" id="admin-user"></div>
+          <div class="user-menu__divider"></div>
+          <button class="user-menu__item" 
                   id="logout-btn"
                   role="menuitem">
-            <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+            <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+              <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+            </svg>
             <span>Logout</span>
           </button>
         </div>
