@@ -1757,7 +1757,11 @@ async function markPickedUp(orderId) {
 
 // ============================================
 // STOCK PANEL (Requirements: 6.2, 6.3, 6.5)
+// Modern flat list with toggle switches
 // ============================================
+
+// Active category filter for stock panel ('all' or category name)
+AdminState.stockCategoryFilter = 'all';
 
 /**
  * Open stock panel
@@ -1765,6 +1769,7 @@ async function markPickedUp(orderId) {
 function openStockPanel() {
   AdminState.isStockPanelOpen = true;
   AdminState.stockSearchQuery = '';
+  AdminState.stockCategoryFilter = 'all';
   
   // Clear search input
   if (DOM.stockSearchInput) {
@@ -1781,6 +1786,7 @@ function openStockPanel() {
     DOM.stockPanel?.classList.add('visible');
   });
   
+  renderStockFilters();
   renderStockItems();
   
   // Focus search input for quick access
@@ -1803,23 +1809,75 @@ function closeStockPanel() {
 }
 
 /**
- * Render stock items grouped by category with collapsible sections
+ * Render category filter chips
+ */
+function renderStockFilters() {
+  const filtersContainer = document.getElementById('stock-filters');
+  if (!filtersContainer) return;
+  
+  // Get unique categories
+  const categories = [...new Set(AdminState.menuItems.map(item => item.category))].sort();
+  
+  // Count items per category
+  const categoryCounts = {};
+  categories.forEach(cat => {
+    const items = AdminState.menuItems.filter(i => i.category === cat);
+    const outCount = items.filter(i => !i.is_available).length;
+    categoryCounts[cat] = { total: items.length, out: outCount };
+  });
+  
+  // Total out count
+  const totalOut = AdminState.menuItems.filter(i => !i.is_available).length;
+  
+  filtersContainer.innerHTML = `
+    <div class="stock-filters">
+      <button class="stock-filter-chip ${AdminState.stockCategoryFilter === 'all' ? 'stock-filter-chip--active' : ''}"
+              data-category="all">
+        All${totalOut > 0 ? ` <span class="stock-filter-chip__badge">${totalOut}</span>` : ''}
+      </button>
+      ${categories.map(cat => `
+        <button class="stock-filter-chip ${AdminState.stockCategoryFilter === cat ? 'stock-filter-chip--active' : ''}"
+                data-category="${escapeHtml(cat)}">
+          ${escapeHtml(cat)}${categoryCounts[cat].out > 0 ? ` <span class="stock-filter-chip__badge">${categoryCounts[cat].out}</span>` : ''}
+        </button>
+      `).join('')}
+    </div>
+  `;
+  
+  // Add click handlers
+  filtersContainer.querySelectorAll('.stock-filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      AdminState.stockCategoryFilter = chip.dataset.category;
+      renderStockFilters();
+      renderStockItems();
+    });
+  });
+}
+
+/**
+ * Render stock items as flat list with toggle switches
+ * Modern, clean UI optimized for rush hour scanning
  */
 function renderStockItems() {
   if (!DOM.stockItemsList) return;
   
   const searchQuery = AdminState.stockSearchQuery.toLowerCase().trim();
+  const categoryFilter = AdminState.stockCategoryFilter;
   
-  // Filter items by search query
+  // Filter items by search query and category
   let filteredItems = AdminState.menuItems;
+  
+  if (categoryFilter !== 'all') {
+    filteredItems = filteredItems.filter(item => item.category === categoryFilter);
+  }
+  
   if (searchQuery) {
-    filteredItems = AdminState.menuItems.filter(item => 
-      item.name.toLowerCase().includes(searchQuery) ||
-      item.category.toLowerCase().includes(searchQuery)
+    filteredItems = filteredItems.filter(item => 
+      item.name.toLowerCase().includes(searchQuery)
     );
   }
   
-  // Group by category
+  // Group by category for visual dividers
   const categories = {};
   filteredItems.forEach(item => {
     if (!categories[item.category]) {
@@ -1831,82 +1889,54 @@ function renderStockItems() {
   // Sort categories alphabetically
   const sortedCategories = Object.keys(categories).sort();
   
-  // If searching, expand all categories; otherwise use saved state
-  const expandAll = searchQuery.length > 0;
-  
   if (sortedCategories.length === 0) {
     DOM.stockItemsList.innerHTML = `
       <div class="stock-empty">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="48" height="48" opacity="0.3">
+          <path d="M20 3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H4V5h16v14z"/>
+          <path d="M9.5 7h-3v3h3V7zm0 4h-3v3h3v-3zm0 4h-3v3h3v-3zm8-8h-6v3h6V7zm0 4h-6v3h6v-3zm0 4h-6v3h6v-3z"/>
+        </svg>
         <p>No items found</p>
       </div>
     `;
     return;
   }
   
-  DOM.stockItemsList.innerHTML = sortedCategories.map(category => {
+  // Build flat list with category dividers
+  let html = '';
+  
+  sortedCategories.forEach(category => {
     const items = categories[category];
-    const isExpanded = expandAll || AdminState.expandedCategories.has(category);
-    const availableCount = items.filter(i => i.is_available).length;
-    const totalCount = items.length;
     
-    return `
-      <div class="stock-category ${isExpanded ? 'stock-category--expanded' : ''}">
-        <button class="stock-category__header" 
-                data-category="${escapeHtml(category)}"
-                aria-expanded="${isExpanded}">
-          <div class="stock-category__info">
-            <span class="stock-category__name">${escapeHtml(category)}</span>
-            <span class="stock-category__count">${availableCount}/${totalCount} available</span>
-          </div>
-          <span class="stock-category__arrow">
-            <i class="fas fa-chevron-down" aria-hidden="true"></i>
-          </span>
-        </button>
-        <div class="stock-category__items ${isExpanded ? '' : 'hidden'}">
-          ${items.map(item => `
-            <div class="stock-item ${item.is_available ? '' : 'stock-item--unavailable'}">
-              <div class="stock-item__info">
-                <div class="stock-item__name">${escapeHtml(item.name)}</div>
-                <div class="stock-item__price">₹${item.price}</div>
-              </div>
-              <button class="stock-btn ${item.is_available ? 'stock-btn--available' : 'stock-btn--unavailable'}"
-                      data-item-id="${item.id}"
-                      data-available="${item.is_available}"
-                      aria-label="${item.is_available ? 'Mark ' + item.name + ' as unavailable' : 'Mark ' + item.name + ' as available'}">
-                ${item.is_available ? 'Available' : 'Out'}
-              </button>
-            </div>
-          `).join('')}
+    // Category divider (subtle, not collapsible)
+    html += `<div class="stock-divider">${escapeHtml(category)}</div>`;
+    
+    // Items in this category
+    items.forEach(item => {
+      const isOut = !item.is_available;
+      html += `
+        <div class="stock-row ${isOut ? 'stock-row--out' : ''}">
+          <span class="stock-row__name">${escapeHtml(item.name)}</span>
+          <label class="stock-toggle-switch">
+            <input type="checkbox" 
+                   ${item.is_available ? 'checked' : ''}
+                   data-item-id="${item.id}"
+                   aria-label="${item.is_available ? 'Mark ' + item.name + ' as out of stock' : 'Mark ' + item.name + ' as in stock'}">
+            <span class="stock-toggle-switch__slider"></span>
+          </label>
         </div>
-      </div>
-    `;
-  }).join('');
-  
-  // Add category toggle handlers
-  DOM.stockItemsList.querySelectorAll('.stock-category__header').forEach(header => {
-    header.addEventListener('click', () => toggleCategory(header.dataset.category));
-  });
-  
-  // Add stock button handlers
-  DOM.stockItemsList.querySelectorAll('.stock-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const isAvailable = btn.dataset.available === 'true';
-      toggleStock(btn.dataset.itemId, !isAvailable);
+      `;
     });
   });
-}
-
-/**
- * Toggle category expansion
- * @param {string} category - Category name
- */
-function toggleCategory(category) {
-  if (AdminState.expandedCategories.has(category)) {
-    AdminState.expandedCategories.delete(category);
-  } else {
-    AdminState.expandedCategories.add(category);
-  }
-  renderStockItems();
+  
+  DOM.stockItemsList.innerHTML = html;
+  
+  // Add toggle handlers
+  DOM.stockItemsList.querySelectorAll('.stock-toggle-switch input').forEach(toggle => {
+    toggle.addEventListener('change', () => {
+      toggleStock(toggle.dataset.itemId, toggle.checked);
+    });
+  });
 }
 
 /**
@@ -1947,6 +1977,13 @@ async function toggleStock(itemId, isAvailable) {
     return;
   }
   
+  // Optimistic update
+  const item = AdminState.menuItems.find(i => i.id === itemId);
+  if (item) {
+    item.is_available = isAvailable;
+    renderStockFilters(); // Update badge counts
+  }
+  
   try {
     const response = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/admin/stock/${itemId}`, {
       method: 'PATCH',
@@ -1973,7 +2010,7 @@ async function toggleStock(itemId, isAvailable) {
     
     if (response.ok && result.success) {
       console.log(`✅ Stock updated: ${isAvailable ? 'In Stock' : 'Out of Stock'}`);
-      showToast(`Item ${isAvailable ? 'now available' : 'marked out of stock'}`, 'success');
+      showToast(`${item?.name || 'Item'} ${isAvailable ? 'back in stock' : 'out of stock'}`, 'success');
       await fetchMenuItems();
     } else {
       throw new Error(result.error || 'Failed to update stock');
@@ -1982,6 +2019,10 @@ async function toggleStock(itemId, isAvailable) {
     console.error("❌ Error updating stock:", error);
     showToast('Failed to update stock. Please try again.', 'error');
     // Revert toggle
+    if (item) {
+      item.is_available = !isAvailable;
+    }
+    renderStockFilters();
     renderStockItems();
   }
 }
