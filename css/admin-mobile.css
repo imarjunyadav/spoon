@@ -1706,6 +1706,33 @@ body {
     color: var(--text-secondary);
 }
 
+/* Pre-order styling */
+.order-card--preorder {
+    border-left: 3px solid var(--warning-orange);
+}
+
+.order-card__time-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.order-card__preorder-badge {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--warning-orange);
+    background: var(--warning-orange-light);
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.order-card__age--preorder {
+    color: var(--warning-orange);
+    font-weight: 600;
+}
+
 /* Verification Code (Requirements: 5.2) */
 .order-card__verification {
     text-align: center;

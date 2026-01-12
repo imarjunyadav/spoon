@@ -1373,17 +1373,30 @@ function renderActiveOrders() {
   
   DOM.activeOrdersList.innerHTML = orders.map(order => {
     const isPending = AdminState.pendingActions.has(order.id);
-    const orderAge = Math.floor((now - new Date(order.created_at).getTime()) / 60000);
-    const ageFormatted = formatWaitTime(orderAge);
+    const isPreOrder = !!order.preorder_time;
     const totalQty = order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
     const totalValue = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
     
+    // Time display: pre-orders show "in Xm", regular orders show "~Xm ago"
+    let timeDisplay = '';
+    if (isPreOrder) {
+      const pickupTime = new Date(order.preorder_time).getTime();
+      const minutesUntil = Math.round((pickupTime - now) / 60000);
+      timeDisplay = formatRelativeTime(minutesUntil);
+    } else {
+      const orderAge = Math.floor((now - new Date(order.created_at).getTime()) / 60000);
+      timeDisplay = formatWaitTime(orderAge);
+    }
+    
     return `
-      <article class="order-card ${isPending ? 'order-card--pending' : ''}"
+      <article class="order-card ${isPending ? 'order-card--pending' : ''} ${isPreOrder ? 'order-card--preorder' : ''}"
                aria-label="Order ${truncateId(order.id)}">
         <div class="order-card__header">
           <span class="order-card__id">#${truncateId(order.id)}</span>
-          <span class="order-card__age">${ageFormatted}</span>
+          <div class="order-card__time-info">
+            ${isPreOrder ? '<span class="order-card__preorder-badge">PRE-ORDER</span>' : ''}
+            <span class="order-card__age ${isPreOrder ? 'order-card__age--preorder' : ''}">${timeDisplay}</span>
+          </div>
         </div>
         <ul class="order-card__items">
           ${(order.items || []).map(item => `
@@ -1441,6 +1454,24 @@ function sortActiveOrders(orders, sortBy) {
         const qtyA = a.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
         const qtyB = b.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
         return qtyB - qtyA;
+      });
+    case 'preorder':
+      // Pre-orders first (sorted by pickup time), then regular orders (sorted by created_at)
+      return sorted.sort((a, b) => {
+        const aIsPreorder = !!a.preorder_time;
+        const bIsPreorder = !!b.preorder_time;
+        
+        // Pre-orders come first
+        if (aIsPreorder && !bIsPreorder) return -1;
+        if (!aIsPreorder && bIsPreorder) return 1;
+        
+        // Both pre-orders: sort by pickup time (earliest first)
+        if (aIsPreorder && bIsPreorder) {
+          return new Date(a.preorder_time) - new Date(b.preorder_time);
+        }
+        
+        // Both regular: sort by created_at (oldest first)
+        return new Date(a.created_at) - new Date(b.created_at);
       });
     default:
       return sorted;
