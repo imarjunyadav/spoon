@@ -1754,13 +1754,10 @@ body {
     letter-spacing: 4px;
 }
 
-/* Order Items List - Scannable format with scroll for long lists */
+/* Order Items List - Full height, no scroll */
 .order-card__items {
     list-style: none;
     margin-bottom: var(--spacing-sm);
-    max-height: 120px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
 }
 
 .order-card__item {
