@@ -1665,9 +1665,50 @@ body {
 }
 
 /* ====================
-   20. ORDER CARD COMPONENT
+   20. ORDER SECTIONS & CARDS
    Used in Active and Completed views (Requirements: 4.2, 4.3, 5.2, 5.3)
    ==================== */
+
+/* Section grouping for orders */
+.orders-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.orders-section__header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) 0;
+    margin-bottom: var(--spacing-sm);
+}
+
+.orders-section__title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.orders-section__count {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--inactive-grey);
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+}
+
+.orders-section--preorder .orders-section__title {
+    color: var(--warning-orange);
+}
+
+.orders-section--preorder .orders-section__count {
+    background: var(--warning-orange-light);
+    color: var(--warning-orange);
+}
+
+/* Order Card */
 .order-card {
     background-color: var(--background-white);
     border: 1px solid var(--border-color);
@@ -1690,8 +1731,8 @@ body {
 }
 
 .order-card__id {
-    font-size: var(--font-size-sm);
-    font-weight: 600;
+    font-size: var(--font-size-base);
+    font-weight: 700;
     color: var(--text-primary);
 }
 
@@ -1702,8 +1743,8 @@ body {
 
 .order-card__age {
     font-size: var(--font-size-sm);
-    font-weight: 500;
-    color: var(--text-secondary);
+    font-weight: 600;
+    color: var(--text-primary);
 }
 
 /* Pre-order styling */
@@ -1758,22 +1799,26 @@ body {
 .order-card__items {
     list-style: none;
     margin-bottom: var(--spacing-sm);
+    padding: var(--spacing-sm) 0;
 }
 
 .order-card__item {
     display: flex;
     align-items: baseline;
-    padding: 4px 0;
+    padding: 6px 0;
     font-size: var(--font-size-base);
 }
 
 .order-card__item-qty {
+    font-size: var(--font-size-lg);
     font-weight: 700;
     color: var(--text-primary);
-    min-width: 32px;
+    min-width: 40px;
 }
 
 .order-card__item-name {
+    font-size: var(--font-size-base);
+    font-weight: 500;
     color: var(--text-primary);
     flex: 1;
 }
@@ -1796,7 +1841,7 @@ body {
 .order-card__meta {
     display: flex;
     gap: var(--spacing-md);
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-sm);
     color: var(--text-secondary);
 }
 
@@ -1809,29 +1854,29 @@ body {
     color: var(--text-primary);
 }
 
-/* Modern compact action buttons */
+/* Subtle action buttons - de-emphasized */
 .order-card__btn {
-    padding: 8px 16px;
+    padding: 8px 14px;
     border-radius: var(--radius-small);
     font-size: var(--font-size-sm);
-    font-weight: 600;
+    font-weight: 500;
     border: none;
     cursor: pointer;
     transition: all var(--transition-fast);
 }
 
 .order-card__btn--complete {
-    background-color: var(--brand-primary);
-    color: white;
+    background-color: var(--inactive-grey);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
 }
 
 .order-card__btn--complete:active {
-    background-color: var(--brand-primary-dark);
-    transform: scale(0.98);
+    background-color: var(--border-color);
 }
 
 .order-card__btn--complete:disabled {
-    background-color: #ccc;
+    opacity: 0.5;
     cursor: not-allowed;
 }
 

@@ -1344,6 +1344,7 @@ function cleanupToldCounts() {
 /**
  * Render Active Orders view (Requirements: 4.1, 4.2)
  * Shows full item list with qty× format, order age, and sorting
+ * Separates pre-orders (informational) from active cooking orders
  */
 function renderActiveOrders() {
   if (!DOM.activeOrdersList) return;
@@ -1371,7 +1372,12 @@ function renderActiveOrders() {
   
   const now = Date.now();
   
-  DOM.activeOrdersList.innerHTML = orders.map(order => {
+  // Separate pre-orders from regular orders for visual grouping
+  const regularOrders = orders.filter(o => !o.preorder_time);
+  const preOrders = orders.filter(o => !!o.preorder_time);
+  
+  // Helper to render a single order card
+  const renderOrderCard = (order) => {
     const isPending = AdminState.pendingActions.has(order.id);
     const isPreOrder = !!order.preorder_time;
     const totalQty = order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
@@ -1416,12 +1422,43 @@ function renderActiveOrders() {
                   aria-label="Mark order ${truncateId(order.id)} as complete"
                   data-order-id="${order.id}"
                   data-action="complete">
-            ${isPending ? '...' : 'Complete'}
+            ${isPending ? '...' : 'Done'}
           </button>
         </div>
       </article>
     `;
-  }).join('');
+  };
+  
+  // Build HTML with sections
+  let html = '';
+  
+  // Regular orders section (cooking now)
+  if (regularOrders.length > 0) {
+    html += `
+      <div class="orders-section">
+        <div class="orders-section__header">
+          <span class="orders-section__title">Cooking Now</span>
+          <span class="orders-section__count">${regularOrders.length}</span>
+        </div>
+        ${regularOrders.map(renderOrderCard).join('')}
+      </div>
+    `;
+  }
+  
+  // Pre-orders section (upcoming)
+  if (preOrders.length > 0) {
+    html += `
+      <div class="orders-section orders-section--preorder">
+        <div class="orders-section__header">
+          <span class="orders-section__title">Upcoming Pre-orders</span>
+          <span class="orders-section__count">${preOrders.length}</span>
+        </div>
+        ${preOrders.map(renderOrderCard).join('')}
+      </div>
+    `;
+  }
+  
+  DOM.activeOrdersList.innerHTML = html;
   
   // Add click handlers
   DOM.activeOrdersList.querySelectorAll('[data-action="complete"]').forEach(btn => {
