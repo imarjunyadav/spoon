@@ -1,9 +1,10 @@
 /* ================================================================
     SPOON ADMIN DASHBOARD - MOBILE-FIRST STYLESHEET
-    Version: 1.0
+    Version: 2.0 - Rush Hour Polish
     
     Mobile-first responsive design for kitchen and counter staff.
     Optimized for one-handed thumb operation on ≤6.5" screens.
+    Designed for speed, clarity, and zero hesitation during peak rush.
     
     Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 7.1, 7.2, 11.2
    ================================================================ */
@@ -16,85 +17,98 @@
     /* Core brand colors (from menu.css) */
     --brand-primary: #eb1700;
     --brand-primary-dark: #d41400;
-    --text-primary: #2C2C2C;
-    --text-secondary: #666666;
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
     --text-on-brand: #FFFFFF;
-    --background-light: #F8F9FA;
+    --background-light: #f9fafb;
     --background-white: #FFFFFF;
-    --border-color: #E0E0E0;
-    --inactive-grey: #F1F1F1;
+    --border-color: #e5e7eb;
+    --border-light: #f3f4f6;
+    --inactive-grey: #f3f4f6;
     
-    /* Status colors */
-    --success-green: #28a745;
-    --success-green-light: #e8f5e9;
-    --warning-orange: #f57c00;
-    --warning-orange-light: #fff3e0;
-    --error-red: #dc3545;
-    --error-red-light: #ffebee;
+    /* Status colors - slightly muted for calm appearance */
+    --success-green: #22c55e;
+    --success-green-light: #f0fdf4;
+    --warning-orange: #f59e0b;
+    --warning-orange-light: #fffbeb;
+    --error-red: #ef4444;
+    --error-red-light: #fef2f2;
     
     /* Connection status colors */
-    --status-realtime: #28a745;
-    --status-polling: #f57c00;
-    --status-disconnected: #dc3545;
+    --status-realtime: #22c55e;
+    --status-polling: #f59e0b;
+    --status-disconnected: #ef4444;
     
-    /* Spacing scale */
+    /* Tighter spacing scale for rush-hour density */
+    --spacing-2xs: 2px;
     --spacing-xs: 4px;
-    --spacing-sm: 8px;
-    --spacing-md: 16px;
-    --spacing-lg: 24px;
-    --spacing-xl: 32px;
+    --spacing-sm: 6px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 24px;
     
     /* Touch-friendly spacing (Requirements: 7.2) */
-    --touch-spacing: 8px;  /* Minimum spacing between touch targets */
+    --touch-spacing: 6px;  /* Minimum spacing between touch targets */
     
-    /* Border radius */
-    --radius-small: 8px;
-    --radius-medium: 12px;
-    --radius-large: 16px;
+    /* Consistent border radius - smaller for professional look */
+    --radius-xs: 4px;
+    --radius-small: 6px;
+    --radius-medium: 8px;
+    --radius-large: 12px;
     --radius-pill: 999px;
     
-    /* Shadows */
-    --shadow-card: 0px 4px 12px rgba(0, 0, 0, 0.08);
-    --shadow-sticky: 0px -2px 8px rgba(0, 0, 0, 0.1);
-    --shadow-fab: 0px 4px 12px rgba(0, 0, 0, 0.2);
-    --shadow-modal: 0px -4px 20px rgba(0, 0, 0, 0.15);
+    /* Subtle shadows - less dramatic for calm appearance */
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-elevated: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-sticky: 0 -1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-fab: 0 2px 8px rgba(0, 0, 0, 0.15);
+    --shadow-modal: 0 4px 16px rgba(0, 0, 0, 0.12);
     
     /* Typography (Requirements: 1.5, 9.2) */
     --font-family-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     --font-family-mono: 'SF Mono', 'Roboto Mono', 'Consolas', monospace;
     
-    /* Font sizes - minimum 16px for body (Requirements: 1.5) */
-    --font-size-xs: 12px;
-    --font-size-sm: 14px;
-    --font-size-base: 16px;
-    --font-size-md: 18px;
+    /* Font sizes - tighter scale */
+    --font-size-2xs: 10px;
+    --font-size-xs: 11px;
+    --font-size-sm: 13px;
+    --font-size-base: 15px;
+    --font-size-md: 17px;
     --font-size-lg: 20px;
     --font-size-xl: 24px;
-    --font-size-2xl: 32px;
+    --font-size-2xl: 28px;
+    
+    /* Font weights */
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
     
     /* Touch target sizes (Requirements: 7.1, 11.2) */
-    --touch-target-min: 48px;  /* WCAG 2.5.5 enhanced */
-    --touch-target-comfortable: 56px;
+    --touch-target-min: 44px;  /* Slightly smaller but still accessible */
+    --touch-target-comfortable: 48px;
     
-    /* Layout dimensions */
-    --header-height: 56px;
-    --tab-bar-height: 64px;
-    --fab-size: 56px;
-    --fab-offset: 16px;
+    /* Layout dimensions - tighter */
+    --header-height: 48px;
+    --tab-bar-height: 56px;
+    --fab-size: 48px;
+    --fab-offset: 12px;
     
     /* Z-index scale */
     --z-content: 1;
     --z-sticky: 10;
     --z-fab: 50;
     --z-tab-bar: 100;
+    --z-dropdown: 200;
     --z-modal-backdrop: 500;
     --z-modal: 501;
     --z-overlay: 1000;
     
-    /* Transitions */
-    --transition-fast: 100ms ease-out;
-    --transition-normal: 200ms ease-out;
-    --transition-slow: 300ms ease-out;
+    /* Faster transitions for snappy feel */
+    --transition-fast: 80ms ease-out;
+    --transition-normal: 150ms ease-out;
+    --transition-slow: 250ms ease-out;
 }
 
 /* ====================
@@ -154,7 +168,7 @@ body {
     background-color: var(--background-white);
 }
 
-/* Header area */
+/* Header area - tighter, cleaner */
 .admin-header {
     flex-shrink: 0;
     height: var(--header-height);
@@ -163,14 +177,15 @@ body {
     justify-content: space-between;
     padding: 0 var(--spacing-md);
     background-color: var(--background-white);
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-light);
     z-index: var(--z-sticky);
 }
 
 .admin-header__title {
-    font-size: var(--font-size-md);
-    font-weight: 600;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
     color: var(--text-primary);
+    letter-spacing: -0.01em;
 }
 
 .admin-header__actions {
@@ -193,14 +208,14 @@ body {
     overflow-x: hidden;  /* Requirements: 1.3 - no horizontal scroll */
     -webkit-overflow-scrolling: touch;
     
-    /* Space for FAB and tab bar */
-    padding-bottom: calc(var(--tab-bar-height) + var(--fab-size) + var(--spacing-xl));
+    /* Tighter padding for more content density */
+    padding-bottom: calc(var(--tab-bar-height) + var(--fab-size) + var(--spacing-lg));
 }
 
-/* Individual view containers */
+/* Individual view containers - tighter padding */
 .admin-view {
     display: none;
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
     min-height: 100%;
 }
 
@@ -221,7 +236,7 @@ body {
     display: flex;
     align-items: stretch;
     background-color: var(--background-white);
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-light);
     box-shadow: var(--shadow-sticky);
     z-index: var(--z-tab-bar);
     
@@ -235,7 +250,7 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: var(--spacing-xs);
+    gap: 2px;
     
     /* Touch target (Requirements: 7.1, 11.2) */
     min-height: var(--touch-target-min);
@@ -246,11 +261,11 @@ body {
     border: none;
     cursor: pointer;
     
-    /* Typography */
+    /* Typography - lighter weight */
     font-family: var(--font-family-main);
-    font-size: var(--font-size-xs);
-    font-weight: 500;
-    color: var(--text-secondary);
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-muted);
     
     /* Transitions */
     transition: color var(--transition-fast);
@@ -266,11 +281,11 @@ body {
 
 .admin-tab.active {
     color: var(--brand-primary);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
 }
 
 .admin-tab__icon {
-    font-size: 22px;
+    font-size: 20px;
     line-height: 1;
 }
 
@@ -278,14 +293,14 @@ body {
     line-height: 1;
 }
 
-/* Badge on tab */
+/* Badge on tab - smaller, tighter */
 .admin-tab__badge {
     position: absolute;
-    top: 6px;
-    right: calc(50% - 24px);
-    min-width: 20px;
-    height: 20px;
-    padding: 0 6px;
+    top: 4px;
+    right: calc(50% - 22px);
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
     
     display: flex;
     align-items: center;
@@ -293,10 +308,10 @@ body {
     
     background-color: var(--brand-primary);
     color: var(--text-on-brand);
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 10px;
+    font-weight: var(--font-weight-bold);
     border-radius: var(--radius-pill);
-    border: 2px solid var(--background-white);
+    border: 1.5px solid var(--background-white);
     
     /* Hidden by default */
     transform: scale(0);
@@ -333,27 +348,22 @@ body {
     align-items: center;
     justify-content: center;
     
-    background-color: var(--brand-primary);
+    background-color: var(--text-primary);
     color: var(--text-on-brand);
     border: none;
     border-radius: 50%;
     box-shadow: var(--shadow-fab);
     
-    font-size: 24px;
+    font-size: 20px;
     cursor: pointer;
     z-index: var(--z-fab);
     
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    transition: transform var(--transition-fast);
     -webkit-tap-highlight-color: transparent;
-}
-
-.admin-fab:hover {
-    transform: scale(1.05);
 }
 
 .admin-fab:active {
     transform: scale(0.95);
-    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .admin-fab[aria-label] {
@@ -415,7 +425,7 @@ body {
 
 /* ====================
    8. BUTTON STYLES
-   Touch-friendly buttons with proper sizing
+   Touch-friendly buttons with lighter weight for calm appearance
    ==================== */
 .admin-btn {
     display: inline-flex;
@@ -427,15 +437,15 @@ body {
     min-height: var(--touch-target-min);
     padding: var(--spacing-sm) var(--spacing-lg);
     
-    /* Typography */
+    /* Typography - lighter weight */
     font-family: var(--font-family-main);
-    font-size: var(--font-size-base);
-    font-weight: 600;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
     text-decoration: none;
     
     /* Appearance */
     border: none;
-    border-radius: var(--radius-medium);
+    border-radius: var(--radius-small);
     cursor: pointer;
     
     /* Transitions */
@@ -465,10 +475,11 @@ body {
     color: var(--text-on-brand);
 }
 
-/* Secondary button (grey) */
+/* Secondary button (grey) - lighter */
 .admin-btn--secondary {
-    background-color: var(--inactive-grey);
+    background-color: var(--background-light);
     color: var(--text-primary);
+    border: 1px solid var(--border-color);
 }
 
 /* Danger button (red) */
@@ -828,16 +839,15 @@ body {
     padding: var(--spacing-md);
     background-color: var(--text-primary);
     color: var(--text-on-brand);
-    border-radius: var(--radius-medium);
+    border-radius: var(--radius-small);
     
     font-size: var(--font-size-sm);
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
     text-align: center;
     
     z-index: var(--z-modal);
     
-    /* Animation */
-    transform: translateY(100px);
+    transform: translateY(80px);
     opacity: 0;
     transition: transform var(--transition-slow), opacity var(--transition-slow);
 }
@@ -865,26 +875,26 @@ body {
     justify-content: center;
     padding: var(--spacing-xl);
     text-align: center;
-    color: var(--text-secondary);
+    color: var(--text-muted);
 }
 
 .admin-empty-state__icon {
-    font-size: 64px;
-    color: var(--inactive-grey);
+    font-size: 48px;
+    color: var(--border-color);
     margin-bottom: var(--spacing-md);
 }
 
 .admin-empty-state__title {
-    font-size: var(--font-size-lg);
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-xs);
 }
 
 .admin-empty-state__message {
     font-size: var(--font-size-sm);
-    max-width: 280px;
-    line-height: 1.6;
+    max-width: 240px;
+    line-height: 1.5;
 }
 
 
@@ -933,7 +943,7 @@ body {
    Verification code search in Completed Orders view (Requirements: 12.1, 12.3)
    ==================== */
 .search-container {
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
 }
 
 .search-input-wrapper {
@@ -944,34 +954,34 @@ body {
 
 .search-input {
     width: 100%;
-    height: var(--touch-target-min);  /* 48px minimum (Requirements: 12.3) */
-    padding: 0 var(--touch-target-min) 0 44px;
+    height: var(--touch-target-min);
+    padding: 0 var(--touch-target-min) 0 40px;
     
     font-family: var(--font-family-main);
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-sm);
     color: var(--text-primary);
     
     background-color: var(--background-white);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-medium);
+    border-radius: var(--radius-small);
     
     outline: none;
     transition: border-color var(--transition-fast);
 }
 
 .search-input:focus {
-    border-color: var(--brand-primary);
+    border-color: var(--text-secondary);
 }
 
 .search-input::placeholder {
-    color: var(--text-secondary);
+    color: var(--text-muted);
 }
 
 .search-input__icon {
     position: absolute;
     left: var(--spacing-md);
-    color: var(--text-secondary);
-    font-size: 16px;
+    color: var(--text-muted);
+    font-size: 14px;
     pointer-events: none;
 }
 
@@ -980,7 +990,7 @@ body {
     right: var(--spacing-xs);
     background: none;
     border: none;
-    color: var(--text-secondary);
+    color: var(--text-muted);
     cursor: pointer;
     padding: var(--spacing-sm);
 }
@@ -1560,18 +1570,18 @@ body {
     opacity: 1;
 }
 
-/* Confirm Dialog - Reading-first layout for fast verification */
+/* Confirm Dialog - Compact, reading-first layout */
 .confirm-dialog {
     position: fixed;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%) scale(0.9);
+    transform: translate(-50%, -50%) scale(0.95);
     
     width: calc(100% - var(--spacing-lg));
-    max-width: 360px;
+    max-width: 340px;
     
     background-color: var(--background-white);
-    border-radius: var(--radius-large);
+    border-radius: var(--radius-medium);
     overflow: hidden;
     
     z-index: var(--z-modal);
@@ -1585,74 +1595,73 @@ body {
     opacity: 1;
 }
 
-/* Backdrop with blur effect */
+/* Backdrop with subtle blur */
 .modal-backdrop.visible {
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
 }
 
-/* Header: OTP (largest) | Order ID (muted) | Time (right) */
+/* Header: OTP | Order ID | Time */
 .confirm-dialog__header {
     display: flex;
     align-items: baseline;
-    gap: 10px;
-    padding: 14px 16px;
-    background-color: #f8f8f8;
-    border-bottom: 1px solid var(--border-color);
+    gap: 8px;
+    padding: 12px 14px;
+    background-color: var(--background-light);
+    border-bottom: 1px solid var(--border-light);
 }
 
 .confirm-dialog__header-otp {
     font-family: var(--font-family-mono);
-    font-size: 24px;
-    font-weight: 700;
-    letter-spacing: 2px;
+    font-size: 22px;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 1px;
     color: var(--text-primary);
 }
 
 .confirm-dialog__header-order-id {
     font-family: var(--font-family-mono);
-    font-size: 12px;
-    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
 }
 
 .confirm-dialog__header-time {
     margin-left: auto;
-    font-size: 12px;
-    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
 }
 
 /* Body content */
 .confirm-dialog__body {
-    padding: 16px;
+    padding: 14px;
 }
 
 .confirm-dialog__title {
-    font-size: var(--font-size-lg);
-    font-weight: 600;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
     color: var(--text-primary);
     margin: 0 0 var(--spacing-sm) 0;
     text-align: center;
 }
 
 .confirm-dialog__message {
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-sm);
     color: var(--text-secondary);
     margin: 0 0 var(--spacing-md) 0;
     text-align: center;
 }
 
-/* Order details - reading-first layout */
+/* Order details */
 .confirm-dialog__details {
     text-align: left;
 }
 
-/* Items container */
 .confirm-dialog__items-container {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
-/* Items list - largest, high contrast, no dividers */
+/* Items list - clear hierarchy */
 .confirm-dialog__items {
     list-style: none;
     margin: 0;
@@ -1662,107 +1671,99 @@ body {
 .confirm-dialog__items li {
     display: flex;
     align-items: baseline;
-    padding: 6px 0;
+    padding: 4px 0;
 }
 
 .confirm-dialog__item-qty {
-    font-size: 22px;
-    font-weight: 700;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
     color: var(--text-primary);
-    min-width: 48px;
+    min-width: 40px;
 }
 
 .confirm-dialog__item-name {
-    font-size: 18px;
-    font-weight: 500;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
     color: var(--text-primary);
     flex: 1;
 }
 
-/* Expand button for long lists */
-.confirm-dialog__expand-container {
-    margin-top: 4px;
-}
-
+/* Expand button */
 .confirm-dialog__expand-btn {
     width: 100%;
-    padding: 10px;
-    margin-top: 8px;
+    padding: 8px;
+    margin-top: 6px;
     
-    font-size: 13px;
-    font-weight: 500;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
     color: var(--brand-primary);
     
-    background: #fef5f5;
-    border: 1px dashed var(--brand-primary);
-    border-radius: 6px;
+    background: var(--background-light);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-xs);
     cursor: pointer;
-    
-    transition: background var(--transition-fast);
 }
 
 .confirm-dialog__expand-btn:active {
-    background: #fde8e8;
+    background: var(--border-light);
 }
 
-/* Summary: item count + price */
+/* Summary */
 .confirm-dialog__summary {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 0;
-    border-top: 1px solid #e8e8e8;
+    padding: 8px 0;
+    border-top: 1px solid var(--border-light);
 }
 
 .confirm-dialog__total-qty {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-muted);
 }
 
 .confirm-dialog__total-price {
-    font-size: 16px;
-    font-weight: 700;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
     color: var(--text-primary);
 }
 
 /* Footer with action buttons */
 .confirm-dialog__footer {
     display: flex;
-    gap: 10px;
-    padding: 12px 16px;
-    background-color: #fafafa;
-    border-top: 1px solid var(--border-color);
+    gap: 8px;
+    padding: 10px 14px;
+    background-color: var(--background-light);
+    border-top: 1px solid var(--border-light);
 }
 
 .confirm-dialog__cancel-btn {
     flex: 1;
-    padding: 12px 16px;
-    font-size: 14px;
-    font-weight: 500;
+    padding: 10px 14px;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
     color: var(--text-secondary);
     background: var(--background-white);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: var(--radius-small);
     cursor: pointer;
-    transition: background var(--transition-fast);
 }
 
 .confirm-dialog__cancel-btn:active {
-    background: var(--inactive-grey);
+    background: var(--background-light);
 }
 
 .confirm-dialog__action-btn {
     flex: 1;
-    padding: 12px 16px;
-    font-size: 14px;
-    font-weight: 600;
+    padding: 10px 14px;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
     color: white;
     background: var(--success-green);
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-small);
     cursor: pointer;
-    transition: background var(--transition-fast);
 }
 
 .confirm-dialog__action-btn--primary {
@@ -1780,13 +1781,14 @@ body {
 /* ====================
    20. ORDER CARD COMPONENT
    Used in Active and Completed views (Requirements: 4.2, 4.3, 5.2, 5.3)
+   Tighter spacing, clear hierarchy: items > actions > metadata
    ==================== */
 
-/* Order Card - Simple, items-focused */
+/* Order Card - Compact, items-focused */
 .order-card {
     background-color: var(--background-white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-medium);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-small);
     padding: var(--spacing-md);
     margin-bottom: var(--spacing-sm);
 }
@@ -1809,36 +1811,36 @@ body {
 }
 
 .order-card__time {
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.order-card__qty {
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
     color: var(--text-secondary);
 }
 
+.order-card__qty {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
 .order-card__preorder-badge {
-    font-size: 10px;
-    font-weight: 600;
+    font-size: 9px;
+    font-weight: var(--font-weight-semibold);
     color: var(--warning-orange);
     background: var(--warning-orange-light);
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 2px 5px;
+    border-radius: 3px;
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
 
-/* Done button - subtle */
+/* Done button - subtle, lightweight */
 .order-card__btn--done {
-    padding: 6px 14px;
-    font-size: var(--font-size-sm);
-    font-weight: 500;
-    color: var(--text-primary);
-    background: var(--inactive-grey);
+    padding: 5px 12px;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-secondary);
+    background: var(--background-light);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-small);
+    border-radius: var(--radius-xs);
     cursor: pointer;
     transition: background var(--transition-fast);
 }
@@ -1852,55 +1854,31 @@ body {
     cursor: not-allowed;
 }
 
-/* Verification Code (Requirements: 5.2) */
-.order-card__verification {
-    text-align: center;
-    padding: var(--spacing-md) 0;
-    margin-bottom: var(--spacing-sm);
-    background-color: var(--inactive-grey);
-    border-radius: var(--radius-medium);
-}
-
-.order-card__verification-label {
-    font-size: var(--font-size-xs);
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: var(--spacing-xs);
-}
-
-.order-card__verification-code {
-    font-family: var(--font-family-mono);
-    font-size: var(--font-size-2xl);
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: 4px;
-}
-
-/* Order Items List - Full height, no scroll */
+/* Order Items List - Tight, scannable */
 .order-card__items {
     list-style: none;
-    margin-bottom: var(--spacing-sm);
-    padding: var(--spacing-sm) 0;
+    margin: 0;
+    padding: var(--spacing-xs) 0;
 }
 
 .order-card__item {
     display: flex;
     align-items: baseline;
-    padding: 6px 0;
-    font-size: var(--font-size-base);
+    padding: 3px 0;
 }
 
+/* Quantity - bold, prominent */
 .order-card__item-qty {
-    font-size: var(--font-size-lg);
-    font-weight: 700;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
     color: var(--text-primary);
-    min-width: 40px;
+    min-width: 32px;
 }
 
+/* Item name - clear, readable */
 .order-card__item-name {
-    font-size: var(--font-size-base);
-    font-weight: 500;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
     color: var(--text-primary);
     flex: 1;
 }
@@ -1978,39 +1956,41 @@ body {
     min-height: var(--touch-target-min);
 }
 
-/* Sort Bar */
+/* Sort Bar - compact */
 .sort-bar {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
     padding: var(--spacing-sm) var(--spacing-md);
     background-color: var(--background-light);
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: var(--spacing-sm);
 }
 
 .sort-bar__label {
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
 }
 
 .sort-bar__select {
     flex: 1;
-    max-width: 160px;
-    height: 36px;
+    max-width: 140px;
+    height: 32px;
     padding: 0 var(--spacing-sm);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-small);
+    border-radius: var(--radius-xs);
     background-color: var(--background-white);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
     color: var(--text-primary);
 }
 
 /* ====================
    21. ITEM ROW COMPONENT
-   Layout: Order count top-right, qty× name primary, wait time secondary
+   Layout: qty× name (primary), time + orders (secondary), action (right)
+   Optimized for fast scanning during rush hour
    ==================== */
 
-/* Base row - increased height for breathing room */
+/* Base row - tight, scannable */
 .item-row {
     display: flex;
     align-items: flex-start;
@@ -2018,16 +1998,11 @@ body {
     position: relative;
     
     background-color: var(--background-white);
-    padding: 12px var(--spacing-md) 14px;
-    margin-bottom: 6px; /* Larger gap between rows */
-    border-radius: 4px;
+    padding: 10px var(--spacing-md);
+    margin-bottom: 4px;
+    border-radius: var(--radius-xs);
     
-    min-height: 64px; /* Accommodate larger touch target */
-}
-
-/* Subtle highlight for rows needing announcement */
-.item-row--has-delta {
-    background-color: #fffbf5;
+    min-height: 52px;
 }
 
 /* Left content area */
@@ -2036,7 +2011,7 @@ body {
     flex-direction: column;
     flex: 1;
     min-width: 0;
-    padding-right: 60px; /* Space for order count */
+    padding-right: 48px; /* Space for order count */
 }
 
 /* Primary line: qty× name */
@@ -2045,27 +2020,27 @@ body {
     align-items: baseline;
 }
 
-/* Quantity - emphasized */
+/* Quantity - bold, prominent */
 .item-row__qty {
-    font-size: 18px;
-    font-weight: 700;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
     color: var(--text-primary);
     flex-shrink: 0;
 }
 
-/* Separator - normal weight, no space before */
+/* Separator - subtle */
 .item-row__sep {
-    font-size: 16px;
-    font-weight: 400;
-    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-normal);
+    color: var(--text-muted);
     flex-shrink: 0;
-    margin-right: 6px;
+    margin-right: 4px;
 }
 
-/* Item name - more horizontal space, truncate if needed */
+/* Item name - clear, truncate if needed */
 .item-row__name {
-    font-size: 16px;
-    font-weight: 500;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
     color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
@@ -2074,11 +2049,11 @@ body {
     min-width: 0;
 }
 
-/* Wait time - secondary line below name */
+/* Wait time - secondary, muted */
 .item-row__wait {
-    font-size: 12px;
-    font-weight: 500;
-    color: #999;
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-muted);
     margin-top: 2px;
 }
 
@@ -2091,7 +2066,7 @@ body {
     flex-shrink: 0;
 }
 
-/* Order count - top-right corner, fixed position */
+/* Order count - top-right, subtle */
 .item-row__orders {
     position: absolute;
     top: 8px;
@@ -2101,50 +2076,48 @@ body {
     align-items: center;
     gap: 2px;
     
-    font-size: 11px;
-    font-weight: 500;
-    color: #aaa;
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-muted);
 }
 
 .item-row__icon {
-    width: 11px;
-    height: 11px;
-    opacity: 0.7;
+    width: 10px;
+    height: 10px;
+    opacity: 0.6;
 }
 
 /* Action area: delta + told button */
 .item-row__action {
     display: flex;
     align-items: center;
-    gap: 12px; /* Clear gap between +N and ✓ */
-    margin-top: 8px; /* Push below order count to prevent overlap */
+    gap: 10px;
+    margin-top: 6px;
 }
 
-/* Delta indicator - numeric only */
+/* Delta indicator - subtle */
 .item-row__delta {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--warning-orange);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-secondary);
 }
 
-/* Told button - solid filled green circle with white ✓ */
+/* Told button - compact, clear */
 .item-row__told {
     display: flex;
     align-items: center;
     justify-content: center;
     
-    /* Touch-friendly tap area */
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
     
     background-color: var(--success-green);
     border: none;
     border-radius: 50%;
     
     color: white;
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 16px;
     
     cursor: pointer;
     transition: transform var(--transition-fast);
@@ -2152,11 +2125,11 @@ body {
 }
 
 .item-row__told:active {
-    transform: scale(0.9);
+    transform: scale(0.92);
 }
 
 .item-row__told--pending {
-    background-color: #ccc;
+    background-color: var(--border-color);
     cursor: not-allowed;
 }
 
@@ -2164,21 +2137,21 @@ body {
     opacity: 0.5;
 }
 
-/* Section headers - subtle dividers */
+/* Section headers - minimal */
 .item-section-header {
-    font-size: 10px;
-    font-weight: 600;
+    font-size: 9px;
+    font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--warning-orange);
+    color: var(--text-muted);
     
-    padding: 8px var(--spacing-md) 6px;
+    padding: 6px var(--spacing-md) 4px;
     background-color: var(--background-light);
 }
 
 .item-section-header--muted {
-    color: #999;
-    margin-top: 4px;
+    color: var(--text-muted);
+    margin-top: 2px;
 }
 
 /* ====================
@@ -2458,7 +2431,7 @@ body {
    Counter staff: "OTP please" → type → read → tap
    ==================== */
 
-/* Ready card - OTP is the visual anchor */
+/* Ready card - compact, OTP is the visual anchor */
 .ready-card {
     display: flex;
     flex-direction: row;
@@ -2466,11 +2439,10 @@ body {
     gap: var(--spacing-sm);
     
     background-color: var(--background-white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-small);
-    padding: 6px 10px;
-    margin-bottom: 6px;
-    /* No transition - render atomically to prevent flicker */
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xs);
+    padding: 6px 8px;
+    margin-bottom: 4px;
 }
 
 .ready-card--pending {
@@ -2478,65 +2450,64 @@ body {
     pointer-events: none;
 }
 
-/* Matched card - exact match highlight */
+/* Matched card - subtle highlight */
 .ready-card--matched {
     border-color: var(--success-green);
-    background-color: #f8fff8;
+    background-color: var(--success-green-light);
 }
 
-/* Code box - minimal padding */
+/* Code box - minimal */
 .ready-card__code-box {
-    background-color: #f5f5f5;
-    border-radius: 4px;
-    padding: 6px 10px;
+    background-color: var(--background-light);
+    border-radius: var(--radius-xs);
+    padding: 4px 8px;
     flex: 1;
 }
 
-/* Verification code - larger, prominent */
+/* Verification code - large, scannable */
 .ready-card__code {
     font-family: var(--font-family-mono);
-    font-size: 32px;
-    font-weight: 700;
-    letter-spacing: 3px;
+    font-size: 26px;
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 2px;
     color: var(--text-primary);
     line-height: 1;
 }
 
-/* Highlight matched text in code - simple yellow background only */
+/* Highlight matched text */
 .code-highlight {
-    background-color: #ffeb3b;
+    background-color: #fef08a;
     color: inherit;
+    border-radius: 2px;
 }
 
-/* Handover button - compact height */
+/* Handover button - compact, clear */
 .ready-card__btn {
-    padding: 6px 12px;
+    padding: 6px 10px;
     flex-shrink: 0;
-    height: 36px;
+    height: 32px;
     
     background-color: var(--success-green);
     color: white;
     
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-xs);
     
     font-family: var(--font-family-main);
-    font-size: 13px;
-    font-weight: 600;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
     
     cursor: pointer;
-    /* Only transition active state, not initial render */
     transition: transform var(--transition-fast);
     -webkit-tap-highlight-color: transparent;
 }
 
 .ready-card__btn:active {
-    background-color: #218838;
-    transform: scale(0.98);
+    transform: scale(0.97);
 }
 
 .ready-card__btn--pending {
-    background-color: #ccc;
+    background-color: var(--border-color);
     cursor: not-allowed;
 }
 
@@ -2544,19 +2515,19 @@ body {
     opacity: 0.6;
 }
 
-/* Search input enhancement for Ready tab - OTP entry */
+/* Search input for Ready tab - OTP entry */
 #completed-view .search-input {
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-lg);
     font-family: var(--font-family-mono);
-    letter-spacing: 3px;
+    letter-spacing: 2px;
     text-align: center;
     padding-left: var(--spacing-md);
     padding-right: var(--spacing-md);
     border-color: var(--border-color);
     text-transform: uppercase;
+    height: 44px;
 }
 
-/* Remove red focus ring */
 #completed-view .search-input:focus {
     border-color: var(--border-color);
     outline: none;
@@ -2566,7 +2537,7 @@ body {
 #completed-view .search-input::placeholder {
     font-family: var(--font-family-main);
     letter-spacing: normal;
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-sm);
     text-transform: none;
 }
 
@@ -2581,39 +2552,35 @@ body {
    Requirements: 1.4, 1.5, 2.3, 2.6, 3.3, 3.4
    ==================== */
 
-/* Needs Announcing row - modern calm card style
-   No border, subtle shadow, focus on quantity × item name */
+/* Needs Announcing row - clean card style */
 .item-row--announcing {
     background-color: var(--background-white);
-    border-radius: var(--radius-small);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    margin: 4px var(--spacing-sm);
+    border-radius: var(--radius-xs);
+    box-shadow: var(--shadow-card);
+    margin: 3px var(--spacing-sm);
     padding: var(--spacing-sm) var(--spacing-md);
 }
 
-/* Item name is the strongest visual element */
 .item-row--announcing .item-row__name {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--text-primary);
 }
 
-/* Quantity is prominent but secondary to name */
 .item-row--announcing .item-row__qty {
-    font-weight: 600;
-    font-size: 16px;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-base);
 }
 
-/* Delta is tertiary - visible but not dominant */
 .item-row--announcing .item-row__delta {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-muted);
 }
 
-/* TOLD button - filled, confident, clearly tappable */
+/* TOLD button - compact */
 .item-row--announcing .item-row__told {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background-color: var(--success-green);
     color: white;
@@ -2622,67 +2589,65 @@ body {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: transform 0.1s ease, background-color 0.15s ease;
+    transition: transform 0.1s ease;
 }
 
 .item-row--announcing .item-row__told:active {
-    transform: scale(0.95);
-    background-color: #218838;
+    transform: scale(0.94);
 }
 
 .item-row--announcing .item-row__told:disabled {
-    background-color: #ccc;
+    background-color: var(--border-color);
     cursor: not-allowed;
 }
 
 .item-row--announcing .item-row__told svg {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
 }
 
-/* PRE-ORDER badge - very subtle, secondary indicator */
+/* PRE-ORDER badge - subtle */
 .item-row__preorder-badge {
     display: inline-block;
-    font-size: 9px;
-    font-weight: 500;
+    font-size: 8px;
+    font-weight: var(--font-weight-medium);
     text-transform: uppercase;
     letter-spacing: 0.3px;
     
-    color: var(--text-secondary);
+    color: var(--text-muted);
     background-color: var(--background-light);
     
-    padding: 2px 5px;
-    border-radius: 3px;
+    padding: 1px 4px;
+    border-radius: 2px;
 }
 
-/* Time row - contains time hint + PRE-ORDER badge inline */
+/* Time row */
 .item-row__time-row {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-top: 2px;
+    gap: 4px;
+    margin-top: 1px;
 }
 
-/* Time hint - always shown in Needs Announcing */
 .item-row__time-hint {
-    font-size: 11px;
-    font-weight: 400;
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-normal);
     color: var(--text-muted);
 }
 
-/* Told filter toggle button */
+/* Told filter toggle - minimal */
 .told-filter-toggle {
     display: block;
     width: 100%;
     
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-muted);
     background-color: var(--background-light);
     
     border: none;
-    padding: 10px var(--spacing-md);
-    margin: 4px 0;
+    padding: 8px var(--spacing-md);
+    margin: 2px 0;
     
     cursor: pointer;
     text-align: center;
@@ -2691,19 +2656,19 @@ body {
 }
 
 .told-filter-toggle:hover {
-    background-color: #e8e8e8;
+    background-color: var(--border-light);
 }
 
 .told-filter-toggle--active {
     color: var(--brand-primary);
-    background-color: #fff5f5;
+    background-color: #fef2f2;
 }
 
 .told-filter-toggle:active {
-    transform: scale(0.98);
+    transform: scale(0.99);
 }
 
-/* Told item row - muted appearance */
+/* Told item row - muted */
 .item-row--told {
     background-color: var(--background-light);
     opacity: 0.7;
@@ -2711,55 +2676,54 @@ body {
 
 .item-row--told .item-row__qty,
 .item-row--told .item-row__name {
-    color: var(--text-secondary);
+    color: var(--text-muted);
 }
 
-/* Told indicator */
 .item-row__told-indicator {
-    font-size: 11px;
-    font-weight: 500;
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-medium);
     color: var(--success-green);
     
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 2px;
 }
 
 /* Pre-orders section - planning only */
 .preorders-section {
     margin-top: var(--spacing-md);
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-light);
     padding-top: var(--spacing-sm);
 }
 
 .preorders-section__header {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     
-    font-size: 10px;
-    font-weight: 600;
+    font-size: 9px;
+    font-weight: var(--font-weight-semibold);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--text-secondary);
+    color: var(--text-muted);
     
-    padding: 8px var(--spacing-md) 6px;
+    padding: 6px var(--spacing-md) 4px;
     background-color: var(--background-light);
 }
 
 .preorders-section__icon {
-    width: 12px;
-    height: 12px;
-    opacity: 0.7;
+    width: 10px;
+    height: 10px;
+    opacity: 0.6;
 }
 
-/* Pre-order time slot card */
+/* Pre-order time slot card - compact */
 .preorder-slot {
     background-color: var(--background-white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-small);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xs);
     
-    margin: var(--spacing-sm) var(--spacing-md);
+    margin: var(--spacing-xs) var(--spacing-md);
     padding: var(--spacing-sm) var(--spacing-md);
 }
 
@@ -2767,36 +2731,36 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 
 .preorder-slot__time {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
     color: var(--text-primary);
 }
 
 .preorder-slot__count {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text-secondary);
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-muted);
 }
 
 /* Compact item list within slot */
 .preorder-slot__items {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 4px;
 }
 
 .preorder-slot__item {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
     color: var(--text-secondary);
     
     background-color: var(--background-light);
-    padding: 3px 8px;
-    border-radius: 4px;
+    padding: 2px 6px;
+    border-radius: 3px;
 }
 
 /* Tablet adjustments for pre-order section */
