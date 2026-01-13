@@ -1633,8 +1633,9 @@ function showConfirmDialog(orderId, action) {
       const pickupTime = new Date(order.preorder_time);
       timeDisplay = formatAbsoluteTime(pickupTime);
     } else {
-      // Use updated_at as "ready time" (when order moved to COMPLETE status)
-      const readyTime = order.updated_at ? new Date(order.updated_at).getTime() : null;
+      // Use updated_at as "ready time", fallback to created_at if not available
+      const readyTimeStr = order.updated_at || order.created_at;
+      const readyTime = readyTimeStr ? new Date(readyTimeStr).getTime() : null;
       if (readyTime && !isNaN(readyTime)) {
         const waitMinutes = Math.floor((now - readyTime) / 60000);
         timeDisplay = waitMinutes >= 0 ? `~${waitMinutes} min` : '';
