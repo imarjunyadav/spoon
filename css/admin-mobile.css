@@ -333,68 +333,84 @@ body {
 }
 
 /* ====================
-   5. FLOATING ACTION BUTTON (FAB)
-   Stock management access (Requirements: 6.1)
-   Semantic states: neutral default, alert for critical stock
+   5. FLOATING STOCK PILL CTA
+   Zepto-style floating pill button (Requirements: 6.1)
    ==================== */
-.admin-fab {
+.stock-pill {
     position: fixed;
     bottom: calc(var(--tab-bar-height) + var(--fab-offset) + env(safe-area-inset-bottom, 0));
     right: var(--fab-offset);
     
-    width: var(--fab-size);
-    height: var(--fab-size);
-    
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: var(--spacing-sm);
     
-    /* Neutral default state */
-    background-color: var(--background-white);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 50%;
-    box-shadow: var(--shadow-card);
+    height: 44px;
+    padding: 4px 12px 4px 4px;
     
-    font-size: 20px;
+    background-color: var(--brand-primary);
+    color: var(--text-on-brand);
+    border: none;
+    border-radius: var(--radius-pill);
+    box-shadow: 0 4px 12px rgba(235, 23, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1);
+    
     cursor: pointer;
     z-index: var(--z-fab);
     
-    transition: transform var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
     -webkit-tap-highlight-color: transparent;
 }
 
-.admin-fab:active {
-    transform: scale(0.95);
-    background-color: var(--background-light);
+.stock-pill:active {
+    transform: scale(0.97);
+    box-shadow: 0 2px 8px rgba(235, 23, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-/* Alert state: critical stock conditions (out of stock items) */
-.admin-fab--alert {
-    background-color: var(--error-red-light);
-    color: var(--error-red);
-    border-color: var(--error-red);
+/* Icon in circular backdrop */
+.stock-pill__icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 50%;
+    flex-shrink: 0;
 }
 
-.admin-fab--alert:active {
+.stock-pill__icon {
+    color: var(--text-on-brand);
+}
+
+/* Label */
+.stock-pill__label {
+    font-family: var(--font-family-main);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+
+/* Trailing chevron */
+.stock-pill__chevron {
+    color: rgba(255, 255, 255, 0.8);
+    margin-left: -2px;
+    flex-shrink: 0;
+}
+
+/* Alert state: critical stock conditions */
+.stock-pill--alert {
     background-color: var(--error-red);
-    color: var(--text-on-brand);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35), 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Warning state: low stock items */
-.admin-fab--warning {
-    background-color: var(--warning-orange-light);
-    color: var(--warning-orange);
-    border-color: var(--warning-orange);
-}
-
-.admin-fab--warning:active {
+/* Warning state: low stock */
+.stock-pill--warning {
     background-color: var(--warning-orange);
-    color: var(--text-on-brand);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35), 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.admin-fab[aria-label] {
-    /* Ensure ARIA label is set for accessibility */
+.stock-pill[aria-label] {
     outline-offset: 2px;
 }
 
@@ -774,7 +790,7 @@ body {
         transform: translateX(-50%);
     }
     
-    .admin-fab {
+    .stock-pill {
         right: calc(50% - 384px + var(--fab-offset));
     }
 }
@@ -789,7 +805,7 @@ body {
         max-width: 1024px;
     }
     
-    .admin-fab {
+    .stock-pill {
         right: calc(50% - 512px + var(--fab-offset));
     }
     
