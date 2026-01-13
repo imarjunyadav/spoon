@@ -564,6 +564,7 @@ function getNeedsAnnouncingItems() {
           oldestOrderTime: Infinity,
           isPreOrder: true,
           earliestPickupMinutes: Infinity,
+          earliestPickupTime: null,
         };
       }
       
@@ -571,8 +572,10 @@ function getNeedsAnnouncingItems() {
       entry.quantity += item.quantity;
       entry.orderCount++;
       entry.oldestOrderTime = Math.min(entry.oldestOrderTime, orderTime);
-      if (minutesUntilPickup >= 0) {
-        entry.earliestPickupMinutes = Math.min(entry.earliestPickupMinutes, minutesUntilPickup);
+      // Track earliest pickup time (both minutes and absolute time)
+      if (entry.earliestPickupTime === null || pickupTime < entry.earliestPickupTime) {
+        entry.earliestPickupTime = pickupTime;
+        entry.earliestPickupMinutes = minutesUntilPickup;
       }
     });
   });
@@ -590,6 +593,7 @@ function getNeedsAnnouncingItems() {
       isTold: delta <= 0,
       hasPreOrderSource: true,
       earliestPickupMinutes: item.earliestPickupMinutes === Infinity ? null : item.earliestPickupMinutes,
+      earliestPickupTime: item.earliestPickupTime,
     });
   });
   
@@ -1045,12 +1049,17 @@ function renderNeedsAnnouncingRow(item) {
   const isPendingTold = AdminState.pendingToldActions.has(toldKey);
   
   // Always show time hint:
-  // - Pre-orders: "in Xm" (time until pickup)
+  // - Pre-orders: "in Xm" while future, absolute time (e.g., "1:05") when passed
   // - Live orders: "Just now" for <1m, "Xm" for others
   let timeHint = '';
-  if (item.hasPreOrderSource && item.earliestPickupMinutes !== null) {
-    // Pre-order: show time until pickup
-    timeHint = formatRelativeTime(item.earliestPickupMinutes);
+  if (item.hasPreOrderSource && item.earliestPickupTime !== null) {
+    // Pre-order: show relative time if future, absolute time if passed
+    if (item.earliestPickupMinutes !== null && item.earliestPickupMinutes > 0) {
+      timeHint = formatRelativeTime(item.earliestPickupMinutes);
+    } else {
+      // Pickup time has passed - show absolute time
+      timeHint = formatAbsoluteTime(new Date(item.earliestPickupTime));
+    }
   } else if (item.waitMinutes !== undefined) {
     // Live order: show time since oldest order
     timeHint = item.waitMinutes < 1 ? 'Just now' : `${item.waitMinutes}m`;
@@ -1123,11 +1132,17 @@ function renderToldFilterToggle(hiddenCount) {
  */
 function renderToldRow(item) {
   // Same time hint logic as renderNeedsAnnouncingRow:
-  // - Pre-orders: "in Xm" (time until pickup)
+  // - Pre-orders: "in Xm" while future, absolute time (e.g., "1:05") when passed
   // - Live orders: "Just now" for <1m, "Xm" for others
   let timeHint = '';
-  if (item.hasPreOrderSource && item.earliestPickupMinutes !== null) {
-    timeHint = formatRelativeTime(item.earliestPickupMinutes);
+  if (item.hasPreOrderSource && item.earliestPickupTime !== null) {
+    // Pre-order: show relative time if future, absolute time if passed
+    if (item.earliestPickupMinutes !== null && item.earliestPickupMinutes > 0) {
+      timeHint = formatRelativeTime(item.earliestPickupMinutes);
+    } else {
+      // Pickup time has passed - show absolute time
+      timeHint = formatAbsoluteTime(new Date(item.earliestPickupTime));
+    }
   } else if (item.waitMinutes !== undefined) {
     timeHint = item.waitMinutes < 1 ? 'Just now' : `${item.waitMinutes}m`;
   }
