@@ -218,6 +218,9 @@ function initEventListeners() {
     DOM.activeSortSelect.addEventListener('change', handleActiveOrdersSort);
   }
   
+  // Custom sort dropdown
+  initSortDropdown();
+  
   // Search input (Requirements: 12.2)
   if (DOM.searchInput) {
     DOM.searchInput.addEventListener('input', debounce(handleSearchInput, 150));
@@ -1472,6 +1475,64 @@ function sortActiveOrders(orders, sortBy) {
 function handleActiveOrdersSort() {
   AdminState.activeOrdersSort = DOM.activeSortSelect?.value || 'oldest';
   renderActiveOrders();
+}
+
+/**
+ * Initialize custom sort dropdown
+ */
+function initSortDropdown() {
+  const dropdown = document.getElementById('sort-dropdown');
+  const trigger = document.getElementById('sort-trigger');
+  const panel = document.getElementById('sort-panel');
+  const valueDisplay = document.getElementById('sort-value');
+  const options = panel?.querySelectorAll('.sort-dropdown__option');
+  
+  if (!dropdown || !trigger || !panel || !options) return;
+  
+  // Toggle dropdown
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = dropdown.classList.contains('open');
+    dropdown.classList.toggle('open');
+    trigger.setAttribute('aria-expanded', !isOpen);
+  });
+  
+  // Handle option selection
+  options.forEach(option => {
+    option.addEventListener('click', () => {
+      const value = option.dataset.value;
+      const text = option.textContent;
+      
+      // Update display
+      valueDisplay.textContent = text;
+      
+      // Update selected state
+      options.forEach(opt => {
+        opt.classList.remove('sort-dropdown__option--selected');
+        opt.setAttribute('aria-selected', 'false');
+      });
+      option.classList.add('sort-dropdown__option--selected');
+      option.setAttribute('aria-selected', 'true');
+      
+      // Update hidden select and trigger change
+      if (DOM.activeSortSelect) {
+        DOM.activeSortSelect.value = value;
+        DOM.activeSortSelect.dispatchEvent(new Event('change'));
+      }
+      
+      // Close dropdown
+      dropdown.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+    });
+  });
+  
+  // Close on outside click
+  document.addEventListener('click', (e) => {
+    if (!dropdown.contains(e.target)) {
+      dropdown.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+  });
 }
 
 

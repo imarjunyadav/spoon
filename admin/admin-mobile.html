@@ -120,7 +120,23 @@
           <!-- Sort Options -->
           <div class="sort-bar" id="active-sort-bar">
             <span class="sort-bar__label">Sort:</span>
-            <select class="sort-bar__select" id="active-sort-select" aria-label="Sort orders by">
+            <div class="sort-dropdown" id="sort-dropdown">
+              <button class="sort-dropdown__trigger" id="sort-trigger" aria-haspopup="listbox" aria-expanded="false">
+                <span class="sort-dropdown__value" id="sort-value">Oldest first</span>
+                <svg class="sort-dropdown__arrow" viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                  <path d="M7 10l5 5 5-5z"/>
+                </svg>
+              </button>
+              <div class="sort-dropdown__panel" id="sort-panel" role="listbox" aria-label="Sort options">
+                <button class="sort-dropdown__option sort-dropdown__option--selected" data-value="oldest" role="option" aria-selected="true">Oldest first</button>
+                <button class="sort-dropdown__option" data-value="newest" role="option">Newest first</button>
+                <button class="sort-dropdown__option" data-value="preorder" role="option">Pre-orders first</button>
+                <button class="sort-dropdown__option" data-value="costly" role="option">Highest value</button>
+                <button class="sort-dropdown__option" data-value="quantity" role="option">Most items</button>
+              </div>
+            </div>
+            <!-- Hidden select for form compatibility -->
+            <select class="sort-bar__select sr-only" id="active-sort-select" aria-label="Sort orders by" tabindex="-1">
               <option value="oldest">Oldest first</option>
               <option value="newest">Newest first</option>
               <option value="preorder">Pre-orders first</option>
