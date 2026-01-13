@@ -15,19 +15,39 @@
   
   <style>
     :root {
-      --brand-primary: #eb1700;
-      --brand-primary-dark: #d41400;
+      /* Brand colors - calmer red-pink for admin */
+      --brand-primary: #e05265;
+      --brand-primary-dark: #c9475a;
+      --brand-primary-light: #fff5f6;
+      
+      /* Text hierarchy */
       --text-primary: #1a1a1a;
-      --text-secondary: #666;
-      --text-muted: #999;
-      --bg-page: #f5f5f5;
-      --bg-white: #fff;
-      --border-color: #e0e0e0;
-      --error-red: #dc3545;
-      --success-green: #28a745;
+      --text-secondary: #5c5c5c;
+      --text-muted: #9ca3af;
+      
+      /* Backgrounds */
+      --bg-page: #f8f9fa;
+      --bg-white: #ffffff;
+      
+      /* Borders */
+      --border-color: #e5e7eb;
+      --border-focus: #d1d5db;
+      
+      /* States */
+      --error-red: #dc4a5a;
+      --error-bg: #fef2f3;
+      --error-border: #fecdd3;
+      --success-green: #22c55e;
+      
+      /* Spacing & sizing */
       --radius: 12px;
       --radius-sm: 8px;
-      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+      --radius-xs: 6px;
+      --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.06);
+      --shadow-input: 0 1px 2px rgba(0, 0, 0, 0.04);
+      
+      /* Transitions */
+      --transition: 150ms ease;
     }
     
     * {
@@ -55,17 +75,17 @@
       padding-bottom: env(safe-area-inset-bottom, 24px);
     }
     
-    /* Header / Branding */
+    /* Header / Branding - Clear hierarchy */
     .login-header {
       text-align: center;
-      padding: 48px 0 40px;
+      padding: 40px 0 32px;
     }
     
     .login-brand {
-      font-size: 28px;
+      font-size: 26px;
       font-weight: 700;
       color: var(--text-primary);
-      letter-spacing: -0.5px;
+      letter-spacing: -0.3px;
     }
     
     .login-brand span {
@@ -73,9 +93,11 @@
     }
     
     .login-subtitle {
-      font-size: 14px;
+      font-size: 15px;
+      font-weight: 400;
       color: var(--text-secondary);
-      margin-top: 8px;
+      margin-top: 6px;
+      line-height: 1.4;
     }
     
     /* Form Container */
@@ -83,13 +105,13 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      max-width: 400px;
+      max-width: 380px;
       width: 100%;
       margin: 0 auto;
     }
     
     .form-group {
-      margin-bottom: 16px;
+      margin-bottom: 18px;
     }
     
     .form-label {
@@ -98,75 +120,90 @@
       font-weight: 500;
       color: var(--text-secondary);
       margin-bottom: 6px;
+      letter-spacing: 0.01em;
     }
     
     .form-input {
       width: 100%;
-      height: 52px;
-      padding: 0 16px;
-      font-size: 16px;
+      height: 48px;
+      padding: 0 14px;
+      font-size: 15px;
       color: var(--text-primary);
       background: var(--bg-white);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius-xs);
+      box-shadow: var(--shadow-input);
       outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: border-color var(--transition), box-shadow var(--transition);
       -webkit-appearance: none;
       appearance: none;
     }
     
     .form-input:focus {
       border-color: var(--brand-primary);
-      box-shadow: 0 0 0 3px rgba(235, 23, 0, 0.1);
+      box-shadow: 0 0 0 3px rgba(224, 82, 101, 0.12);
     }
     
     .form-input::placeholder {
       color: var(--text-muted);
     }
     
-    /* Error message */
+    /* Error message - Calm, readable */
     .form-error {
       display: none;
       padding: 12px 14px;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
       font-size: 14px;
+      font-weight: 450;
+      line-height: 1.45;
       color: var(--error-red);
-      background: #fff5f5;
-      border-radius: var(--radius-sm);
-      border: 1px solid #ffebee;
+      background: var(--error-bg);
+      border-radius: var(--radius-xs);
+      border: 1px solid var(--error-border);
     }
     
     .form-error.visible {
       display: block;
     }
     
-    /* Login Button */
+    /* Login Button - Calm brand, accessible */
     .login-btn {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       width: 100%;
-      height: 44px;
-      margin-top: 8px;
+      height: 48px;
+      margin-top: 6px;
       font-size: 15px;
-      font-weight: 500;
+      font-weight: 600;
       color: #fff;
       background: var(--brand-primary);
       border: none;
       border-radius: var(--radius-sm);
       cursor: pointer;
-      transition: background 0.2s, opacity 0.2s;
+      transition: background var(--transition), transform var(--transition);
       -webkit-tap-highlight-color: transparent;
     }
     
+    .login-btn:hover {
+      background: var(--brand-primary-dark);
+    }
+    
     .login-btn:active {
-      opacity: 0.9;
+      transform: scale(0.98);
+      background: var(--brand-primary-dark);
     }
     
     .login-btn:disabled {
-      opacity: 0.7;
+      opacity: 0.65;
       cursor: not-allowed;
+      transform: none;
+    }
+    
+    .login-btn:focus-visible {
+      outline: 2px solid var(--brand-primary);
+      outline-offset: 2px;
     }
     
     .login-btn .btn-spinner {
@@ -178,16 +215,18 @@
       animation: spin 0.7s linear infinite;
     }
     
-    /* Footer */
+    /* Footer - Unobtrusive */
     .login-footer {
       text-align: center;
-      padding-top: 32px;
+      padding-top: 28px;
       margin-top: auto;
     }
     
     .login-footer-text {
-      font-size: 13px;
+      font-size: 12px;
+      font-weight: 450;
       color: var(--text-muted);
+      letter-spacing: 0.02em;
     }
     
     /* Overlays */
@@ -199,7 +238,7 @@
       align-items: center;
       justify-content: center;
       padding: 24px;
-      background: rgba(255,255,255,0.97);
+      background: rgba(255,255,255,0.96);
       z-index: 100;
     }
     
@@ -208,8 +247,8 @@
     }
     
     .spinner {
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       border: 3px solid var(--border-color);
       border-top-color: var(--brand-primary);
       border-radius: 50%;
@@ -221,82 +260,95 @@
     }
     
     .overlay-text {
-      margin-top: 16px;
-      font-size: 15px;
+      margin-top: 14px;
+      font-size: 14px;
+      font-weight: 450;
       color: var(--text-secondary);
     }
     
     /* Error Overlay */
     .error-overlay .overlay-icon {
-      font-size: 48px;
-      margin-bottom: 12px;
+      font-size: 40px;
+      margin-bottom: 10px;
     }
     
     .error-overlay .overlay-message {
-      font-size: 15px;
+      font-size: 14px;
+      font-weight: 450;
       color: var(--text-primary);
       text-align: center;
-      max-width: 280px;
-      margin-bottom: 20px;
+      max-width: 260px;
+      line-height: 1.5;
+      margin-bottom: 18px;
     }
     
     .retry-btn {
-      height: 48px;
-      padding: 0 32px;
-      font-size: 15px;
+      height: 44px;
+      padding: 0 28px;
+      font-size: 14px;
       font-weight: 600;
       color: #fff;
       background: var(--brand-primary);
       border: none;
       border-radius: var(--radius-sm);
       cursor: pointer;
+      transition: background var(--transition);
+    }
+    
+    .retry-btn:hover,
+    .retry-btn:active {
+      background: var(--brand-primary-dark);
     }
     
     /* Access Denied Modal */
     .modal-overlay {
-      background: rgba(0,0,0,0.5);
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
     }
     
     .modal-card {
       background: var(--bg-white);
-      padding: 32px 24px;
+      padding: 28px 24px;
       border-radius: var(--radius);
       text-align: center;
-      max-width: 320px;
+      max-width: 300px;
       width: 100%;
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow-card);
     }
     
     .modal-icon {
-      font-size: 48px;
-      margin-bottom: 12px;
+      font-size: 40px;
+      margin-bottom: 10px;
     }
     
     .modal-title {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 600;
       color: var(--text-primary);
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     
     .modal-message {
       font-size: 14px;
+      font-weight: 400;
       color: var(--text-secondary);
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
     
     .modal-support {
       font-size: 13px;
+      font-weight: 500;
       color: var(--brand-primary);
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
     
     .modal-redirect {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--text-muted);
     }
     
-    /* Tablet+ */
+    /* Tablet+ - Card layout */
     @media (min-width: 600px) {
       .login-page {
         justify-content: center;
@@ -304,18 +356,18 @@
       }
       
       .login-header {
-        padding: 0 0 48px;
+        padding: 0 0 36px;
       }
       
       .login-form {
         background: var(--bg-white);
-        padding: 32px;
+        padding: 28px 28px 24px;
         border-radius: var(--radius);
-        box-shadow: var(--shadow);
+        box-shadow: var(--shadow-card);
       }
       
       .login-footer {
-        padding-top: 24px;
+        padding-top: 20px;
       }
     }
   </style>
