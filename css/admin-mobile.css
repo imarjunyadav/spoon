@@ -1573,51 +1573,65 @@ body {
     opacity: 1;
 }
 
-/* Confirm Dialog - Compact, reading-first layout */
+/* Confirm Dialog - Bottom Sheet Modal */
 .confirm-dialog {
     position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.95);
+    bottom: 0;
+    left: 0;
+    right: 0;
     
-    width: calc(100% - var(--spacing-lg));
-    max-width: 340px;
+    display: flex;
+    flex-direction: column;
+    max-height: 70vh;
     
     background-color: var(--background-white);
-    border-radius: var(--radius-medium);
-    overflow: hidden;
+    border-top-left-radius: var(--radius-large);
+    border-top-right-radius: var(--radius-large);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12);
     
     z-index: var(--z-modal);
     
+    /* Animation: slide up from bottom */
+    transform: translateY(100%);
     opacity: 0;
-    transition: transform var(--transition-normal), opacity var(--transition-normal);
+    transition: transform var(--transition-slow), opacity var(--transition-normal);
 }
 
 .confirm-dialog.visible {
-    transform: translate(-50%, -50%) scale(1);
+    transform: translateY(0);
     opacity: 1;
 }
 
 /* Backdrop with subtle blur */
 .modal-backdrop.visible {
-    background-color: rgba(0, 0, 0, 0.4);
+    background-color: rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
 }
 
-/* Header: OTP | Order ID | Time */
+/* Drag handle indicator */
+.confirm-dialog__drag-handle {
+    width: 36px;
+    height: 4px;
+    background-color: var(--border-color);
+    border-radius: var(--radius-pill);
+    margin: 8px auto 0;
+    flex-shrink: 0;
+}
+
+/* Header: OTP | Order ID | Time - Fixed */
 .confirm-dialog__header {
     display: flex;
     align-items: baseline;
     gap: 8px;
-    padding: 12px 14px;
-    background-color: var(--background-light);
+    padding: 12px 16px;
     border-bottom: 1px solid var(--border-light);
+    flex-shrink: 0;
 }
 
 .confirm-dialog__header-otp {
     font-family: var(--font-family-mono);
-    font-size: 22px;
+    font-size: 20px;
     font-weight: var(--font-weight-bold);
     letter-spacing: 1px;
     color: var(--text-primary);
@@ -1635,9 +1649,13 @@ body {
     color: var(--text-muted);
 }
 
-/* Body content */
+/* Body content - Scrollable when needed */
 .confirm-dialog__body {
-    padding: 14px;
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px 16px;
+    min-height: 0;
 }
 
 .confirm-dialog__title {
@@ -1661,7 +1679,7 @@ body {
 }
 
 .confirm-dialog__items-container {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 /* Items list - clear hierarchy */
@@ -1674,18 +1692,18 @@ body {
 .confirm-dialog__items li {
     display: flex;
     align-items: baseline;
-    padding: 4px 0;
+    padding: 3px 0;
 }
 
 .confirm-dialog__item-qty {
-    font-size: var(--font-size-lg);
+    font-size: var(--font-size-md);
     font-weight: var(--font-weight-bold);
     color: var(--text-primary);
-    min-width: 40px;
+    min-width: 36px;
 }
 
 .confirm-dialog__item-name {
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);
     color: var(--text-primary);
     flex: 1;
@@ -1694,8 +1712,8 @@ body {
 /* Expand button */
 .confirm-dialog__expand-btn {
     width: 100%;
-    padding: 8px;
-    margin-top: 6px;
+    padding: 6px;
+    margin-top: 4px;
     
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
@@ -1716,57 +1734,62 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 0;
+    padding: 8px 0 0;
+    margin-top: 8px;
     border-top: 1px solid var(--border-light);
 }
 
 .confirm-dialog__total-qty {
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
     font-weight: var(--font-weight-medium);
     color: var(--text-muted);
 }
 
 .confirm-dialog__total-price {
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-sm);
     font-weight: var(--font-weight-bold);
     color: var(--text-primary);
 }
 
-/* Footer with action buttons */
+/* Footer with action buttons - Fixed */
 .confirm-dialog__footer {
     display: flex;
-    gap: 8px;
-    padding: 10px 14px;
-    background-color: var(--background-light);
+    gap: 10px;
+    padding: 12px 16px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0));
+    background-color: var(--background-white);
     border-top: 1px solid var(--border-light);
+    flex-shrink: 0;
 }
 
 .confirm-dialog__cancel-btn {
     flex: 1;
-    padding: 10px 14px;
+    padding: 12px 16px;
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);
     color: var(--text-secondary);
-    background: var(--background-white);
-    border: 1px solid var(--border-color);
+    background: var(--background-light);
+    border: none;
     border-radius: var(--radius-small);
     cursor: pointer;
+    transition: background var(--transition-fast);
 }
 
 .confirm-dialog__cancel-btn:active {
-    background: var(--background-light);
+    background: var(--border-color);
 }
 
 .confirm-dialog__action-btn {
     flex: 1;
-    padding: 10px 14px;
+    padding: 12px 16px;
     font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-semibold);
     color: white;
     background: var(--success-green);
     border: none;
     border-radius: var(--radius-small);
     cursor: pointer;
+    transition: opacity var(--transition-fast);
 }
 
 .confirm-dialog__action-btn--primary {
@@ -1778,7 +1801,7 @@ body {
 }
 
 .confirm-dialog__action-btn:active {
-    opacity: 0.9;
+    opacity: 0.85;
 }
 
 /* ====================
@@ -2341,8 +2364,18 @@ body {
         transform: translateX(-50%) translateY(0);
     }
     
+    /* Bottom sheet centered on tablet */
     .confirm-dialog {
         max-width: 400px;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%) translateY(100%);
+        border-bottom-left-radius: var(--radius-large);
+        border-bottom-right-radius: var(--radius-large);
+    }
+    
+    .confirm-dialog.visible {
+        transform: translateX(-50%) translateY(0);
     }
 }
 
