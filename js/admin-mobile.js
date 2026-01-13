@@ -1515,12 +1515,16 @@ function renderCompletedOrders() {
     return;
   }
   
-  // Check if we have an exact match (full code entered)
-  const isExactMatch = searchQuery && orders.length === 1 && 
-    orders[0].verification_code?.toUpperCase() === searchQuery;
+  // Pre-compute exact match state for atomic rendering
+  // Exact match: single result AND code matches query exactly
+  const exactMatchOrderId = (searchQuery && orders.length === 1 && 
+    orders[0].verification_code?.toUpperCase() === searchQuery) 
+    ? orders[0].id 
+    : null;
   
   DOM.completedOrdersList.innerHTML = orders.map(order => {
     const isPending = AdminState.pendingActions.has(order.id);
+    const isExactMatch = order.id === exactMatchOrderId;
     const code = order.verification_code || '----';
     
     // Highlight matching portion of verification code
@@ -1530,11 +1534,17 @@ function renderCompletedOrders() {
       displayCode = displayCode.replace(regex, '<mark class="code-highlight">$1</mark>');
     }
     
+    // Build classes atomically - all state determined before render
     const cardClasses = [
       'ready-card',
       isPending ? 'ready-card--pending' : '',
       isExactMatch ? 'ready-card--matched' : ''
     ].filter(Boolean).join(' ');
+    
+    // Button state determined atomically
+    const btnClasses = isPending ? 'ready-card__btn ready-card__btn--pending' : 'ready-card__btn';
+    const btnText = isPending ? '...' : 'Handed Over';
+    const btnDisabled = isPending ? 'disabled' : '';
     
     return `
       <article class="${cardClasses}"
@@ -1542,12 +1552,12 @@ function renderCompletedOrders() {
         <div class="ready-card__code-box">
           <div class="ready-card__code">${displayCode}</div>
         </div>
-        <button class="ready-card__btn ${isPending ? 'ready-card__btn--pending' : ''}"
-                ${isPending ? 'disabled' : ''}
+        <button class="${btnClasses}"
+                ${btnDisabled}
                 aria-label="Confirm pickup for code ${code}"
                 data-order-id="${order.id}"
                 data-action="pickup">
-          ${isPending ? '...' : 'Handed Over'}
+          ${btnText}
         </button>
       </article>
     `;
@@ -1771,8 +1781,12 @@ async function markComplete(orderId) {
   if (!order) return;
   
   const previousStatus = order.status;
-  AdminState.pendingActions.set(orderId, { action: 'complete', previousStatus });
+  const previousUpdatedAt = order.updated_at;
+  AdminState.pendingActions.set(orderId, { action: 'complete', previousStatus, previousUpdatedAt });
+  
+  // Complete optimistic update with all required fields to prevent render flicker
   order.status = 'COMPLETE';
+  order.updated_at = new Date().toISOString();
   renderAll();
   
   try {
@@ -1806,6 +1820,7 @@ async function markComplete(orderId) {
     
     // Rollback optimistic update (Requirements: 10.4)
     order.status = previousStatus;
+    order.updated_at = previousUpdatedAt;
     AdminState.pendingActions.delete(orderId);
     renderAll();
     
@@ -1825,8 +1840,12 @@ async function markPickedUp(orderId) {
   if (!order) return;
   
   const previousStatus = order.status;
-  AdminState.pendingActions.set(orderId, { action: 'pickup', previousStatus });
+  const previousUpdatedAt = order.updated_at;
+  AdminState.pendingActions.set(orderId, { action: 'pickup', previousStatus, previousUpdatedAt });
+  
+  // Complete optimistic update with all required fields to prevent render flicker
   order.status = 'PICKED_UP';
+  order.updated_at = new Date().toISOString();
   renderAll();
   
   try {
@@ -1867,6 +1886,7 @@ async function markPickedUp(orderId) {
     
     // Rollback optimistic update (Requirements: 10.4)
     order.status = previousStatus;
+    order.updated_at = previousUpdatedAt;
     AdminState.pendingActions.delete(orderId);
     renderAll();
     
