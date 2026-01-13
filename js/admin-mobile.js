@@ -352,10 +352,10 @@ function updateBadgeCounts() {
   const pendingOrders = AdminState.orders.filter(o => o.status === 'PENDING');
   const completedOrders = AdminState.orders.filter(o => o.status === 'COMPLETE');
   
-  // Items badge: count of visible needs-announcing items (delta > 0)
-  // Excludes pre-orders (planning only) and told items (already communicated)
+  // Items badge: total quantity of items needing announcement (sum of deltas)
+  // This is the actual count of items to tell kitchen, not unique item types
   const { visible } = getVisibleNeedsAnnouncingItems();
-  const itemCount = visible.length;
+  const itemCount = visible.reduce((sum, item) => sum + item.delta, 0);
   updateBadge(DOM.badgeItems, itemCount);
   
   // Active badge: count of pending orders
