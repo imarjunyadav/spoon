@@ -638,17 +638,17 @@ function formatAbsoluteTime(date) {
 }
 
 /**
- * Format relative time (e.g., "in 43 min")
+ * Format relative time (e.g., "in 5m")
  * @param {number} minutes - Minutes until pickup
  * @returns {string} Formatted relative time
  */
 function formatRelativeTime(minutes) {
   if (minutes <= 0) return 'now';
-  if (minutes < 60) return `in ${minutes} min`;
+  if (minutes < 60) return `in ${minutes}m`;
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  if (mins === 0) return `in ${hours} hr`;
-  return `in ${hours} hr ${mins} min`;
+  if (mins === 0) return `in ${hours}h`;
+  return `in ${hours}h ${mins}m`;
 }
 
 /**
