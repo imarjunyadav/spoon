@@ -116,18 +116,27 @@
       padding: 0 14px;
       font-size: 16px;
       color: var(--text-primary);
-      background: var(--bg-input);
-      border: 1px solid var(--border-color);
+      background: #f3f4f6;
+      border: none;
       border-radius: var(--radius-sm);
       outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      transition: background 0.15s, box-shadow 0.15s;
       -webkit-appearance: none;
       appearance: none;
     }
     
     .form-input:focus {
-      border-color: var(--brand-primary);
-      box-shadow: 0 0 0 3px rgba(235, 23, 0, 0.1);
+      background: #fff;
+      box-shadow: 0 0 0 2px var(--brand-primary);
+    }
+    
+    .form-input.has-value {
+      background: #fff;
+      box-shadow: 0 0 0 1px var(--border-color);
+    }
+    
+    .form-input:focus.has-value {
+      box-shadow: 0 0 0 2px var(--brand-primary);
     }
     
     .form-input::placeholder {
@@ -559,6 +568,15 @@
       lastCredentials = { email, password };
       await performLogin(email, password);
     }
+    
+    // Toggle has-value class for input styling
+    document.querySelectorAll('.form-input').forEach(input => {
+      const updateClass = () => {
+        input.classList.toggle('has-value', input.value.length > 0);
+      };
+      input.addEventListener('input', updateClass);
+      input.addEventListener('change', updateClass);
+    });
   </script>
 </body>
 </html>
