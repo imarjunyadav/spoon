@@ -2207,11 +2207,11 @@ body {
     margin-top: 6px;
 }
 
-/* Delta indicator - subtle */
+/* Delta indicator - brand color for emphasis */
 .item-row__delta {
     font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-medium);
-    color: var(--text-secondary);
+    font-weight: var(--font-weight-semibold);
+    color: var(--brand-primary);
 }
 
 /* Told button - compact, clear */
@@ -2695,8 +2695,8 @@ body {
 
 .item-row--announcing .item-row__delta {
     font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-medium);
-    color: var(--text-muted);
+    font-weight: var(--font-weight-semibold);
+    color: var(--brand-primary);
 }
 
 /* TOLD button - compact */
