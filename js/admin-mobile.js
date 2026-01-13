@@ -1046,14 +1046,14 @@ function renderNeedsAnnouncingRow(item) {
   
   // Always show time hint:
   // - Pre-orders: "in Xm" (time until pickup)
-  // - Live orders: "~Xm ago" (time since oldest order)
+  // - Live orders: "Just now" for <1m, "Xm" for others
   let timeHint = '';
   if (item.hasPreOrderSource && item.earliestPickupMinutes !== null) {
     // Pre-order: show time until pickup
     timeHint = formatRelativeTime(item.earliestPickupMinutes);
   } else if (item.waitMinutes !== undefined) {
     // Live order: show time since oldest order
-    timeHint = `~${item.waitMinutes}m ago`;
+    timeHint = item.waitMinutes < 1 ? 'Just now' : `${item.waitMinutes}m`;
   }
   
   // PRE-ORDER badge sits inline with time, not near item name
@@ -1124,12 +1124,12 @@ function renderToldFilterToggle(hiddenCount) {
 function renderToldRow(item) {
   // Same time hint logic as renderNeedsAnnouncingRow:
   // - Pre-orders: "in Xm" (time until pickup)
-  // - Live orders: "~Xm ago" (time since oldest order)
+  // - Live orders: "Just now" for <1m, "Xm" for others
   let timeHint = '';
   if (item.hasPreOrderSource && item.earliestPickupMinutes !== null) {
     timeHint = formatRelativeTime(item.earliestPickupMinutes);
   } else if (item.waitMinutes !== undefined) {
-    timeHint = `~${item.waitMinutes}m ago`;
+    timeHint = item.waitMinutes < 1 ? 'Just now' : `${item.waitMinutes}m`;
   }
   
   // PRE-ORDER badge sits inline with time, not near item name
