@@ -1086,11 +1086,12 @@ body {
     border-radius: var(--radius-small);
     font-size: var(--font-size-sm);
     background-color: var(--background-white);
+    transition: box-shadow var(--transition-fast);
 }
 
 .stock-panel__search-input:focus {
     outline: none;
-    box-shadow: 0 0 0 1px var(--text-muted);
+    box-shadow: 0 0 0 2px var(--brand-primary);
 }
 
 .stock-panel__search-clear {
@@ -1413,11 +1414,12 @@ body {
     border-radius: var(--radius-small);
     font-size: var(--font-size-sm);
     background-color: var(--background-white);
+    transition: box-shadow var(--transition-fast);
 }
 
 .stock-panel__search-input:focus {
     outline: none;
-    box-shadow: 0 0 0 1px var(--text-muted);
+    box-shadow: 0 0 0 2px var(--brand-primary);
 }
 
 .stock-panel__search-clear {
