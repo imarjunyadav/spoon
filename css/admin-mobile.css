@@ -335,6 +335,7 @@ body {
 /* ====================
    5. FLOATING STOCK PILL CTA
    Zepto-style floating pill button (Requirements: 6.1)
+   Soft rose/coral brand color - calm, accessible
    ==================== */
 .stock-pill {
     position: fixed;
@@ -348,32 +349,34 @@ body {
     height: 44px;
     padding: 4px 12px 4px 4px;
     
-    background-color: var(--brand-primary);
+    /* Soft rose - calm red-pink, WCAG AA compliant with white text */
+    background-color: #e06b7a;
     color: var(--text-on-brand);
     border: none;
     border-radius: var(--radius-pill);
-    box-shadow: 0 4px 12px rgba(235, 23, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 3px 10px rgba(224, 107, 122, 0.28), 0 1px 3px rgba(0, 0, 0, 0.08);
     
     cursor: pointer;
     z-index: var(--z-fab);
     
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
     -webkit-tap-highlight-color: transparent;
 }
 
 .stock-pill:active {
     transform: scale(0.97);
-    box-shadow: 0 2px 8px rgba(235, 23, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.1);
+    background-color: #d45d6b;
+    box-shadow: 0 2px 6px rgba(224, 107, 122, 0.22), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
-/* Icon in circular backdrop */
+/* Icon in circular backdrop - subtle darker tint */
 .stock-pill__icon-wrap {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 36px;
     height: 36px;
-    background-color: rgba(0, 0, 0, 0.15);
+    background-color: rgba(0, 0, 0, 0.1);
     border-radius: 50%;
     flex-shrink: 0;
 }
@@ -393,21 +396,29 @@ body {
 
 /* Trailing chevron */
 .stock-pill__chevron {
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 0.7);
     margin-left: -2px;
     flex-shrink: 0;
 }
 
-/* Alert state: critical stock conditions */
+/* Alert state: critical stock conditions - warmer red */
 .stock-pill--alert {
-    background-color: var(--error-red);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35), 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: #dc6b6b;
+    box-shadow: 0 3px 10px rgba(220, 107, 107, 0.3), 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-/* Warning state: low stock */
+.stock-pill--alert:active {
+    background-color: #c95f5f;
+}
+
+/* Warning state: low stock - soft amber */
 .stock-pill--warning {
-    background-color: var(--warning-orange);
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35), 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: #e8a065;
+    box-shadow: 0 3px 10px rgba(232, 160, 101, 0.3), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.stock-pill--warning:active {
+    background-color: #d99358;
 }
 
 .stock-pill[aria-label] {
