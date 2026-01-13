@@ -207,22 +207,6 @@
       </div>
     </main>
     
-    <!-- Floating Action Button - Stock Management (Requirements: 6.1) -->
-    <button class="stock-pill" 
-            id="stock-fab"
-            aria-label="Manage stock"
-            aria-haspopup="dialog">
-      <span class="stock-pill__icon-wrap">
-        <svg class="stock-pill__icon" viewBox="0 0 24 24" fill="currentColor" width="18" height="18" aria-hidden="true">
-          <path d="M20 2H4c-1 0-2 .9-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4c0-1.1-1-2-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z"/>
-        </svg>
-      </span>
-      <span class="stock-pill__label">Stock</span>
-      <svg class="stock-pill__chevron" viewBox="0 0 24 24" fill="currentColor" width="20" height="20" aria-hidden="true">
-        <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/>
-      </svg>
-    </button>
-    
     <!-- Bottom Tab Bar (Requirements: 2.1, 2.2) -->
     <nav class="admin-tab-bar" role="tablist" aria-label="Dashboard navigation">
       <!-- Items Tab -->
@@ -262,6 +246,14 @@
         <span class="admin-tab__badge" id="badge-completed" aria-label="completed orders count">0</span>
         <i class="admin-tab__icon fas fa-check-circle" aria-hidden="true"></i>
         <span class="admin-tab__label">Ready</span>
+      </button>
+      
+      <!-- Stock Tab - Branded treatment (Zomato/Blinkit style) -->
+      <button class="admin-tab admin-tab--stock" 
+              id="stock-fab"
+              aria-label="Manage stock"
+              aria-haspopup="dialog">
+        <span class="admin-tab__stock-label">STOCK</span>
       </button>
     </nav>
     
