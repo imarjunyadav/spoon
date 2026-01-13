@@ -1792,8 +1792,8 @@ body {
     background-color: var(--background-white);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-small);
-    padding: var(--spacing-md);
-    margin-bottom: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: 6px;
 }
 
 .order-card--pending {
@@ -1804,7 +1804,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
 }
 
 .order-card__info {
@@ -1824,12 +1824,13 @@ body {
     color: var(--text-muted);
 }
 
+/* Pre-order badge - brand primary color */
 .order-card__preorder-badge {
     font-size: 9px;
-    font-weight: var(--font-weight-semibold);
-    color: var(--warning-orange);
-    background: var(--warning-orange-light);
-    padding: 2px 5px;
+    font-weight: var(--font-weight-bold);
+    color: var(--brand-primary);
+    background: rgba(235, 23, 0, 0.08);
+    padding: 2px 6px;
     border-radius: 3px;
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -1861,13 +1862,13 @@ body {
 .order-card__items {
     list-style: none;
     margin: 0;
-    padding: var(--spacing-xs) 0;
+    padding: var(--spacing-2xs) 0;
 }
 
 .order-card__item {
     display: flex;
     align-items: baseline;
-    padding: 3px 0;
+    padding: 2px 0;
 }
 
 /* Quantity - bold, prominent */
@@ -1897,32 +1898,33 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: var(--spacing-sm);
-    border-top: 1px solid var(--border-color);
+    padding-top: var(--spacing-xs);
+    border-top: 1px solid var(--border-light);
+    margin-top: var(--spacing-xs);
 }
 
 .order-card__meta {
     display: flex;
     gap: var(--spacing-md);
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
 }
 
 .order-card__total-qty {
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
 }
 
 .order-card__total-value {
-    font-weight: 600;
-    color: var(--text-primary);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-secondary);
 }
 
 /* Subtle action buttons - de-emphasized */
 .order-card__btn {
-    padding: 8px 14px;
-    border-radius: var(--radius-small);
-    font-size: var(--font-size-sm);
-    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: var(--radius-xs);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
     border: none;
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -1959,26 +1961,27 @@ body {
     min-height: var(--touch-target-min);
 }
 
-/* Sort Bar - compact */
+/* Sort Bar - compact, inline */
 .sort-bar {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
-    background-color: var(--background-light);
-    border-bottom: 1px solid var(--border-light);
-    margin-bottom: var(--spacing-sm);
+    padding: var(--spacing-xs) 0;
+    margin-bottom: var(--spacing-xs);
 }
 
 .sort-bar__label {
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-medium);
     color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .sort-bar__select {
     flex: 1;
-    max-width: 140px;
-    height: 32px;
+    max-width: 130px;
+    height: 28px;
     padding: 0 var(--spacing-sm);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-xs);
