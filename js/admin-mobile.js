@@ -1046,14 +1046,14 @@ function renderNeedsAnnouncingRow(item) {
   
   // Always show time hint:
   // - Pre-orders: "in Xm" (time until pickup)
-  // - Live orders: "~Xm ago" (time since oldest order)
+  // - Live orders: "~Xm ago" (time since oldest order), "Just now" for <1m
   let timeHint = '';
   if (item.hasPreOrderSource && item.earliestPickupMinutes !== null) {
     // Pre-order: show time until pickup
     timeHint = formatRelativeTime(item.earliestPickupMinutes);
   } else if (item.waitMinutes !== undefined) {
     // Live order: show time since oldest order
-    timeHint = `~${item.waitMinutes}m ago`;
+    timeHint = item.waitMinutes < 1 ? 'Just now' : `~${item.waitMinutes}m ago`;
   }
   
   // PRE-ORDER badge sits inline with time, not near item name
@@ -1068,10 +1068,15 @@ function renderNeedsAnnouncingRow(item) {
   const checkIcon = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg>`;
   const pendingIcon = `<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="2"/></svg>`;
   
+  // Only show delta when item has been ordered again (not first occurrence)
+  // First occurrence: toldCount is 0 AND orderCount is 1
+  const isFirstOccurrence = item.toldCount === 0 && item.orderCount === 1;
+  const showDelta = !isFirstOccurrence && item.delta > 0;
+  
   return `
     <div class="item-row item-row--announcing"
          role="listitem"
-         aria-label="${item.quantity} ${item.name}, ${item.delta} new${timeHint ? `, ${timeHint}` : ''}">
+         aria-label="${item.quantity} ${item.name}${showDelta ? `, ${item.delta} new` : ''}${timeHint ? `, ${timeHint}` : ''}">
       <div class="item-row__content">
         <div class="item-row__primary">
           <span class="item-row__qty">${item.quantity}</span><span class="item-row__sep">×</span>
@@ -1081,7 +1086,7 @@ function renderNeedsAnnouncingRow(item) {
       </div>
       <div class="item-row__right">
         <div class="item-row__action">
-          <span class="item-row__delta">+${item.delta}</span>
+          ${showDelta ? `<span class="item-row__delta">+${item.delta}</span>` : ''}
           <button class="item-row__told ${isPendingTold ? 'item-row__told--pending' : ''}"
                   ${isPendingTold ? 'disabled' : ''}
                   aria-label="Mark ${item.name} as told"
@@ -1124,12 +1129,12 @@ function renderToldFilterToggle(hiddenCount) {
 function renderToldRow(item) {
   // Same time hint logic as renderNeedsAnnouncingRow:
   // - Pre-orders: "in Xm" (time until pickup)
-  // - Live orders: "~Xm ago" (time since oldest order)
+  // - Live orders: "~Xm ago" (time since oldest order), "Just now" for <1m
   let timeHint = '';
   if (item.hasPreOrderSource && item.earliestPickupMinutes !== null) {
     timeHint = formatRelativeTime(item.earliestPickupMinutes);
   } else if (item.waitMinutes !== undefined) {
-    timeHint = `~${item.waitMinutes}m ago`;
+    timeHint = item.waitMinutes < 1 ? 'Just now' : `~${item.waitMinutes}m ago`;
   }
   
   // PRE-ORDER badge sits inline with time, not near item name
@@ -1703,7 +1708,7 @@ function showConfirmDialog(orderId, action) {
       const readyTime = readyTimeStr ? new Date(readyTimeStr).getTime() : null;
       if (readyTime && !isNaN(readyTime)) {
         const waitMinutes = Math.floor((now - readyTime) / 60000);
-        timeDisplay = waitMinutes >= 0 ? `~${waitMinutes} min` : '';
+        timeDisplay = waitMinutes < 1 ? 'Just now' : `~${waitMinutes} min`;
       }
     }
     
