@@ -100,8 +100,6 @@ const DOM = {
   confirmOrderId: null,
   confirmCancelBtn: null,
   confirmActionBtn: null,
-  toast: null,
-  toastMessage: null,
   loadingOverlay: null,
   errorOverlay: null,
   accessDeniedOverlay: null,
@@ -177,10 +175,6 @@ function initDOMReferences() {
   DOM.confirmDetails = document.getElementById('confirm-details');
   DOM.confirmCancelBtn = document.getElementById('confirm-cancel-btn');
   DOM.confirmActionBtn = document.getElementById('confirm-action-btn');
-  
-  // Toast
-  DOM.toast = document.getElementById('toast');
-  DOM.toastMessage = document.getElementById('toast-message');
   
   // Overlays
   DOM.loadingOverlay = document.getElementById('loading-overlay');
@@ -1290,7 +1284,7 @@ async function handleTold(itemName, currentQuantity) {
     AdminState.pendingToldActions.delete(itemName);
     renderItems();
     
-    showToast('Failed to save. Please try again.', 'error');
+    // Removed toast - UI state change is sufficient feedback
   }
 }
 
@@ -1810,7 +1804,6 @@ async function markComplete(orderId) {
     if (result.success) {
       console.log('✅ Order marked as COMPLETE');
       AdminState.pendingActions.delete(orderId);
-      showToast('Order marked as complete', 'success');
       await fetchOrders();
     } else {
       throw new Error(result.error || 'Failed to update order');
@@ -1824,7 +1817,7 @@ async function markComplete(orderId) {
     AdminState.pendingActions.delete(orderId);
     renderAll();
     
-    showToast('Failed to update order. Please try again.', 'error');
+    // Removed toast - rollback is visible in UI
   }
 }
 
@@ -1869,7 +1862,6 @@ async function markPickedUp(orderId) {
     if (result.success) {
       console.log('✅ Order marked as PICKED_UP');
       AdminState.pendingActions.delete(orderId);
-      showToast('Order picked up successfully', 'success');
       
       // Clear search input and restore full list after handover
       clearSearch();
@@ -1890,7 +1882,7 @@ async function markPickedUp(orderId) {
     AdminState.pendingActions.delete(orderId);
     renderAll();
     
-    showToast('Failed to update order. Please try again.', 'error');
+    // Removed toast - rollback is visible in UI
   }
 }
 
@@ -2149,14 +2141,12 @@ async function toggleStock(itemId, isAvailable) {
     
     if (response.ok && result.success) {
       console.log(`✅ Stock updated: ${isAvailable ? 'In Stock' : 'Out of Stock'}`);
-      showToast(`${item?.name || 'Item'} ${isAvailable ? 'back in stock' : 'out of stock'}`, 'success');
       await fetchMenuItems();
     } else {
       throw new Error(result.error || 'Failed to update stock');
     }
   } catch (error) {
     console.error("❌ Error updating stock:", error);
-    showToast('Failed to update stock. Please try again.', 'error');
     // Revert toggle
     if (item) {
       item.is_available = !isAvailable;
@@ -2473,7 +2463,7 @@ async function handleLogout() {
   } catch (error) {
     console.error('Logout error:', error);
     hideLoading();
-    showToast('Failed to log out. Please try again.', 'error');
+    // Removed toast - user can retry
   }
 }
 
@@ -2534,23 +2524,6 @@ function handleSessionExpiry() {
   
   // Current view state is preserved (Requirements: 13.3)
   // User can continue viewing current data
-}
-
-/**
- * Show toast notification
- * @param {string} message - The message to show
- * @param {string} type - 'success' | 'error' | 'info'
- */
-function showToast(message, type = 'info') {
-  if (!DOM.toast || !DOM.toastMessage) return;
-  
-  DOM.toastMessage.textContent = message;
-  DOM.toast.className = `admin-toast admin-toast--${type}`;
-  DOM.toast.classList.add('visible');
-  
-  setTimeout(() => {
-    DOM.toast.classList.remove('visible');
-  }, 3000);
 }
 
 /**

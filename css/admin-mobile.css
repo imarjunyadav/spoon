@@ -828,45 +828,7 @@ body {
 }
 
 /* ====================
-   14. TOAST NOTIFICATIONS
-   ==================== */
-.admin-toast {
-    position: fixed;
-    bottom: calc(var(--tab-bar-height) + var(--spacing-md) + env(safe-area-inset-bottom, 0));
-    left: var(--spacing-md);
-    right: var(--spacing-md);
-    
-    padding: var(--spacing-md);
-    background-color: var(--text-primary);
-    color: var(--text-on-brand);
-    border-radius: var(--radius-small);
-    
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    text-align: center;
-    
-    z-index: var(--z-modal);
-    
-    transform: translateY(80px);
-    opacity: 0;
-    transition: transform var(--transition-slow), opacity var(--transition-slow);
-}
-
-.admin-toast.visible {
-    transform: translateY(0);
-    opacity: 1;
-}
-
-.admin-toast--success {
-    background-color: var(--success-green);
-}
-
-.admin-toast--error {
-    background-color: var(--error-red);
-}
-
-/* ====================
-   15. EMPTY STATE
+   14. EMPTY STATE
    ==================== */
 .admin-empty-state {
     display: flex;
