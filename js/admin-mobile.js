@@ -1720,57 +1720,31 @@ function showConfirmDialog(orderId, action) {
       <span class="confirm-dialog__header-time">${timeDisplay}</span>
     `;
     
-    // Build body: items list (expandable if long), then summary
-    const itemCount = order.items?.length || 0;
-    const maxVisibleItems = 5;
-    const needsExpand = itemCount > maxVisibleItems;
-    
+    // Build body: items list (all items, scrollable)
     if (DOM.confirmDetails) {
-      const visibleItems = needsExpand ? order.items.slice(0, maxVisibleItems) : order.items;
-      const hiddenItems = needsExpand ? order.items.slice(maxVisibleItems) : [];
-      
       DOM.confirmDetails.innerHTML = `
         <div class="confirm-dialog__items-container">
           <ul class="confirm-dialog__items">
-            ${visibleItems.map(item => `
+            ${(order.items || []).map(item => `
               <li>
                 <span class="confirm-dialog__item-qty">${item.quantity}×</span>
                 <span class="confirm-dialog__item-name">${escapeHtml(item.title)}</span>
               </li>
             `).join('')}
           </ul>
-          ${needsExpand ? `
-            <div class="confirm-dialog__expand-container hidden" id="confirm-hidden-items">
-              <ul class="confirm-dialog__items">
-                ${hiddenItems.map(item => `
-                  <li>
-                    <span class="confirm-dialog__item-qty">${item.quantity}×</span>
-                    <span class="confirm-dialog__item-name">${escapeHtml(item.title)}</span>
-                  </li>
-                `).join('')}
-              </ul>
-            </div>
-            <button class="confirm-dialog__expand-btn" id="confirm-expand-btn" type="button">
-              Show all ${itemCount} items
-            </button>
-          ` : ''}
-        </div>
-        <div class="confirm-dialog__summary">
-          <span class="confirm-dialog__total-qty">${totalQty} items</span>
-          <span class="confirm-dialog__total-price">₹${totalValue}</span>
         </div>
       `;
       DOM.confirmDetails.classList.remove('hidden');
-      
-      // Set up expand button handler
-      if (needsExpand) {
-        const expandBtn = document.getElementById('confirm-expand-btn');
-        const hiddenItemsEl = document.getElementById('confirm-hidden-items');
-        expandBtn?.addEventListener('click', () => {
-          hiddenItemsEl?.classList.remove('hidden');
-          expandBtn.classList.add('hidden');
-        });
-      }
+    }
+    
+    // Update sticky summary
+    const summaryEl = document.getElementById('confirm-summary');
+    const totalQtyEl = document.getElementById('confirm-total-qty');
+    const totalPriceEl = document.getElementById('confirm-total-price');
+    if (summaryEl && totalQtyEl && totalPriceEl) {
+      totalQtyEl.textContent = `${totalQty} items`;
+      totalPriceEl.textContent = `₹${totalValue}`;
+      summaryEl.classList.remove('hidden');
     }
   }
   

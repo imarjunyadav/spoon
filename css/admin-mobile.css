@@ -1602,11 +1602,11 @@ body {
     opacity: 1;
 }
 
-/* Backdrop with subtle blur */
+/* Backdrop with full-screen blur */
 .modal-backdrop.visible {
-    background-color: rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
+    background-color: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 /* Drag handle indicator */
@@ -1619,22 +1619,22 @@ body {
     flex-shrink: 0;
 }
 
-/* Header: OTP | Order ID | Time - Fixed */
+/* Header: OTP (de-emphasized) | Order ID | Time - Fixed */
 .confirm-dialog__header {
     display: flex;
     align-items: baseline;
     gap: 8px;
-    padding: 12px 16px;
+    padding: 10px 16px;
     border-bottom: 1px solid var(--border-light);
     flex-shrink: 0;
 }
 
 .confirm-dialog__header-otp {
     font-family: var(--font-family-mono);
-    font-size: 20px;
-    font-weight: var(--font-weight-bold);
-    letter-spacing: 1px;
-    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
 }
 
 .confirm-dialog__header-order-id {
@@ -1649,13 +1649,13 @@ body {
     color: var(--text-muted);
 }
 
-/* Body content - Scrollable when needed */
+/* Body content - Only items scroll */
 .confirm-dialog__body {
+    display: flex;
+    flex-direction: column;
     flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 12px 16px;
     min-height: 0;
+    padding: 0;
 }
 
 .confirm-dialog__title {
@@ -1664,6 +1664,7 @@ body {
     color: var(--text-primary);
     margin: 0 0 var(--spacing-sm) 0;
     text-align: center;
+    padding: 12px 16px 0;
 }
 
 .confirm-dialog__message {
@@ -1671,18 +1672,28 @@ body {
     color: var(--text-secondary);
     margin: 0 0 var(--spacing-md) 0;
     text-align: center;
+    padding: 0 16px;
 }
 
-/* Order details */
+/* Order details container */
 .confirm-dialog__details {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
     text-align: left;
 }
 
+/* Items container - scrollable */
 .confirm-dialog__items-container {
-    margin-bottom: 8px;
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 16px;
+    min-height: 0;
 }
 
-/* Items list - clear hierarchy */
+/* Items list - primary focus */
 .confirm-dialog__items {
     list-style: none;
     margin: 0;
@@ -1692,51 +1703,37 @@ body {
 .confirm-dialog__items li {
     display: flex;
     align-items: baseline;
-    padding: 3px 0;
+    padding: 4px 0;
 }
 
 .confirm-dialog__item-qty {
-    font-size: var(--font-size-md);
+    font-size: var(--font-size-lg);
     font-weight: var(--font-weight-bold);
     color: var(--text-primary);
     min-width: 36px;
 }
 
 .confirm-dialog__item-name {
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-base);
     font-weight: var(--font-weight-medium);
     color: var(--text-primary);
     flex: 1;
 }
 
-/* Expand button */
+/* Expand button - hidden by default, rely on scroll */
 .confirm-dialog__expand-btn {
-    width: 100%;
-    padding: 6px;
-    margin-top: 4px;
-    
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-medium);
-    color: var(--brand-primary);
-    
-    background: var(--background-light);
-    border: 1px dashed var(--border-color);
-    border-radius: var(--radius-xs);
-    cursor: pointer;
+    display: none;
 }
 
-.confirm-dialog__expand-btn:active {
-    background: var(--border-light);
-}
-
-/* Summary */
+/* Summary - sticky, always visible */
 .confirm-dialog__summary {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 0 0;
-    margin-top: 8px;
+    padding: 10px 16px;
+    background-color: var(--background-white);
     border-top: 1px solid var(--border-light);
+    flex-shrink: 0;
 }
 
 .confirm-dialog__total-qty {

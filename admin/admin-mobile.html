@@ -320,8 +320,16 @@
       <h2 class="confirm-dialog__title hidden" id="confirm-title">Confirm Action</h2>
       <p class="confirm-dialog__message hidden" id="confirm-message">Are you sure?</p>
       <div class="confirm-dialog__details hidden" id="confirm-details">
-        <!-- Order details for pickup verification -->
+        <!-- Items container - scrollable -->
+        <div class="confirm-dialog__items-container">
+          <!-- Order items rendered here -->
+        </div>
       </div>
+    </div>
+    <!-- Summary - sticky, always visible -->
+    <div class="confirm-dialog__summary hidden" id="confirm-summary">
+      <span class="confirm-dialog__total-qty" id="confirm-total-qty"></span>
+      <span class="confirm-dialog__total-price" id="confirm-total-price"></span>
     </div>
     <div class="confirm-dialog__footer">
       <button class="confirm-dialog__cancel-btn" id="confirm-cancel-btn">Cancel</button>
