@@ -335,6 +335,7 @@ body {
 /* ====================
    5. FLOATING ACTION BUTTON (FAB)
    Stock management access (Requirements: 6.1)
+   Semantic states: neutral default, alert for critical stock
    ==================== */
 .admin-fab {
     position: fixed;
@@ -348,22 +349,48 @@ body {
     align-items: center;
     justify-content: center;
     
-    background-color: var(--text-primary);
-    color: var(--text-on-brand);
-    border: none;
+    /* Neutral default state */
+    background-color: var(--background-white);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 50%;
-    box-shadow: var(--shadow-fab);
+    box-shadow: var(--shadow-card);
     
     font-size: 20px;
     cursor: pointer;
     z-index: var(--z-fab);
     
-    transition: transform var(--transition-fast);
+    transition: transform var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
     -webkit-tap-highlight-color: transparent;
 }
 
 .admin-fab:active {
     transform: scale(0.95);
+    background-color: var(--background-light);
+}
+
+/* Alert state: critical stock conditions (out of stock items) */
+.admin-fab--alert {
+    background-color: var(--error-red-light);
+    color: var(--error-red);
+    border-color: var(--error-red);
+}
+
+.admin-fab--alert:active {
+    background-color: var(--error-red);
+    color: var(--text-on-brand);
+}
+
+/* Warning state: low stock items */
+.admin-fab--warning {
+    background-color: var(--warning-orange-light);
+    color: var(--warning-orange);
+    border-color: var(--warning-orange);
+}
+
+.admin-fab--warning:active {
+    background-color: var(--warning-orange);
+    color: var(--text-on-brand);
 }
 
 .admin-fab[aria-label] {
