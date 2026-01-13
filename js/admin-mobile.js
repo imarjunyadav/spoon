@@ -1394,12 +1394,12 @@ function renderActiveOrders() {
             ${isPreOrder ? '<span class="order-card__preorder-badge">PRE-ORDER</span>' : ''}
             <span class="order-card__qty">${totalQty} items</span>
           </div>
-          <button class="order-card__btn order-card__btn--done"
+          <button class="order-card__btn order-card__btn--done ${isPending ? 'loading' : ''}"
                   ${isPending ? 'disabled' : ''}
                   aria-label="Mark order as complete"
                   data-order-id="${order.id}"
                   data-action="complete">
-            ${isPending ? '...' : 'Done'}
+            Done
           </button>
         </div>
         <ul class="order-card__items">
