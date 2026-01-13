@@ -376,7 +376,7 @@ function updateBadge(badgeEl, count) {
   const wasVisible = badgeEl.classList.contains('visible');
   const newVisible = count > 0;
   
-  badgeEl.textContent = count > 99 ? '99+' : count;
+  badgeEl.textContent = count;
   badgeEl.classList.toggle('visible', newVisible);
   
   // Pulse animation when count increases
