@@ -1345,21 +1345,21 @@ function renderPreOrdersSection(slots) {
 
 /**
  * Format wait time for display
- * < 60 min → ~18m
- * >= 60 min → ~1h 5m, ~2h 10m
+ * < 60 min → 18m
+ * >= 60 min → 1 hr 5 m, 2 hr 10 m
  * @param {number} minutes - Wait time in minutes
  * @returns {string} Formatted wait time
  */
 function formatWaitTime(minutes) {
   if (minutes < 60) {
-    return `~${minutes}m`;
+    return `${minutes}m`;
   }
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
   if (mins === 0) {
-    return `~${hours}h`;
+    return `${hours} hr`;
   }
-  return `~${hours}h ${mins}m`;
+  return `${hours} hr ${mins} m`;
 }
 
 /**
@@ -1928,7 +1928,7 @@ function showConfirmDialog(orderId, action) {
       const readyTime = readyTimeStr ? new Date(readyTimeStr).getTime() : null;
       if (readyTime && !isNaN(readyTime)) {
         const waitMinutes = Math.floor((now - readyTime) / 60000);
-        timeDisplay = waitMinutes >= 0 ? `~${waitMinutes} min` : '';
+        timeDisplay = waitMinutes >= 0 ? formatWaitTime(waitMinutes) : '';
       }
     }
     
