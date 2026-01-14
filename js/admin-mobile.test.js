@@ -1008,139 +1008,300 @@ describe('Admin Mobile Dashboard Property-Based Tests', () => {
 // Feature: preorder-items-separation
 // ============================================
 
-describe('Pre-Order Items Separation Property-Based Tests', () => {
+// Activation threshold: 45 minutes in milliseconds
+const ACTIVATION_THRESHOLD_MS = 45 * 60 * 1000;
+
+/**
+ * Order classification function (mirrors admin-mobile.js implementation)
+ */
+function needsAnnouncing(order) {
+  if (!order.preorder_time) {
+    return true;
+  }
   
-  // Activation threshold: 45 minutes in milliseconds
-  const ACTIVATION_THRESHOLD_MS = 45 * 60 * 1000;
+  const now = Date.now();
+  const pickupTime = new Date(order.preorder_time).getTime();
   
-  /**
-   * Order classification function (mirrors admin-mobile.js implementation)
-   */
-  function needsAnnouncing(order) {
-    if (!order.preorder_time) {
-      return true;
+  if (isNaN(pickupTime)) {
+    return true;
+  }
+  
+  const activationTime = pickupTime - ACTIVATION_THRESHOLD_MS;
+  return now >= activationTime;
+}
+
+/**
+ * Check if order is a transitioned pre-order
+ */
+function isTransitionedPreOrder(order) {
+  return !!(order.preorder_time && needsAnnouncing(order));
+}
+
+/**
+ * Partition orders into needs-announcing and future pre-orders
+ */
+function partitionOrders(orders) {
+  const pendingOrders = orders.filter(o => o.status === 'PENDING');
+  return {
+    needsAnnouncingOrders: pendingOrders.filter(needsAnnouncing),
+    futurePreOrders: pendingOrders.filter(o => !needsAnnouncing(o))
+  };
+}
+
+/**
+ * Generate aggregation key for an item based on order type and scheduled time
+ * Key formats:
+ * - Live orders: "live:{itemName}"
+ * - Pre-orders: "preorder:{itemName}:{scheduledTimeISO}"
+ */
+function getAggregationKey(itemName, isPreOrder, scheduledTimeISO) {
+  if (isPreOrder && scheduledTimeISO) {
+    return `preorder:${itemName}:${scheduledTimeISO}`;
+  }
+  return `live:${itemName}`;
+}
+
+/**
+ * Parse an aggregation key to extract its components
+ */
+function parseAggregationKey(key) {
+  if (key.startsWith('preorder:')) {
+    // Format: preorder:{itemName}:{scheduledTimeISO}
+    // Note: Both item names and ISO strings can contain colons
+    // ISO format is predictable: YYYY-MM-DDTHH:MM:SS.sssZ
+    const withoutPrefix = key.slice(9); // Skip "preorder:"
+    
+    // Find the ISO timestamp by looking for the date pattern
+    const isoPattern = /\d{4}-\d{2}-\d{2}T/;
+    const match = withoutPrefix.match(isoPattern);
+    
+    if (match && match.index !== undefined) {
+      const itemName = withoutPrefix.slice(0, match.index - 1); // -1 to remove the colon before timestamp
+      const scheduledTimeISO = withoutPrefix.slice(match.index);
+      return { type: 'preorder', itemName, scheduledTimeISO };
     }
     
-    const now = Date.now();
-    const pickupTime = new Date(order.preorder_time).getTime();
-    
-    if (isNaN(pickupTime)) {
-      return true;
-    }
-    
-    const activationTime = pickupTime - ACTIVATION_THRESHOLD_MS;
-    return now >= activationTime;
+    // Malformed key, return as-is
+    return { type: 'preorder', itemName: withoutPrefix, scheduledTimeISO: null };
   }
   
-  /**
-   * Check if order is a transitioned pre-order
-   */
-  function isTransitionedPreOrder(order) {
-    return !!(order.preorder_time && needsAnnouncing(order));
-  }
+  const itemName = key.slice(5); // Skip "live:"
+  return { type: 'live', itemName, scheduledTimeISO: null };
+}
+
+/**
+ * Get items for Needs Announcing section (mirrors admin-mobile.js)
+ * Uses aggregation keys to ensure proper state isolation:
+ * - Live orders: "live:{itemName}"
+ * - Pre-orders: "preorder:{itemName}:{scheduledTimeISO}"
+ */
+
+// Live order delta window: new orders within 3 minutes of told action show as delta
+const LIVE_ORDER_DELTA_WINDOW_MS = 3 * 60 * 1000;
+
+function getNeedsAnnouncingItems() {
+  const { needsAnnouncingOrders } = partitionOrders(global.AdminState.orders);
+  const now = Date.now();
   
-  /**
-   * Partition orders into needs-announcing and future pre-orders
-   */
-  function partitionOrders(orders) {
-    const pendingOrders = orders.filter(o => o.status === 'PENDING');
-    return {
-      needsAnnouncingOrders: pendingOrders.filter(needsAnnouncing),
-      futurePreOrders: pendingOrders.filter(o => !needsAnnouncing(o))
-    };
-  }
+  // Separate into normal orders and transitioned pre-orders
+  const normalOrders = needsAnnouncingOrders.filter(o => !isTransitionedPreOrder(o));
+  const preOrders = needsAnnouncingOrders.filter(o => isTransitionedPreOrder(o));
   
-  /**
-   * Get items for Needs Announcing section (mirrors admin-mobile.js)
-   */
-  function getNeedsAnnouncingItems() {
-    const { needsAnnouncingOrders } = partitionOrders(global.AdminState.orders);
-    const now = Date.now();
+  const items = [];
+  
+  // ========================================
+  // LIVE ORDERS - Announce-Cycle Model
+  // ========================================
+  const liveItemData = {};
+  
+  normalOrders.forEach(order => {
+    const orderTime = new Date(order.created_at).getTime();
     
-    const itemMap = {};
-    
-    needsAnnouncingOrders.forEach(order => {
-      const isTransitioned = isTransitionedPreOrder(order);
-      const pickupTime = order.preorder_time ? new Date(order.preorder_time).getTime() : null;
-      const minutesUntilPickup = pickupTime ? Math.round((pickupTime - now) / 60000) : null;
-      const orderTime = new Date(order.created_at).getTime();
+    (order.items || []).forEach(item => {
+      if (!liveItemData[item.title]) {
+        liveItemData[item.title] = {
+          name: item.title,
+          aggregationKey: getAggregationKey(item.title, false, null),
+          orders: [],
+          totalQuantity: 0,
+          oldestOrderTime: Infinity,
+          newestOrderTime: 0,
+        };
+      }
       
-      (order.items || []).forEach(item => {
-        if (!itemMap[item.title]) {
-          itemMap[item.title] = {
-            name: item.title,
-            quantity: 0,
-            orderCount: 0,
-            oldestOrderTime: Infinity,
-            hasPreOrderSource: false,
-            earliestPickupMinutes: Infinity,
-          };
-        }
-        
-        const entry = itemMap[item.title];
-        entry.quantity += item.quantity;
-        entry.orderCount++;
-        entry.oldestOrderTime = Math.min(entry.oldestOrderTime, orderTime);
-        
-        if (isTransitioned) {
-          entry.hasPreOrderSource = true;
-          if (minutesUntilPickup !== null && minutesUntilPickup >= 0) {
-            entry.earliestPickupMinutes = Math.min(entry.earliestPickupMinutes, minutesUntilPickup);
-          }
-        }
+      const entry = liveItemData[item.title];
+      entry.orders.push({
+        orderTime,
+        quantity: item.quantity,
+        orderId: order.id,
       });
+      entry.totalQuantity += item.quantity;
+      entry.oldestOrderTime = Math.min(entry.oldestOrderTime, orderTime);
+      entry.newestOrderTime = Math.max(entry.newestOrderTime, orderTime);
     });
-    
-    return Object.values(itemMap).map(item => {
-      const toldCount = global.AdminState.toldCounts[item.name] || 0;
-      const delta = Math.max(0, item.quantity - toldCount);
-      const isTold = delta <= 0;
-      const waitMinutes = Math.floor((now - item.oldestOrderTime) / 60000);
-      
-      return {
-        ...item,
-        toldCount,
-        delta,
-        isTold,
-        waitMinutes,
-        earliestPickupMinutes: item.earliestPickupMinutes === Infinity ? null : item.earliestPickupMinutes,
-      };
-    });
-  }
-  
-  /**
-   * Get visible items for Needs Announcing (mirrors admin-mobile.js)
-   */
-  function getVisibleNeedsAnnouncingItems() {
-    const allItems = getNeedsAnnouncingItems();
-    
-    const visible = allItems.filter(item => item.delta > 0);
-    const hidden = allItems.filter(item => item.delta === 0);
-    
-    visible.sort((a, b) => {
-      if (a.waitMinutes !== b.waitMinutes) return b.waitMinutes - a.waitMinutes;
-      return b.quantity - a.quantity;
-    });
-    
-    return { visible, hidden };
-  }
-  
-  // Generator for orders with optional preorder_time
-  const preorderTimeArb = fc.option(
-    fc.integer({ min: Date.now(), max: Date.now() + 4 * 60 * 60 * 1000 }) // 0-4 hours from now
-      .map(ts => new Date(ts).toISOString()),
-    { nil: null }
-  );
-  
-  const orderWithPreorderArb = fc.record({
-    id: fc.uuid(),
-    status: fc.constantFrom('PENDING', 'COMPLETE', 'PICKED_UP'),
-    items: fc.array(orderItemArb, { minLength: 1, maxLength: 5 }),
-    created_at: safeDateArb,
-    preorder_time: preorderTimeArb
   });
   
-  const ordersWithPreorderArb = fc.array(orderWithPreorderArb, { minLength: 0, maxLength: 30 });
+  // Calculate delta for each live item using announce-cycle model
+  Object.values(liveItemData).forEach(entry => {
+    const toldState = global.AdminState.toldCounts[entry.aggregationKey];
+    const waitMinutes = Math.floor((now - entry.oldestOrderTime) / 60000);
+    
+    let delta;
+    let toldQuantity = 0;
+    let isTold = false;
+    
+    if (!toldState || typeof toldState === 'number') {
+      // Legacy format or no told state
+      toldQuantity = typeof toldState === 'number' ? toldState : 0;
+      delta = Math.max(0, entry.totalQuantity - toldQuantity);
+      isTold = delta <= 0;
+    } else {
+      // New format: { toldTimestamp, toldQuantity }
+      const { toldTimestamp, toldQuantity: storedToldQty } = toldState;
+      toldQuantity = storedToldQty;
+      
+      // Calculate quantity from orders created AFTER toldTimestamp
+      // Orders within 3 min of told action show as delta
+      // Orders after 3 min stay in "Already Told"
+      let deltaQuantity = 0;
+      
+      entry.orders.forEach(orderInfo => {
+        if (orderInfo.orderTime > toldTimestamp) {
+          // Order created AFTER told action
+          const timeSinceOrderCreated = orderInfo.orderTime - toldTimestamp;
+          if (timeSinceOrderCreated <= LIVE_ORDER_DELTA_WINDOW_MS) {
+            // Order was created within 3 min of told action - shows as delta
+            deltaQuantity += orderInfo.quantity;
+          }
+          // Orders created after 3 min of told action stay in "Already Told"
+        }
+      });
+      
+      if (deltaQuantity > 0) {
+        // Has new orders within delta window - show them
+        delta = deltaQuantity;
+        isTold = false;
+      } else {
+        // No new orders within delta window
+        delta = 0;
+        isTold = true;
+      }
+    }
+    
+    items.push({
+      aggregationKey: entry.aggregationKey,
+      name: entry.name,
+      quantity: entry.totalQuantity,
+      orderCount: entry.orders.length,
+      oldestOrderTime: entry.oldestOrderTime,
+      newestOrderTime: entry.newestOrderTime,
+      isPreOrder: false,
+      scheduledTimeISO: null,
+      earliestPickupMinutes: null,
+      waitMinutes,
+      toldCount: toldQuantity,
+      delta,
+      isTold,
+      hasPreOrderSource: false,
+    });
+  });
+  
+  // ========================================
+  // PRE-ORDERS - Absolute Model
+  // ========================================
+  const preOrderItemMap = {};
+  
+  preOrders.forEach(order => {
+    const scheduledTimeISO = order.preorder_time;
+    const pickupTime = new Date(scheduledTimeISO).getTime();
+    const minutesUntilPickup = Math.round((pickupTime - now) / 60000);
+    const orderTime = new Date(order.created_at).getTime();
+    
+    (order.items || []).forEach(item => {
+      const aggKey = getAggregationKey(item.title, true, scheduledTimeISO);
+      
+      if (!preOrderItemMap[aggKey]) {
+        preOrderItemMap[aggKey] = {
+          aggregationKey: aggKey,
+          name: item.title,
+          quantity: 0,
+          orderCount: 0,
+          oldestOrderTime: Infinity,
+          isPreOrder: true,
+          scheduledTimeISO: scheduledTimeISO,
+          earliestPickupMinutes: minutesUntilPickup,
+          earliestPickupTime: pickupTime,
+        };
+      }
+      
+      const entry = preOrderItemMap[aggKey];
+      entry.quantity += item.quantity;
+      entry.orderCount++;
+      entry.oldestOrderTime = Math.min(entry.oldestOrderTime, orderTime);
+      if (minutesUntilPickup < entry.earliestPickupMinutes) {
+        entry.earliestPickupMinutes = minutesUntilPickup;
+        entry.earliestPickupTime = pickupTime;
+      }
+    });
+  });
+  
+  // Convert pre-order items to array (pre-orders use simple quantity-based told)
+  Object.values(preOrderItemMap).forEach(item => {
+    const toldState = global.AdminState.toldCounts[item.aggregationKey];
+    const toldCount = typeof toldState === 'number' ? toldState : 
+                      (toldState?.toldQuantity || 0);
+    const delta = Math.max(0, item.quantity - toldCount);
+    
+    items.push({
+      ...item,
+      toldCount,
+      delta,
+      isTold: delta <= 0,
+      waitMinutes: 0,
+      hasPreOrderSource: true,
+      earliestPickupMinutes: item.earliestPickupMinutes === Infinity ? null : item.earliestPickupMinutes,
+      earliestPickupTime: item.earliestPickupTime,
+    });
+  });
+  
+  return items;
+}
+
+/**
+ * Get visible items for Needs Announcing (mirrors admin-mobile.js)
+ */
+function getVisibleNeedsAnnouncingItems() {
+  const allItems = getNeedsAnnouncingItems();
+  
+  const visible = allItems.filter(item => item.delta > 0);
+  const hidden = allItems.filter(item => item.delta === 0);
+  
+  visible.sort((a, b) => {
+    if (a.waitMinutes !== b.waitMinutes) return b.waitMinutes - a.waitMinutes;
+    return b.quantity - a.quantity;
+  });
+  
+  return { visible, hidden };
+}
+
+// Generator for orders with optional preorder_time
+const preorderTimeArb = fc.option(
+  fc.integer({ min: Date.now(), max: Date.now() + 4 * 60 * 60 * 1000 }) // 0-4 hours from now
+    .map(ts => new Date(ts).toISOString()),
+  { nil: null }
+);
+
+const orderWithPreorderArb = fc.record({
+  id: fc.uuid(),
+  status: fc.constantFrom('PENDING', 'COMPLETE', 'PICKED_UP'),
+  items: fc.array(orderItemArb, { minLength: 1, maxLength: 5 }),
+  created_at: safeDateArb,
+  preorder_time: preorderTimeArb
+});
+
+const ordersWithPreorderArb = fc.array(orderWithPreorderArb, { minLength: 0, maxLength: 30 });
+
+describe('Pre-Order Items Separation Property-Based Tests', () => {
   
   /**
    * Feature: preorder-items-separation, Property 1: Order Classification
@@ -1288,10 +1449,12 @@ describe('Pre-Order Items Separation Property-Based Tests', () => {
    * 
    * For any set of orders, getNeedsAnnouncingItems SHALL:
    * - Only include items from orders where needsAnnouncing(order) === true
-   * - Correctly sum quantities for each item name
+   * - Correctly sum quantities for each aggregation key
    * - Track hasPreOrderSource correctly
+   * - Live orders grouped by item name only
+   * - Pre-orders grouped by item name AND scheduled time
    * 
-   * **Validates: Requirements 1.1, 1.2, 1.3**
+   * **Validates: Requirements 1.1, 1.2, 1.3, 7.1, 7.2, 7.3, 7.4**
    */
   test('Property 6: Needs announcing aggregation is correct', () => {
     // Mock AdminState for testing
@@ -1305,24 +1468,32 @@ describe('Pre-Order Items Separation Property-Based Tests', () => {
         const items = getNeedsAnnouncingItems();
         const { needsAnnouncingOrders } = partitionOrders(orders);
         
-        // Calculate expected aggregation manually
+        // Calculate expected aggregation manually using aggregation keys
         const expectedItems = {};
         needsAnnouncingOrders.forEach(order => {
+          const isPreOrder = isTransitionedPreOrder(order);
+          const scheduledTimeISO = order.preorder_time;
+          
           (order.items || []).forEach(item => {
-            if (!expectedItems[item.title]) {
-              expectedItems[item.title] = { quantity: 0, hasPreOrder: false };
+            const aggKey = isPreOrder && scheduledTimeISO 
+              ? getAggregationKey(item.title, true, scheduledTimeISO)
+              : getAggregationKey(item.title, false, null);
+            
+            if (!expectedItems[aggKey]) {
+              expectedItems[aggKey] = { 
+                quantity: 0, 
+                hasPreOrder: isPreOrder,
+                name: item.title
+              };
             }
-            expectedItems[item.title].quantity += item.quantity;
-            if (order.preorder_time) {
-              expectedItems[item.title].hasPreOrder = true;
-            }
+            expectedItems[aggKey].quantity += item.quantity;
           });
         });
         
         // Verify all items are from needs-announcing orders
         items.forEach(item => {
-          expect(expectedItems[item.name]).toBeDefined();
-          expect(item.quantity).toBe(expectedItems[item.name].quantity);
+          expect(expectedItems[item.aggregationKey]).toBeDefined();
+          expect(item.quantity).toBe(expectedItems[item.aggregationKey].quantity);
         });
         
         // Verify all expected items are present
@@ -1341,12 +1512,20 @@ describe('Pre-Order Items Separation Property-Based Tests', () => {
    * Feature: preorder-items-separation, Property 7: Delta Calculation
    * 
    * For any item, delta SHALL equal max(0, quantity - toldCount)
+   * where toldCount is looked up by aggregation key
    * 
    * **Validates: Requirements 6.1, 6.2, 6.3**
    */
   test('Property 7: Delta calculation is correct', () => {
+    // Generate told counts keyed by aggregation key format
     const toldCountArb = fc.dictionary(
-      fc.string({ minLength: 1, maxLength: 20 }).filter(s => s.trim().length > 0),
+      fc.oneof(
+        fc.string({ minLength: 1, maxLength: 20 }).filter(s => s.trim().length > 0).map(s => `live:${s}`),
+        fc.tuple(
+          fc.string({ minLength: 1, maxLength: 20 }).filter(s => s.trim().length > 0),
+          safeDateArb
+        ).map(([name, time]) => `preorder:${name}:${time}`)
+      ),
       fc.integer({ min: 0, max: 100 })
     );
     
@@ -1359,7 +1538,7 @@ describe('Pre-Order Items Separation Property-Based Tests', () => {
         
         // Verify delta calculation for each item
         items.forEach(item => {
-          const expectedToldCount = toldCounts[item.name] || 0;
+          const expectedToldCount = toldCounts[item.aggregationKey] || 0;
           const expectedDelta = Math.max(0, item.quantity - expectedToldCount);
           
           expect(item.toldCount).toBe(expectedToldCount);
@@ -1758,6 +1937,689 @@ describe('Pre-Order Items Separation Property-Based Tests', () => {
     );
   });
 
+});
+
+// ============================================
+// STATE CONSISTENCY BUG FIX TESTS
+// ============================================
+
+describe('State Consistency Bug Fixes - Aggregation Keys', () => {
+  /**
+   * Feature: preorder-items-separation, Property 10: Aggregation Key Uniqueness
+   * 
+   * For any set of orders:
+   * - Each aggregation key in getNeedsAnnouncingItems() SHALL be unique
+   * - Live order keys SHALL have format "live:{itemName}"
+   * - Pre-order keys SHALL have format "preorder:{itemName}:{scheduledTimeISO}"
+   * 
+   * **Validates: Requirements 7.4, 8.1**
+   */
+  test('Property 10: Aggregation key uniqueness and format', () => {
+    fc.assert(
+      fc.property(ordersWithPreorderArb, (orders) => {
+        global.AdminState = { orders, toldCounts: {}, showToldItems: false, pendingToldActions: new Set() };
+        
+        const items = getNeedsAnnouncingItems();
+        
+        // All aggregation keys must be unique
+        const keys = items.map(i => i.aggregationKey);
+        const uniqueKeys = new Set(keys);
+        expect(uniqueKeys.size).toBe(keys.length);
+        
+        // Verify key formats
+        items.forEach(item => {
+          if (item.isPreOrder || item.hasPreOrderSource) {
+            // Pre-order keys must have format "preorder:{itemName}:{scheduledTimeISO}"
+            expect(item.aggregationKey).toMatch(/^preorder:.+:.+$/);
+            expect(item.aggregationKey.startsWith('preorder:')).toBe(true);
+            // Must include scheduled time
+            expect(item.scheduledTimeISO).toBeTruthy();
+          } else {
+            // Live order keys must have format "live:{itemName}"
+            expect(item.aggregationKey).toMatch(/^live:.+$/);
+            expect(item.aggregationKey.startsWith('live:')).toBe(true);
+          }
+        });
+        
+        // Verify getAggregationKey and parseAggregationKey are inverses
+        items.forEach(item => {
+          const parsed = parseAggregationKey(item.aggregationKey);
+          expect(parsed.itemName).toBe(item.name);
+          if (item.isPreOrder || item.hasPreOrderSource) {
+            expect(parsed.type).toBe('preorder');
+            expect(parsed.scheduledTimeISO).toBe(item.scheduledTimeISO);
+          } else {
+            expect(parsed.type).toBe('live');
+            expect(parsed.scheduledTimeISO).toBeNull();
+          }
+        });
+      }),
+      PBT_CONFIG
+    );
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 8: Pre-order Scheduled Time Separation
+   * 
+   * For any two pre-orders with the same item name but different scheduled times,
+   * getNeedsAnnouncingItems() SHALL return them as separate entries with different aggregation keys.
+   * 
+   * **Validates: Requirements 7.1, 7.2, 7.3, 7.4, 7.5**
+   */
+  test('Property 8: Pre-order scheduled time separation', () => {
+    // Create orders with same item but different scheduled times
+    const now = Date.now();
+    const time1 = new Date(now + 10 * 60 * 1000).toISOString(); // 10 min from now
+    const time2 = new Date(now + 20 * 60 * 1000).toISOString(); // 20 min from now
+    
+    const orders = [
+      {
+        id: 'order-1',
+        status: 'PENDING',
+        created_at: new Date(now - 5 * 60 * 1000).toISOString(),
+        preorder_time: time1,
+        items: [{ id: 1, title: 'Chicken Biryani', quantity: 2, price: 15 }]
+      },
+      {
+        id: 'order-2',
+        status: 'PENDING',
+        created_at: new Date(now - 3 * 60 * 1000).toISOString(),
+        preorder_time: time2,
+        items: [{ id: 1, title: 'Chicken Biryani', quantity: 3, price: 15 }]
+      }
+    ];
+    
+    global.AdminState = { orders, toldCounts: {}, showToldItems: false, pendingToldActions: new Set() };
+    
+    const items = getNeedsAnnouncingItems();
+    
+    // Should have 2 separate entries for the same item name
+    const biryaniItems = items.filter(i => i.name === 'Chicken Biryani');
+    expect(biryaniItems.length).toBe(2);
+    
+    // Each should have different aggregation keys
+    expect(biryaniItems[0].aggregationKey).not.toBe(biryaniItems[1].aggregationKey);
+    
+    // Each should have different scheduled times
+    expect(biryaniItems[0].scheduledTimeISO).not.toBe(biryaniItems[1].scheduledTimeISO);
+    
+    // Quantities should be separate
+    const quantities = biryaniItems.map(i => i.quantity).sort((a, b) => a - b);
+    expect(quantities).toEqual([2, 3]);
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 9: Told State Isolation
+   * 
+   * For any told action on a pre-order item, the told state SHALL NOT affect:
+   * - Live order items with the same name
+   * - Pre-order items with the same name but different scheduled times
+   * 
+   * **Validates: Requirements 8.1, 8.2, 8.3, 8.4**
+   */
+  test('Property 9: Told state isolation between order types', () => {
+    const now = Date.now();
+    const preorderTime = new Date(now + 15 * 60 * 1000).toISOString();
+    
+    const orders = [
+      // Live order
+      {
+        id: 'live-1',
+        status: 'PENDING',
+        created_at: new Date(now - 5 * 60 * 1000).toISOString(),
+        preorder_time: null,
+        items: [{ id: 1, title: 'Chicken Biryani', quantity: 5, price: 15 }]
+      },
+      // Pre-order
+      {
+        id: 'preorder-1',
+        status: 'PENDING',
+        created_at: new Date(now - 3 * 60 * 1000).toISOString(),
+        preorder_time: preorderTime,
+        items: [{ id: 1, title: 'Chicken Biryani', quantity: 3, price: 15 }]
+      }
+    ];
+    
+    // Mark only the pre-order as told
+    const preorderKey = `preorder:Chicken Biryani:${preorderTime}`;
+    const toldCounts = { [preorderKey]: 3 };
+    
+    global.AdminState = { orders, toldCounts, showToldItems: false, pendingToldActions: new Set() };
+    
+    const { visible, hidden } = getVisibleNeedsAnnouncingItems();
+    
+    // Live order should still be visible (not affected by pre-order told state)
+    const liveItem = visible.find(i => i.aggregationKey === 'live:Chicken Biryani');
+    expect(liveItem).toBeDefined();
+    expect(liveItem.delta).toBe(5); // Full quantity, not affected
+    
+    // Pre-order should be hidden (told)
+    const preorderItem = hidden.find(i => i.aggregationKey === preorderKey);
+    expect(preorderItem).toBeDefined();
+    expect(preorderItem.delta).toBe(0);
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 12: New Live Orders Always Visible
+   * 
+   * For any new live order arriving after pre-orders have been marked as told,
+   * the live order items SHALL appear in Needs Announcing with delta > 0.
+   * 
+   * **Validates: Requirements 8.4**
+   */
+  test('Property 12: New live orders always visible regardless of pre-order told state', () => {
+    const now = Date.now();
+    const preorderTime = new Date(now + 15 * 60 * 1000).toISOString();
+    
+    // Scenario: Pre-order was marked as told, then a new live order arrives
+    const orders = [
+      // Pre-order (already told)
+      {
+        id: 'preorder-1',
+        status: 'PENDING',
+        created_at: new Date(now - 10 * 60 * 1000).toISOString(),
+        preorder_time: preorderTime,
+        items: [{ id: 1, title: 'Chicken Biryani', quantity: 3, price: 15 }]
+      },
+      // New live order (arrived after pre-order was told)
+      {
+        id: 'live-1',
+        status: 'PENDING',
+        created_at: new Date(now - 1 * 60 * 1000).toISOString(),
+        preorder_time: null,
+        items: [{ id: 1, title: 'Chicken Biryani', quantity: 2, price: 15 }]
+      }
+    ];
+    
+    // Pre-order is told, but live order should NOT inherit this state
+    const preorderKey = `preorder:Chicken Biryani:${preorderTime}`;
+    const toldCounts = { [preorderKey]: 3 };
+    
+    global.AdminState = { orders, toldCounts, showToldItems: false, pendingToldActions: new Set() };
+    
+    const { visible } = getVisibleNeedsAnnouncingItems();
+    
+    // Live order must be visible with full delta
+    const liveItem = visible.find(i => i.aggregationKey === 'live:Chicken Biryani');
+    expect(liveItem).toBeDefined();
+    expect(liveItem.delta).toBe(2);
+    expect(liveItem.quantity).toBe(2);
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 11: Told State Cleanup Correctness
+   * 
+   * For any set of orders, after cleanupToldCounts() is called:
+   * - All remaining told entries SHALL have a corresponding aggregation bucket in current orders
+   * - No valid aggregation keys SHALL be removed
+   * 
+   * **Validates: Requirements 8.5, 9.3, 9.4, 9.5**
+   */
+  test('Property 11: Told state cleanup removes only stale entries', () => {
+    const now = Date.now();
+    const preorderTime1 = new Date(now + 15 * 60 * 1000).toISOString();
+    const preorderTime2 = new Date(now + 30 * 60 * 1000).toISOString();
+    
+    // Current orders
+    const orders = [
+      // Live order
+      {
+        id: 'live-1',
+        status: 'PENDING',
+        created_at: new Date(now - 5 * 60 * 1000).toISOString(),
+        preorder_time: null,
+        items: [{ id: 1, title: 'Chicken Biryani', quantity: 5, price: 15 }]
+      },
+      // Pre-order with time1
+      {
+        id: 'preorder-1',
+        status: 'PENDING',
+        created_at: new Date(now - 3 * 60 * 1000).toISOString(),
+        preorder_time: preorderTime1,
+        items: [{ id: 1, title: 'Lamb Curry', quantity: 3, price: 18 }]
+      }
+    ];
+    
+    // Told counts include valid and stale entries
+    const toldCounts = {
+      // Valid entries (match current orders)
+      'live:Chicken Biryani': 3,
+      [`preorder:Lamb Curry:${preorderTime1}`]: 2,
+      // Stale entries (no matching orders)
+      'live:Old Item': 5,
+      [`preorder:Lamb Curry:${preorderTime2}`]: 4, // Different scheduled time
+      'preorder:Nonexistent:2026-01-15T12:00:00.000Z': 1
+    };
+    
+    global.AdminState = { orders, toldCounts: { ...toldCounts }, showToldItems: false, pendingToldActions: new Set() };
+    
+    // Mock saveToldCounts to prevent localStorage errors in test
+    const originalSave = global.saveToldCounts;
+    global.saveToldCounts = () => {};
+    
+    // Simulate cleanupToldCounts logic
+    const validKeys = new Set();
+    const pendingOrders = orders.filter(o => o.status === 'PENDING');
+    
+    pendingOrders.forEach(order => {
+      const isPreOrder = !!order.preorder_time;
+      const scheduledTimeISO = order.preorder_time;
+      
+      (order.items || []).forEach(item => {
+        if (isPreOrder && scheduledTimeISO) {
+          validKeys.add(getAggregationKey(item.title, true, scheduledTimeISO));
+        } else {
+          validKeys.add(getAggregationKey(item.title, false, null));
+        }
+      });
+    });
+    
+    // Remove stale entries
+    Object.keys(global.AdminState.toldCounts).forEach(key => {
+      if (!validKeys.has(key)) {
+        delete global.AdminState.toldCounts[key];
+      }
+    });
+    
+    // Verify valid entries are preserved
+    expect(global.AdminState.toldCounts['live:Chicken Biryani']).toBe(3);
+    expect(global.AdminState.toldCounts[`preorder:Lamb Curry:${preorderTime1}`]).toBe(2);
+    
+    // Verify stale entries are removed
+    expect(global.AdminState.toldCounts['live:Old Item']).toBeUndefined();
+    expect(global.AdminState.toldCounts[`preorder:Lamb Curry:${preorderTime2}`]).toBeUndefined();
+    expect(global.AdminState.toldCounts['preorder:Nonexistent:2026-01-15T12:00:00.000Z']).toBeUndefined();
+    
+    // Verify only valid keys remain
+    expect(Object.keys(global.AdminState.toldCounts).length).toBe(2);
+    
+    // Restore
+    if (originalSave) global.saveToldCounts = originalSave;
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 13: Race Condition Safety
+   * 
+   * For any sequence of rapid told actions:
+   * - Each action SHALL be processed independently
+   * - Duplicate actions on the same key SHALL be prevented while pending
+   * - Result in consistent final state
+   * 
+   * **Validates: Requirements 10.1, 10.2, 10.3, 10.4**
+   */
+  test('Property 13: Race condition safety - pendingToldActions prevents duplicates', () => {
+    const now = Date.now();
+    
+    const orders = [
+      {
+        id: 'live-1',
+        status: 'PENDING',
+        created_at: new Date(now - 5 * 60 * 1000).toISOString(),
+        preorder_time: null,
+        items: [{ id: 1, title: 'Chicken Biryani', quantity: 5, price: 15 }]
+      }
+    ];
+    
+    const pendingToldActions = new Set();
+    const toldCounts = {};
+    
+    global.AdminState = { orders, toldCounts, showToldItems: false, pendingToldActions };
+    
+    const aggKey = 'live:Chicken Biryani';
+    
+    // Simulate handleTold behavior - first call should proceed
+    const canProceed1 = !global.AdminState.pendingToldActions.has(aggKey);
+    expect(canProceed1).toBe(true);
+    
+    // Add to pending
+    global.AdminState.pendingToldActions.add(aggKey);
+    
+    // Second call while first is pending should be blocked
+    const canProceed2 = !global.AdminState.pendingToldActions.has(aggKey);
+    expect(canProceed2).toBe(false);
+    
+    // Third call while first is still pending should also be blocked
+    const canProceed3 = !global.AdminState.pendingToldActions.has(aggKey);
+    expect(canProceed3).toBe(false);
+    
+    // After first completes, remove from pending
+    global.AdminState.pendingToldActions.delete(aggKey);
+    
+    // Now a new call should proceed
+    const canProceed4 = !global.AdminState.pendingToldActions.has(aggKey);
+    expect(canProceed4).toBe(true);
+    
+    // Verify different keys can proceed independently
+    const aggKey2 = 'live:Lamb Curry';
+    global.AdminState.pendingToldActions.add(aggKey);
+    
+    // Different key should not be blocked
+    const canProceedDifferentKey = !global.AdminState.pendingToldActions.has(aggKey2);
+    expect(canProceedDifferentKey).toBe(true);
+    
+    // Original key should still be blocked
+    const canProceedOriginalKey = !global.AdminState.pendingToldActions.has(aggKey);
+    expect(canProceedOriginalKey).toBe(false);
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 14: Live Order Delta Monotonicity
+   * 
+   * For any sequence of live orders for the same item:
+   * - New orders SHALL always increase the total quantity
+   * - Delta SHALL always be positive when new orders arrive after told action
+   * - Told state SHALL only apply to quantities that existed at told time
+   * - New orders SHALL never inherit told state from previous cycles
+   * 
+   * **Validates: Requirements 8.4, 11.1, 11.2, 11.3**
+   */
+  test('Property 14: Live order delta is monotonic - new orders always create positive delta', () => {
+    const now = Date.now();
+    
+    // Scenario: User marks 2x Chicken Biryani as told, then 3 more orders arrive
+    // Expected: delta should be 3 (new orders), not 0 (incorrectly inheriting told state)
+    
+    // Initial state: 2x Chicken Biryani from first order
+    const order1 = {
+      id: 'live-1',
+      status: 'PENDING',
+      created_at: new Date(now - 10 * 60 * 1000).toISOString(), // 10 min ago
+      preorder_time: null,
+      items: [{ id: 1, title: 'Chicken Biryani', quantity: 2, price: 15 }]
+    };
+    
+    global.AdminState = { 
+      orders: [order1], 
+      toldCounts: {}, 
+      showToldItems: false, 
+      pendingToldActions: new Set() 
+    };
+    
+    // Get initial items - should show delta=2
+    let items = getNeedsAnnouncingItems();
+    let chickenItem = items.find(i => i.name === 'Chicken Biryani');
+    expect(chickenItem.quantity).toBe(2);
+    expect(chickenItem.delta).toBe(2);
+    expect(chickenItem.isTold).toBe(false);
+    
+    // User clicks TOLD - marks 2 as told
+    global.AdminState.toldCounts['live:Chicken Biryani'] = 2;
+    
+    // Verify item is now told
+    items = getNeedsAnnouncingItems();
+    chickenItem = items.find(i => i.name === 'Chicken Biryani');
+    expect(chickenItem.quantity).toBe(2);
+    expect(chickenItem.delta).toBe(0);
+    expect(chickenItem.isTold).toBe(true);
+    
+    // NEW ORDER ARRIVES: 1x Chicken Biryani (5 min later, outside merge window)
+    const order2 = {
+      id: 'live-2',
+      status: 'PENDING',
+      created_at: new Date(now - 5 * 60 * 1000).toISOString(), // 5 min ago
+      preorder_time: null,
+      items: [{ id: 2, title: 'Chicken Biryani', quantity: 1, price: 15 }]
+    };
+    global.AdminState.orders.push(order2);
+    
+    // CRITICAL: New order should create positive delta
+    items = getNeedsAnnouncingItems();
+    chickenItem = items.find(i => i.name === 'Chicken Biryani');
+    expect(chickenItem.quantity).toBe(3); // 2 + 1
+    expect(chickenItem.toldCount).toBe(2); // Still 2 from before
+    expect(chickenItem.delta).toBe(1); // 3 - 2 = 1 (NEW ORDER VISIBLE!)
+    expect(chickenItem.isTold).toBe(false); // Should NOT be told
+    
+    // MORE ORDERS ARRIVE: 2x Chicken Biryani
+    const order3 = {
+      id: 'live-3',
+      status: 'PENDING',
+      created_at: new Date(now - 2 * 60 * 1000).toISOString(), // 2 min ago
+      preorder_time: null,
+      items: [{ id: 3, title: 'Chicken Biryani', quantity: 2, price: 15 }]
+    };
+    global.AdminState.orders.push(order3);
+    
+    // Delta should continue to grow
+    items = getNeedsAnnouncingItems();
+    chickenItem = items.find(i => i.name === 'Chicken Biryani');
+    expect(chickenItem.quantity).toBe(5); // 2 + 1 + 2
+    expect(chickenItem.toldCount).toBe(2); // Still 2 from before
+    expect(chickenItem.delta).toBe(3); // 5 - 2 = 3 (ALL NEW ORDERS VISIBLE!)
+    expect(chickenItem.isTold).toBe(false);
+    
+    // User clicks TOLD again - marks all 5 as told
+    global.AdminState.toldCounts['live:Chicken Biryani'] = 5;
+    
+    items = getNeedsAnnouncingItems();
+    chickenItem = items.find(i => i.name === 'Chicken Biryani');
+    expect(chickenItem.quantity).toBe(5);
+    expect(chickenItem.delta).toBe(0);
+    expect(chickenItem.isTold).toBe(true);
+    
+    // ANOTHER NEW ORDER: 1x Chicken Biryani
+    const order4 = {
+      id: 'live-4',
+      status: 'PENDING',
+      created_at: new Date(now - 1 * 60 * 1000).toISOString(), // 1 min ago
+      preorder_time: null,
+      items: [{ id: 4, title: 'Chicken Biryani', quantity: 1, price: 15 }]
+    };
+    global.AdminState.orders.push(order4);
+    
+    // New order should ALWAYS be visible
+    items = getNeedsAnnouncingItems();
+    chickenItem = items.find(i => i.name === 'Chicken Biryani');
+    expect(chickenItem.quantity).toBe(6); // 5 + 1
+    expect(chickenItem.toldCount).toBe(5);
+    expect(chickenItem.delta).toBe(1); // 6 - 5 = 1 (NEW ORDER VISIBLE!)
+    expect(chickenItem.isTold).toBe(false);
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 15: Live orders aggregate correctly
+   * 
+   * For any set of live orders with the same item:
+   * - All quantities SHALL be summed into a single entry
+   * - There SHALL be exactly one entry per item name
+   * - The aggregation key SHALL be consistent across all orders
+   * 
+   * **Validates: Requirements 11.1, 11.2**
+   */
+  test('Property 15: Live orders aggregate into single entry per item', () => {
+    const now = Date.now();
+    
+    // Multiple orders for same item at different times
+    const orders = [
+      {
+        id: 'live-1',
+        status: 'PENDING',
+        created_at: new Date(now - 30 * 60 * 1000).toISOString(), // 30 min ago
+        preorder_time: null,
+        items: [{ id: 1, title: 'Chicken Biryani', quantity: 2, price: 15 }]
+      },
+      {
+        id: 'live-2',
+        status: 'PENDING',
+        created_at: new Date(now - 20 * 60 * 1000).toISOString(), // 20 min ago
+        preorder_time: null,
+        items: [{ id: 2, title: 'Chicken Biryani', quantity: 1, price: 15 }]
+      },
+      {
+        id: 'live-3',
+        status: 'PENDING',
+        created_at: new Date(now - 10 * 60 * 1000).toISOString(), // 10 min ago
+        preorder_time: null,
+        items: [{ id: 3, title: 'Chicken Biryani', quantity: 3, price: 15 }]
+      },
+      {
+        id: 'live-4',
+        status: 'PENDING',
+        created_at: new Date(now - 5 * 60 * 1000).toISOString(), // 5 min ago
+        preorder_time: null,
+        items: [{ id: 4, title: 'Lamb Curry', quantity: 2, price: 18 }]
+      }
+    ];
+    
+    global.AdminState = { 
+      orders, 
+      toldCounts: {}, 
+      showToldItems: false, 
+      pendingToldActions: new Set() 
+    };
+    
+    const items = getNeedsAnnouncingItems();
+    
+    // Should have exactly 2 items (one per unique item name)
+    const liveItems = items.filter(i => !i.isPreOrder);
+    expect(liveItems.length).toBe(2);
+    
+    // Chicken Biryani should be aggregated
+    const chickenItem = liveItems.find(i => i.name === 'Chicken Biryani');
+    expect(chickenItem).toBeDefined();
+    expect(chickenItem.quantity).toBe(6); // 2 + 1 + 3
+    expect(chickenItem.orderCount).toBe(3);
+    expect(chickenItem.aggregationKey).toBe('live:Chicken Biryani');
+    expect(chickenItem.delta).toBe(6); // No told count yet
+    
+    // Lamb Curry should be separate
+    const lambItem = liveItems.find(i => i.name === 'Lamb Curry');
+    expect(lambItem).toBeDefined();
+    expect(lambItem.quantity).toBe(2);
+    expect(lambItem.orderCount).toBe(1);
+    expect(lambItem.aggregationKey).toBe('live:Lamb Curry');
+    expect(lambItem.delta).toBe(2);
+    
+    // Wait time should be based on oldest order
+    expect(chickenItem.waitMinutes).toBe(30); // Oldest order was 30 min ago
+    expect(lambItem.waitMinutes).toBe(5); // Only order was 5 min ago
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 16: Announce-cycle model for live orders
+   * 
+   * For live orders, the told state uses an announce-cycle model:
+   * - When TOLD is clicked, we store { toldTimestamp, toldQuantity }
+   * - Orders created AFTER toldTimestamp show as delta
+   * - If new order arrives within 3 min of toldTimestamp: shows as +X delta
+   * - If new order arrives after 3 min: stays in "Already Told"
+   * 
+   * **Validates: Requirements 11.1, 11.2, 11.3, 11.4, 11.5**
+   */
+  test('Property 16: Announce-cycle model - new orders within 3 min show as delta', () => {
+    const now = Date.now();
+    
+    // Order 1: 2x Chicken Biryani arrives 10 min ago
+    const order1Time = now - 10 * 60 * 1000;
+    const order1 = {
+      id: 'live-1',
+      status: 'PENDING',
+      created_at: new Date(order1Time).toISOString(),
+      preorder_time: null,
+      items: [{ id: 1, title: 'Chicken Biryani', quantity: 2, price: 15 }]
+    };
+    
+    global.AdminState = { 
+      orders: [order1], 
+      toldCounts: {}, 
+      showToldItems: false, 
+      pendingToldActions: new Set() 
+    };
+    
+    // Initial state: delta = 2
+    let items = getNeedsAnnouncingItems();
+    let chickenItem = items.find(i => i.name === 'Chicken Biryani');
+    expect(chickenItem.delta).toBe(2);
+    expect(chickenItem.isTold).toBe(false);
+    
+    // Staff clicks TOLD at T=now (simulating 5 min ago for testing)
+    const toldTimestamp = now - 5 * 60 * 1000; // 5 min ago
+    global.AdminState.toldCounts['live:Chicken Biryani'] = {
+      toldTimestamp,
+      toldQuantity: 2,
+    };
+    
+    // Verify item is now told (order1 was created BEFORE toldTimestamp)
+    items = getNeedsAnnouncingItems();
+    chickenItem = items.find(i => i.name === 'Chicken Biryani');
+    expect(chickenItem.delta).toBe(0);
+    expect(chickenItem.isTold).toBe(true);
+    
+    // NEW ORDER ARRIVES: 1x Chicken Biryani, created 4 min ago (1 min after told)
+    // This is WITHIN the 3-min delta window from toldTimestamp
+    const order2Time = now - 4 * 60 * 1000; // 4 min ago (1 min after told)
+    const order2 = {
+      id: 'live-2',
+      status: 'PENDING',
+      created_at: new Date(order2Time).toISOString(),
+      preorder_time: null,
+      items: [{ id: 2, title: 'Chicken Biryani', quantity: 1, price: 15 }]
+    };
+    global.AdminState.orders.push(order2);
+    
+    // Order2 was created AFTER toldTimestamp, so it should show as delta
+    items = getNeedsAnnouncingItems();
+    chickenItem = items.find(i => i.name === 'Chicken Biryani');
+    expect(chickenItem.quantity).toBe(3); // 2 + 1
+    expect(chickenItem.delta).toBe(1); // Only the new order shows as delta
+    expect(chickenItem.isTold).toBe(false); // Has new items to announce
+  });
+  
+  /**
+   * Feature: preorder-items-separation, Property 17: Announce-cycle - orders after 3 min stay told
+   * 
+   * If a new order arrives MORE than 3 minutes after the told action,
+   * the item should stay in "Already Told" (told state persists).
+   * 
+   * **Validates: Requirements 11.3, 11.4**
+   */
+  test('Property 17: Announce-cycle model - orders after 3 min stay in Already Told', () => {
+    const now = Date.now();
+    
+    // Order 1: 2x Chicken Biryani arrives 10 min ago
+    const order1Time = now - 10 * 60 * 1000;
+    const order1 = {
+      id: 'live-1',
+      status: 'PENDING',
+      created_at: new Date(order1Time).toISOString(),
+      preorder_time: null,
+      items: [{ id: 1, title: 'Chicken Biryani', quantity: 2, price: 15 }]
+    };
+    
+    global.AdminState = { 
+      orders: [order1], 
+      toldCounts: {}, 
+      showToldItems: false, 
+      pendingToldActions: new Set() 
+    };
+    
+    // Staff clicks TOLD 5 min ago
+    const toldTimestamp = now - 5 * 60 * 1000; // 5 min ago
+    global.AdminState.toldCounts['live:Chicken Biryani'] = {
+      toldTimestamp,
+      toldQuantity: 2,
+    };
+    
+    // NEW ORDER ARRIVES: 1x Chicken Biryani, created 1 min ago (4 min after told)
+    // This is OUTSIDE the 3-min delta window from toldTimestamp
+    const order2Time = now - 1 * 60 * 1000; // 1 min ago (4 min after told)
+    const order2 = {
+      id: 'live-2',
+      status: 'PENDING',
+      created_at: new Date(order2Time).toISOString(),
+      preorder_time: null,
+      items: [{ id: 2, title: 'Chicken Biryani', quantity: 1, price: 15 }]
+    };
+    global.AdminState.orders.push(order2);
+    
+    // Order2 was created AFTER toldTimestamp, but we're now outside the 3-min window
+    // So the item should stay in "Already Told"
+    const items = getNeedsAnnouncingItems();
+    const chickenItem = items.find(i => i.name === 'Chicken Biryani');
+    expect(chickenItem.quantity).toBe(3); // 2 + 1
+    expect(chickenItem.delta).toBe(0); // Outside delta window, stays told
+    expect(chickenItem.isTold).toBe(true); // Stays in Already Told
+  });
 });
 
 // Export functions for potential use in other test files

@@ -31,8 +31,12 @@ const AdminState = {
   isStockPanelOpen: false,
   confirmDialog: null, // { orderId, action, previousStatus }
   
-  // Items tab "told" tracking - stores last communicated quantity per item
-  // Key: item name, Value: quantity that was last told to kitchen
+  // Items tab "told" tracking
+  // For LIVE orders: stores { toldTimestamp, toldQuantity } per aggregation key
+  //   - toldTimestamp: when TOLD was clicked
+  //   - toldQuantity: quantity at the time of TOLD action
+  //   - Orders created AFTER toldTimestamp show as new delta
+  // For PRE-ORDERS: stores just the quantity (pre-orders don't return from told)
   toldCounts: {},
   
   // Pending "told" actions (for optimistic updates)
@@ -401,6 +405,67 @@ const TIME_BUCKET_THRESHOLD_MS = 10 * 60 * 1000;
 const ACTIVATION_THRESHOLD_MS = 45 * 60 * 1000;
 
 // ============================================
+// AGGREGATION KEY STRATEGY (State Consistency Fix)
+// ============================================
+
+/**
+ * Generate aggregation key for an item based on order type and scheduled time
+ * 
+ * Key formats:
+ * - Live orders: "live:{itemName}"
+ * - Pre-orders: "preorder:{itemName}:{scheduledTimeISO}"
+ * 
+ * This ensures:
+ * 1. Live orders and pre-orders with same item name are tracked separately
+ * 2. Pre-orders with different scheduled times are tracked separately
+ * 3. Told state doesn't leak between different aggregation buckets
+ * 
+ * @param {string} itemName - The item name
+ * @param {boolean} isPreOrder - Whether this is from a pre-order
+ * @param {string|null} scheduledTimeISO - ISO string of scheduled pickup time (required for pre-orders)
+ * @returns {string} The aggregation key
+ */
+function getAggregationKey(itemName, isPreOrder, scheduledTimeISO) {
+  if (isPreOrder && scheduledTimeISO) {
+    return `preorder:${itemName}:${scheduledTimeISO}`;
+  }
+  return `live:${itemName}`;
+}
+
+/**
+ * Parse an aggregation key to extract its components
+ * @param {string} key - The aggregation key
+ * @returns {{ type: 'live' | 'preorder', itemName: string, scheduledTimeISO: string | null }}
+ */
+function parseAggregationKey(key) {
+  if (key.startsWith('preorder:')) {
+    // Format: preorder:{itemName}:{scheduledTimeISO}
+    // Note: Both item names and ISO strings can contain colons
+    // ISO format is predictable: YYYY-MM-DDTHH:MM:SS.sssZ (24 chars for full precision)
+    // We find the ISO timestamp by looking for the pattern from the end
+    const withoutPrefix = key.slice(9); // Skip "preorder:"
+    
+    // ISO timestamps have a predictable format - find the last occurrence of a date pattern
+    // Look for pattern like "2026-01-14T" which marks the start of an ISO timestamp
+    const isoPattern = /\d{4}-\d{2}-\d{2}T/;
+    const match = withoutPrefix.match(isoPattern);
+    
+    if (match && match.index !== undefined) {
+      const itemName = withoutPrefix.slice(0, match.index - 1); // -1 to remove the colon before timestamp
+      const scheduledTimeISO = withoutPrefix.slice(match.index);
+      return { type: 'preorder', itemName, scheduledTimeISO };
+    }
+    
+    // Malformed key, return as-is
+    return { type: 'preorder', itemName: withoutPrefix, scheduledTimeISO: null };
+  }
+  
+  // Format: live:{itemName}
+  const itemName = key.slice(5); // Skip "live:"
+  return { type: 'live', itemName, scheduledTimeISO: null };
+}
+
+// ============================================
 // ORDER CLASSIFICATION (Pre-order separation)
 // ============================================
 
@@ -467,13 +532,28 @@ function partitionOrders(orders) {
 // Normal order merge threshold: orders within 3 minutes can merge
 const NORMAL_ORDER_MERGE_THRESHOLD_MS = 3 * 60 * 1000;
 
+// Live order delta window: new orders within 3 minutes of told action show as delta
+const LIVE_ORDER_DELTA_WINDOW_MS = 3 * 60 * 1000;
+
 /**
  * Get items for Needs Announcing section
- * CRITICAL: Never merge PRE-ORDER and normal orders into the same row.
- * - Normal orders: show "~Xm ago", can merge if same item + within 3 min
- * - Pre-orders: show "in Xm · PRE-ORDER", never merge with normal orders
  * 
- * @returns {Array} Items with quantity, delta, preOrderInfo, etc.
+ * CRITICAL: Live orders and pre-orders use DIFFERENT told state models:
+ * 
+ * LIVE ORDERS (Announce-Cycle Model):
+ * - When TOLD is clicked, we store { toldTimestamp, toldQuantity }
+ * - Orders created BEFORE toldTimestamp are "told" (up to toldQuantity)
+ * - Orders created AFTER toldTimestamp are "new" and show as delta
+ * - If new order arrives within 3 min of toldTimestamp: shows as +X delta
+ * - If new order arrives after 3 min: stays in "Already Told" (told state persists)
+ * - Live orders NEVER auto-told, NEVER hidden without explicit TOLD action
+ * 
+ * PRE-ORDERS (Absolute Model):
+ * - Pre-orders use simple quantity-based told state
+ * - Once told, pre-orders NEVER return to Needs Announcing
+ * - Pre-orders are grouped by item name AND scheduled time
+ * 
+ * @returns {Array} Items with quantity, delta, aggregationKey, etc.
  */
 function getNeedsAnnouncingItems() {
   const { needsAnnouncingOrders } = partitionOrders(AdminState.orders);
@@ -485,104 +565,153 @@ function getNeedsAnnouncingItems() {
   
   const items = [];
   
-  // Process NORMAL orders - can merge by item name + time proximity
-  const normalItemBuckets = {}; // key: itemName, value: array of time buckets
+  // ========================================
+  // LIVE ORDERS - Announce-Cycle Model
+  // ========================================
+  // Group orders by item name, then calculate delta based on told timestamp
+  const liveItemData = {}; // key: itemName, value: { orders: [], totalQty, ... }
   
   normalOrders.forEach(order => {
     const orderTime = new Date(order.created_at).getTime();
     
     (order.items || []).forEach(item => {
-      if (!normalItemBuckets[item.title]) {
-        normalItemBuckets[item.title] = [];
-      }
-      
-      const buckets = normalItemBuckets[item.title];
-      
-      // Find a bucket this order can merge into (within 3 min of newest order in bucket)
-      let merged = false;
-      for (const bucket of buckets) {
-        if (Math.abs(orderTime - bucket.newestOrderTime) <= NORMAL_ORDER_MERGE_THRESHOLD_MS) {
-          bucket.quantity += item.quantity;
-          bucket.orderCount++;
-          bucket.oldestOrderTime = Math.min(bucket.oldestOrderTime, orderTime);
-          bucket.newestOrderTime = Math.max(bucket.newestOrderTime, orderTime);
-          merged = true;
-          break;
-        }
-      }
-      
-      if (!merged) {
-        // Create new bucket
-        buckets.push({
+      if (!liveItemData[item.title]) {
+        liveItemData[item.title] = {
           name: item.title,
-          quantity: item.quantity,
-          orderCount: 1,
-          oldestOrderTime: orderTime,
-          newestOrderTime: orderTime,
-          isPreOrder: false,
-          earliestPickupMinutes: null,
-        });
+          aggregationKey: getAggregationKey(item.title, false, null),
+          orders: [], // Track individual order contributions
+          totalQuantity: 0,
+          oldestOrderTime: Infinity,
+          newestOrderTime: 0,
+        };
       }
-    });
-  });
-  
-  // Convert normal buckets to items
-  Object.values(normalItemBuckets).forEach(buckets => {
-    buckets.forEach(bucket => {
-      const waitMinutes = Math.floor((now - bucket.oldestOrderTime) / 60000);
-      const toldCount = AdminState.toldCounts[bucket.name] || 0;
-      // For normal orders, told count applies per-bucket
-      const delta = Math.max(0, bucket.quantity - toldCount);
       
-      items.push({
-        ...bucket,
-        waitMinutes,
-        toldCount,
-        delta,
-        isTold: delta <= 0,
-        hasPreOrderSource: false,
+      const entry = liveItemData[item.title];
+      entry.orders.push({
+        orderTime,
+        quantity: item.quantity,
+        orderId: order.id,
       });
+      entry.totalQuantity += item.quantity;
+      entry.oldestOrderTime = Math.min(entry.oldestOrderTime, orderTime);
+      entry.newestOrderTime = Math.max(entry.newestOrderTime, orderTime);
     });
   });
   
-  // Process PRE-ORDERS - never merge with normal, group by item name only
+  // Calculate delta for each live item using announce-cycle model
+  Object.values(liveItemData).forEach(entry => {
+    const toldState = AdminState.toldCounts[entry.aggregationKey];
+    const waitMinutes = Math.floor((now - entry.oldestOrderTime) / 60000);
+    
+    let delta;
+    let toldQuantity = 0;
+    let isTold = false;
+    
+    if (!toldState || typeof toldState === 'number') {
+      // Legacy format or no told state - treat as simple quantity
+      // This handles migration from old format
+      toldQuantity = typeof toldState === 'number' ? toldState : 0;
+      delta = Math.max(0, entry.totalQuantity - toldQuantity);
+      isTold = delta <= 0;
+    } else {
+      // New format: { toldTimestamp, toldQuantity }
+      const { toldTimestamp, toldQuantity: storedToldQty } = toldState;
+      toldQuantity = storedToldQty;
+      
+      // Calculate quantity from orders created AFTER toldTimestamp
+      // Orders within 3 min of told action show as delta
+      // Orders after 3 min stay in "Already Told"
+      let deltaQuantity = 0;
+      
+      entry.orders.forEach(orderInfo => {
+        if (orderInfo.orderTime > toldTimestamp) {
+          // Order created AFTER told action
+          const timeSinceOrderCreated = orderInfo.orderTime - toldTimestamp;
+          if (timeSinceOrderCreated <= LIVE_ORDER_DELTA_WINDOW_MS) {
+            // Order was created within 3 min of told action - shows as delta
+            deltaQuantity += orderInfo.quantity;
+          }
+          // Orders created after 3 min of told action stay in "Already Told"
+        }
+      });
+      
+      if (deltaQuantity > 0) {
+        // Has new orders within delta window - show them
+        delta = deltaQuantity;
+        isTold = false;
+      } else {
+        // No new orders within delta window
+        delta = 0;
+        isTold = true;
+      }
+    }
+    
+    items.push({
+      aggregationKey: entry.aggregationKey,
+      name: entry.name,
+      quantity: entry.totalQuantity,
+      orderCount: entry.orders.length,
+      oldestOrderTime: entry.oldestOrderTime,
+      newestOrderTime: entry.newestOrderTime,
+      isPreOrder: false,
+      scheduledTimeISO: null,
+      earliestPickupMinutes: null,
+      waitMinutes,
+      toldCount: toldQuantity,
+      delta,
+      isTold,
+      hasPreOrderSource: false,
+    });
+  });
+  
+  // ========================================
+  // PRE-ORDERS - Absolute Model (unchanged)
+  // ========================================
+  // Group by item name AND scheduled time (never merge different times)
   const preOrderItems = {};
   
   preOrders.forEach(order => {
-    const pickupTime = new Date(order.preorder_time).getTime();
+    const scheduledTimeISO = order.preorder_time;
+    const pickupTime = new Date(scheduledTimeISO).getTime();
     const minutesUntilPickup = Math.round((pickupTime - now) / 60000);
     const orderTime = new Date(order.created_at).getTime();
     
     (order.items || []).forEach(item => {
-      const key = `preorder_${item.title}`;
+      // Key includes scheduled time to keep different pickup slots separate
+      const aggKey = getAggregationKey(item.title, true, scheduledTimeISO);
       
-      if (!preOrderItems[key]) {
-        preOrderItems[key] = {
+      if (!preOrderItems[aggKey]) {
+        preOrderItems[aggKey] = {
+          aggregationKey: aggKey,
           name: item.title,
           quantity: 0,
           orderCount: 0,
           oldestOrderTime: Infinity,
           isPreOrder: true,
-          earliestPickupMinutes: Infinity,
-          earliestPickupTime: null,
+          scheduledTimeISO: scheduledTimeISO,
+          earliestPickupMinutes: minutesUntilPickup,
+          earliestPickupTime: pickupTime,
         };
       }
       
-      const entry = preOrderItems[key];
+      const entry = preOrderItems[aggKey];
       entry.quantity += item.quantity;
       entry.orderCount++;
       entry.oldestOrderTime = Math.min(entry.oldestOrderTime, orderTime);
-      // Track earliest pickup time (both minutes and absolute time)
-      if (entry.earliestPickupTime === null || pickupTime < entry.earliestPickupTime) {
-        entry.earliestPickupTime = pickupTime;
+      // Track earliest pickup time (in case multiple orders have same scheduled time)
+      if (minutesUntilPickup < entry.earliestPickupMinutes) {
         entry.earliestPickupMinutes = minutesUntilPickup;
+        entry.earliestPickupTime = pickupTime;
       }
     });
   });
   
-  // Convert pre-order items to array
+  // Convert pre-order items to array (pre-orders use simple quantity-based told)
   Object.values(preOrderItems).forEach(item => {
-    const toldCount = AdminState.toldCounts[`preorder_${item.name}`] || 0;
+    const toldState = AdminState.toldCounts[item.aggregationKey];
+    // Pre-orders use simple quantity (number) format
+    const toldCount = typeof toldState === 'number' ? toldState : 
+                      (toldState?.toldQuantity || 0);
     const delta = Math.max(0, item.quantity - toldCount);
     
     items.push({
@@ -979,7 +1108,8 @@ function renderItems() {
   DOM.itemsList.querySelectorAll('.item-row__told').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      handleTold(btn.dataset.itemName, parseInt(btn.dataset.itemQuantity, 10));
+      const isPreOrder = btn.dataset.isPreorder === 'true';
+      handleTold(btn.dataset.aggregationKey, parseInt(btn.dataset.itemQuantity, 10), isPreOrder);
     });
   });
   
@@ -1044,8 +1174,8 @@ function renderItemRow(item, showDelta) {
  * @returns {string} HTML string
  */
 function renderNeedsAnnouncingRow(item) {
-  // Use different key for pre-orders to keep told counts separate
-  const toldKey = item.hasPreOrderSource ? `preorder_${item.name}` : item.name;
+  // Use the aggregation key for told state tracking
+  const toldKey = item.aggregationKey;
   const isPendingTold = AdminState.pendingToldActions.has(toldKey);
   
   // Always show time hint:
@@ -1094,8 +1224,9 @@ function renderNeedsAnnouncingRow(item) {
           <button class="item-row__told ${isPendingTold ? 'item-row__told--pending' : ''}"
                   ${isPendingTold ? 'disabled' : ''}
                   aria-label="Mark ${item.name} as told"
-                  data-item-name="${escapeHtml(toldKey)}"
-                  data-item-quantity="${item.quantity}">
+                  data-aggregation-key="${escapeHtml(toldKey)}"
+                  data-item-quantity="${item.quantity}"
+                  data-is-preorder="${item.hasPreOrderSource}">
             ${isPendingTold ? pendingIcon : checkIcon}
           </button>
         </div>
@@ -1267,19 +1398,35 @@ function clearItemFilter() {
 
 /**
  * Handle TOLD button click - mark item quantity as communicated to kitchen
+ * 
+ * LIVE ORDERS: Stores { toldTimestamp, toldQuantity } for announce-cycle model
+ * PRE-ORDERS: Stores just the quantity (pre-orders don't return from told)
+ * 
  * Uses optimistic update with rollback on failure
- * @param {string} itemName - The item name
+ * @param {string} aggregationKey - The full aggregation key for the item
  * @param {number} currentQuantity - Current total quantity
+ * @param {boolean} isPreOrder - Whether this is a pre-order item
  */
-async function handleTold(itemName, currentQuantity) {
-  if (AdminState.pendingToldActions.has(itemName)) return;
+async function handleTold(aggregationKey, currentQuantity, isPreOrder = false) {
+  if (AdminState.pendingToldActions.has(aggregationKey)) return;
   
   // Store previous value for rollback
-  const previousToldCount = AdminState.toldCounts[itemName] || 0;
+  const previousToldState = AdminState.toldCounts[aggregationKey];
   
   // Optimistic update
-  AdminState.pendingToldActions.add(itemName);
-  AdminState.toldCounts[itemName] = currentQuantity;
+  AdminState.pendingToldActions.add(aggregationKey);
+  
+  if (isPreOrder) {
+    // Pre-orders use simple quantity (they never return from told)
+    AdminState.toldCounts[aggregationKey] = currentQuantity;
+  } else {
+    // Live orders use announce-cycle model with timestamp
+    AdminState.toldCounts[aggregationKey] = {
+      toldTimestamp: Date.now(),
+      toldQuantity: currentQuantity,
+    };
+  }
+  
   renderItems();
   
   try {
@@ -1290,16 +1437,18 @@ async function handleTold(itemName, currentQuantity) {
     await new Promise(resolve => setTimeout(resolve, 150));
     
     // Success - clear pending state
-    AdminState.pendingToldActions.delete(itemName);
+    AdminState.pendingToldActions.delete(aggregationKey);
     renderItems();
     
-    console.log(`✅ Marked "${itemName}" as told (qty: ${currentQuantity})`);
+    // Parse key for logging
+    const parsed = parseAggregationKey(aggregationKey);
+    console.log(`✅ Marked "${parsed.itemName}" as told (qty: ${currentQuantity}, type: ${parsed.type})`);
   } catch (error) {
     console.error('❌ Error saving told count:', error);
     
     // Rollback on failure
-    AdminState.toldCounts[itemName] = previousToldCount;
-    AdminState.pendingToldActions.delete(itemName);
+    AdminState.toldCounts[aggregationKey] = previousToldState;
+    AdminState.pendingToldActions.delete(aggregationKey);
     renderItems();
     
     // Removed toast - UI state change is sufficient feedback
@@ -1334,22 +1483,83 @@ function loadToldCounts() {
 }
 
 /**
- * Clean up told counts for items no longer in pending orders
- * Called after orders are fetched to remove stale entries
+ * Clean up told counts for aggregation keys that no longer have matching orders
+ * 
+ * CRITICAL: This function uses the new aggregation key strategy to determine
+ * which entries to keep. It builds a set of valid aggregation keys from current
+ * orders and removes any told entries that don't match.
+ * 
+ * Called after orders are fetched to remove stale entries.
  */
 function cleanupToldCounts() {
-  const currentItems = getItemSummary();
-  // Get unique base item names (not bucket keys)
-  const currentItemNames = new Set(Object.values(currentItems).map(item => item.name));
+  // Build set of valid aggregation keys from current pending orders
+  const validKeys = new Set();
   
-  // Remove told counts for items that are no longer in pending orders
-  Object.keys(AdminState.toldCounts).forEach(itemName => {
-    if (!currentItemNames.has(itemName)) {
-      delete AdminState.toldCounts[itemName];
+  const pendingOrders = AdminState.orders.filter(o => o.status === 'PENDING');
+  
+  pendingOrders.forEach(order => {
+    const isPreOrder = !!order.preorder_time;
+    const scheduledTimeISO = order.preorder_time;
+    
+    (order.items || []).forEach(item => {
+      if (isPreOrder && scheduledTimeISO) {
+        // Pre-order: key includes scheduled time
+        validKeys.add(getAggregationKey(item.title, true, scheduledTimeISO));
+      } else {
+        // Live order: key is just item name with live: prefix
+        validKeys.add(getAggregationKey(item.title, false, null));
+      }
+    });
+  });
+  
+  // Remove told counts for keys that are no longer valid
+  let changed = false;
+  Object.keys(AdminState.toldCounts).forEach(key => {
+    if (!validKeys.has(key)) {
+      delete AdminState.toldCounts[key];
+      changed = true;
     }
   });
   
+  if (changed) {
+    saveToldCounts();
+  }
+}
+
+/**
+ * Migrate old told counts format to new aggregation key format
+ * 
+ * Old format: { "itemName": count, "preorder_itemName": count }
+ * New format: { "live:itemName": count, "preorder:itemName:scheduledTimeISO": count }
+ * 
+ * This migration runs once on load if old format is detected.
+ * Pre-order entries without scheduled time are discarded (cannot be migrated accurately).
+ */
+function migrateToldCountsIfNeeded() {
+  const hasOldFormat = Object.keys(AdminState.toldCounts).some(key => 
+    !key.startsWith('live:') && !key.startsWith('preorder:')
+  );
+  
+  if (!hasOldFormat) return;
+  
+  const newCounts = {};
+  
+  Object.entries(AdminState.toldCounts).forEach(([key, count]) => {
+    if (key.startsWith('live:') || key.startsWith('preorder:')) {
+      // Already in new format
+      newCounts[key] = count;
+    } else if (key.startsWith('preorder_')) {
+      // Old pre-order format - cannot migrate without scheduled time, discard
+      console.warn(`Discarding old pre-order told count: ${key} (no scheduled time)`);
+    } else {
+      // Old live order format - migrate to new format
+      newCounts[`live:${key}`] = count;
+    }
+  });
+  
+  AdminState.toldCounts = newCounts;
   saveToldCounts();
+  console.log('📋 Migrated told counts to new aggregation key format');
 }
 
 /**
@@ -2673,6 +2883,9 @@ async function initAdmin() {
   // Load told counts from localStorage
   loadToldCounts();
   
+  // Migrate old told counts format if needed
+  migrateToldCountsIfNeeded();
+  
   // Start UI timer for wait time updates
   startWaitTimeTimer();
   
@@ -2752,6 +2965,7 @@ if (typeof module !== 'undefined' && module.exports) {
     saveToldCounts,
     loadToldCounts,
     cleanupToldCounts,
+    migrateToldCountsIfNeeded,
     // Pre-order separation exports
     needsAnnouncing,
     isTransitionedPreOrder,
@@ -2761,6 +2975,9 @@ if (typeof module !== 'undefined' && module.exports) {
     getPreOrdersForPlanning,
     formatAbsoluteTime,
     formatRelativeTime,
-    toggleToldFilter
+    toggleToldFilter,
+    // Aggregation key exports
+    getAggregationKey,
+    parseAggregationKey
   };
 }
