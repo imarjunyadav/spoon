@@ -78,49 +78,54 @@ body {
 
 /**
  * GREETING HEADER
- * Special header for home page (index.html) only
- * Features gradient background and user greeting card
- * Different from cart-header and auth-header patterns
+ * Light, minimal header with two-row layout
+ * White background with brand color accents only
+ * Premium, calm aesthetic
  */
 .greeting-header {
-    background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-dark) 100%);
-    padding: var(--spacing-lg) var(--spacing-md);
-    color: var(--text-on-brand);
-    border-bottom-left-radius: var(--radius-large);
-    border-bottom-right-radius: var(--radius-large);
+    background: var(--background-white);
+    padding: var(--spacing-lg) var(--spacing-md) var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .greeting-card {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
 }
 
 .greeting-card__avatar {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.1);
+    background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-primary-dark) 100%);
+    color: var(--text-on-brand);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 22px;
+    font-size: 18px;
     flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(235, 23, 0, 0.2);
+}
+
+.greeting-card__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .greeting-card__text h1 {
-    /* ✅ FLUID TYPO: Use clamp() for the main greeting. */
-    /* Min size: 20px, Preferred: 3.5vw, Max size: 24px */
-    font-size: clamp(20px, 3.5vw, 24px);
-    font-weight: 700;
-    margin-bottom: 2px;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    font-size: clamp(18px, 3.5vw, 20px);
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+    line-height: 1.2;
 }
 
 .greeting-card__text p {
-    font-size: 14px;
-    opacity: 0.9;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 400;
 }
 
 /* ====================
