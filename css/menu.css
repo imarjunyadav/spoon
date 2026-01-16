@@ -131,48 +131,62 @@ body {
 /* ====================
    4. STICKY SEARCH SECTION
    ==================== */
-/* (No changes needed) */
+
+/**
+ * SEARCH SECTION
+ * Sticky search with soft elevation and clean aesthetics
+ * Light background with subtle shadow on scroll
+ */
 .search-section {
     position: sticky;
     top: 0;
     z-index: 10;
-    padding: var(--spacing-md) var(--spacing-md);
-    background: linear-gradient(to bottom, var(--background-white) 90%, rgba(255, 255, 255, 0));
-    padding-bottom: var(--spacing-lg);
+    padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
+    background: var(--background-white);
 }
 
 .search-bar {
-    background: var(--background-white);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-medium);
-    height: 52px;
+    background: var(--background-light);
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    height: 48px;
     display: flex;
     align-items: center;
     padding: 0 var(--spacing-md);
+    gap: var(--spacing-sm);
     transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .search-bar:focus-within {
-    border-color: var(--brand-primary);
+    background: var(--background-white);
+    border-color: var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .search-bar .fa-search {
-    color: var(--text-secondary);
-    font-size: 18px;
-    margin-right: var(--spacing-sm);
+    color: #999;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.search-bar:focus-within .fa-search {
+    color: var(--brand-primary);
 }
 
 .search-bar__input {
     flex: 1;
     border: none;
     outline: none;
-    font-size: 16px;
+    font-size: 15px;
     color: var(--text-primary);
     background: transparent;
+    font-weight: 400;
 }
 
 .search-bar__input::placeholder {
-    color: var(--text-secondary);
+    color: #aaa;
+    font-weight: 400;
 }
 
 
@@ -191,103 +205,131 @@ body {
 .section-title {
     /* ✅ FLUID TYPO: Use clamp() for section titles. */
     /* Min size: 18px, Preferred: 3vw, Max size: 22px */
-    font-size: clamp(18px, 3vw, 22px);
+    font-size: clamp(16px, 3vw, 18px);
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
 }
 
-/* --- 5a. Promotional Banner --- */
-.promo-section {
-    margin-bottom: var(--spacing-xl);
+/* --- 5a. Native Ad Placeholder --- */
+.ad-section {
+    margin-bottom: var(--spacing-lg);
 }
 
-.promo-card {
-    background-color: var(--inactive-grey);
-    border-radius: var(--radius-large);
-    overflow: hidden;
+.ad-card {
+    background: var(--background-light);
+    border-radius: var(--radius-medium);
+    padding: var(--spacing-md);
+    position: relative;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+}
+
+.ad-card__label {
+    position: absolute;
+    top: var(--spacing-sm);
+    right: var(--spacing-sm);
+    font-size: 10px;
+    font-weight: 500;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ad-card__content {
+    flex: 1;
     display: flex;
     align-items: center;
-    padding: var(--spacing-md);
-    gap: var(--spacing-sm);
+    justify-content: center;
 }
 
-.promo-card__content h3 {
-    /* ✅ FLUID TYPO: Use clamp() for promo card title. */
-    font-size: clamp(18px, 3vw, 20px);
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: var(--spacing-xs);
-}
-
-.promo-card__content p {
-    font-size: 14px;
-    color: var(--text-secondary);
-    margin-bottom: var(--spacing-md);
-    line-height: 1.4;
-}
-
-.promo-card__cta {
-    display: inline-flex;
+.ad-card__placeholder {
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 6px;
-    color: var(--brand-primary);
-    font-weight: 600;
-    font-size: 14px;
-    text-decoration: none;
-    transition: transform 0.2s ease;
+    gap: var(--spacing-xs);
+    color: #bbb;
 }
 
-.promo-card__cta:hover {
-    transform: translateX(3px);
+.ad-card__placeholder i {
+    font-size: 28px;
 }
 
-.promo-card__icon {
-    font-size: 48px;
-    color: var(--brand-primary);
-    opacity: 0.2;
+.ad-card__placeholder span {
+    font-size: 12px;
+    font-weight: 500;
 }
 
 
 /* --- 5b. Category Navigation --- */
-/* (No changes needed) */
+
+/**
+ * CATEGORY SECTION
+ * Compact pill-style horizontal scroll categories
+ * Brand-aligned active state, refined spacing
+ */
 .categories-section {
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: var(--spacing-md);
+}
+
+.categories-section .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
 }
 
 .categories-container {
     display: flex;
-    gap: var(--spacing-sm);
+    gap: 8px;
     overflow-x: auto;
-    padding-bottom: var(--spacing-sm);
+    padding: 2px 0 8px;
 }
 
 .category-chip {
-    background: var(--inactive-grey);
+    background: var(--background-light);
     color: var(--text-secondary);
     border: none;
     border-radius: var(--radius-pill);
-    padding: 10px var(--spacing-md);
-    font-size: 14px;
+    padding: 8px 14px;
+    font-size: 13px;
     font-weight: 500;
     white-space: nowrap;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
+}
+
+.category-chip:hover:not(.active) {
+    background: #ebebeb;
+    color: var(--text-primary);
 }
 
 .category-chip.active {
     background: var(--brand-primary);
     color: var(--text-on-brand);
     font-weight: 600;
-    box-shadow: 0 2px 6px rgba(235, 23, 0, 0.3);
-    transform: translateY(-2px);
-}
-
-.category-chip:hover:not(.active) {
-    background: #e8e8e8;
 }
 
 /* --- 5c. Product Listing --- */
+
+/**
+ * PRODUCT LIST TITLE
+ * Subtle section label, not a heading
+ * Tight spacing for seamless flow from categories
+ */
+.products-section .section-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-top: 4px;
+    margin-bottom: 10px;
+}
+
 .products-grid {
     display: grid;
     gap: var(--spacing-sm);
