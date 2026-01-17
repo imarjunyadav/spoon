@@ -21,14 +21,19 @@
 /* ====================
    3. ORDER CARD COMPONENT
    ==================== */
+/**
+ * ORDER CARD
+ * Modern, compact card with clear visual hierarchy
+ * Primary focus: Order ID, Status, Price
+ */
 .order-card {
     background: var(--background-white);
     border-radius: var(--radius-medium);
     border: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-md);
+    gap: 10px;
+    padding: 14px var(--spacing-md);
     transition: border-color 0.2s ease;
 }
 
@@ -41,28 +46,32 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.order-card__header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
 }
 
 .order-card__id {
-    /* ✅ FLUID TYPO: Make Order ID text responsive */
-    font-size: clamp(14px, 2.2vw, 15px);
+    font-size: clamp(15px, 2.5vw, 16px);
     font-weight: 600;
     color: var(--text-primary);
+    letter-spacing: -0.3px;
 }
 
 /* --- 3b. Status Badge --- */
 .order-card__status {
-    font-size: 12px;
-    /* Static size is good for badges */
+    font-size: 11px;
     font-weight: 600;
     padding: 4px 10px;
     border-radius: var(--radius-pill);
     text-transform: capitalize;
-}
-
-.status--placed {
-    background-color: #eaf2f8;
-    color: #3498db;
+    white-space: nowrap;
 }
 
 .status--preparing {
@@ -77,29 +86,62 @@
 
 .status--completed {
     background-color: #f2f2f2;
-    color: var(--text-secondary);
+    color: #999;
 }
 
-/* --- 3c. Card Body --- */
+/* --- 3c. View Details Button (in header) --- */
+.btn--view-details {
+    background-color: var(--background-light);
+    color: var(--text-primary);
+    border: none;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.btn--view-details:hover {
+    background-color: #e0e0e0;
+    transform: translateX(2px);
+}
+
+.btn--view-details:active {
+    transform: scale(0.95);
+}
+
+/* --- 3d. Card Body --- */
 .order-card__body {
     display: flex;
     justify-content: space-between;
-    padding: var(--spacing-sm) 0;
+    align-items: baseline;
+    padding: 8px 0 0;
     border-top: 1px solid #f0f0f0;
-    border-bottom: 1px solid #f0f0f0;
 }
 
 .order-card__detail-group .label {
     font-size: 11px;
-    color: #888;
-    margin-bottom: 3px;
+    color: #aaa;
+    margin-bottom: 4px;
     display: block;
     font-weight: 400;
 }
 
 .order-card__detail-group .value {
-    font-size: clamp(14px, 2.2vw, 15px);
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+}
+
+/* Price value - primary focus */
+.order-card__detail-group.align-right .value {
+    font-size: clamp(16px, 2.8vw, 18px);
+    font-weight: 700;
     color: var(--text-primary);
 }
 
@@ -107,48 +149,24 @@
     text-align: right;
 }
 
-/* --- 3d. Pre-order Info Bar --- */
+/* --- 3e. Pre-order Info Bar --- */
 .order-card__preorder-info {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
+    gap: 6px;
     font-size: 12px;
     font-weight: 500;
     color: #666;
     background-color: #fafafa;
-    padding: 10px var(--spacing-sm);
-    border-radius: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
     border: 1px solid #f0f0f0;
 }
 
 .order-card__preorder-info i {
     color: var(--brand-primary);
     opacity: 0.6;
-    font-size: 13px;
-}
-
-/* --- 3e. Card Footer & CTA --- */
-.order-card__footer {
-    margin-top: var(--spacing-xs);
-}
-
-.btn--view-details {
-    background-color: var(--background-light);
-    color: var(--text-primary);
-    border: none;
-    width: 100%;
-    text-align: center;
-    padding: 11px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    letter-spacing: -0.2px;
-}
-
-.btn--view-details:hover {
-    background-color: #e8e8e8;
+    font-size: 12px;
 }
 
 

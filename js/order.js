@@ -97,19 +97,40 @@ document.addEventListener('DOMContentLoaded', async () => {
    * PURPOSE: Get CSS class for order status badge
    * 
    * PARAMETERS:
-   * @param {string} status - Order status (e.g., "PENDING", "PREPARING")
+   * @param {string} status - Order status from database (e.g., "PENDING", "COMPLETE", "PICKED_UP")
    * 
    * RETURNS: CSS class name for styling
    */
   function getStatusClass(status) {
     const statusMap = {
-      'PENDING': 'status--placed',
-      'Order Placed': 'status--placed',
-      'Preparing': 'status--preparing',
-      'Ready for Pickup': 'status--ready',
-      'Completed': 'status--completed'
+      'PENDING': 'status--preparing',
+      'PLACED': 'status--preparing',
+      'PREPARING': 'status--preparing',
+      'COMPLETE': 'status--ready',
+      'PICKED_UP': 'status--completed'
     };
-    return statusMap[status] || 'status--placed';
+    return statusMap[status] || 'status--preparing';
+  }
+
+  /**
+   * FUNCTION: getStatusDisplayName
+   * 
+   * PURPOSE: Get user-friendly display name for order status
+   * 
+   * PARAMETERS:
+   * @param {string} status - Order status from database
+   * 
+   * RETURNS: User-friendly status label
+   */
+  function getStatusDisplayName(status) {
+    const displayMap = {
+      'PENDING': 'Preparing',
+      'PLACED': 'Preparing',
+      'PREPARING': 'Preparing',
+      'COMPLETE': 'Ready',
+      'PICKED_UP': 'Picked Up'
+    };
+    return displayMap[status] || 'Preparing';
   }
 
   /**
@@ -215,12 +236,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Get status class for badge styling
     const statusClass = getStatusClass(order.status);
+    const statusDisplayName = getStatusDisplayName(order.status);
     
     // Build card HTML
     card.innerHTML = `
       <div class="order-card__header">
-        <span class="order-card__id">#${order.id.substring(0, 8)}</span>
-        <span class="order-card__status ${statusClass}">${order.status || 'Pending'}</span>
+        <div class="order-card__header-left">
+          <span class="order-card__id">#${order.id.substring(0, 8)}</span>
+          <span class="order-card__status ${statusClass}">${statusDisplayName}</span>
+        </div>
+        <button class="btn--view-details">
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
       </div>
       
       <div class="order-card__body">
@@ -229,11 +256,11 @@ document.addEventListener('DOMContentLoaded', async () => {
           <span class="value">${totalItems} item${totalItems !== 1 ? 's' : ''}</span>
         </div>
         <div class="order-card__detail-group">
-          <span class="label">Placed</span>
+          <span class="label">Order Date</span>
           <span class="value">${orderDate}</span>
         </div>
         <div class="order-card__detail-group align-right">
-          <span class="label">Total</span>
+          <span class="label">Amount</span>
           <span class="value">₹${order.total}</span>
         </div>
       </div>
@@ -244,13 +271,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           <span>Scheduled for ${formatDate(order.preorder_time)}</span>
         </div>
       ` : ''}
-      
-      <div class="order-card__footer">
-        <button class="btn--view-details">
-          View Details
-          <i class="fa-solid fa-arrow-right"></i>
-        </button>
-      </div>
     `;
     
     // Add click handler to view details button
