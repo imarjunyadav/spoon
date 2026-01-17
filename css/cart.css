@@ -656,23 +656,26 @@
 /**
  * TIME PICKER INFO MESSAGE
  * Shows helpful information about timing constraints
- * Compact, calm design
+ * Calm, neutral design with subtle brand accent
  */
 .time-picker__info {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
     padding: 10px var(--spacing-md);
-    background-color: #f0f7ff;
+    background-color: #fafafa;
     border-radius: 8px;
     font-size: 13px;
-    color: #1976d2;
+    color: #666;
     margin-bottom: var(--spacing-sm);
+    border: 1px solid #f0f0f0;
 }
 
 .time-picker__info i {
     font-size: 14px;
     flex-shrink: 0;
+    color: var(--brand-primary);
+    opacity: 0.6;
 }
 
 /**
