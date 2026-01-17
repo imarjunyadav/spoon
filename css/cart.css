@@ -77,66 +77,172 @@
 /* ====================
    3. CART ITEMS LIST
    ==================== */
-.cart-items-list {
-    display: grid;
-    gap: var(--spacing-sm);
+
+/**
+ * SPONSORED AD PLACEHOLDER
+ * Native ad card with subtle, calm design
+ * Clearly labeled and visually integrated
+ */
+.sponsored-ad-section {
+    margin-bottom: var(--spacing-md);
 }
 
-.cart-item-card {
-    background: var(--background-white);
+.sponsored-ad-card {
+    position: relative;
+    background: #fafafa;
     border-radius: var(--radius-medium);
     border: 1px solid var(--border-color);
     padding: var(--spacing-md);
+    overflow: hidden;
+}
+
+.sponsored-ad-card__badge {
+    position: absolute;
+    top: var(--spacing-xs);
+    right: var(--spacing-xs);
+    background: rgba(255, 255, 255, 0.85);
+    color: #aaa;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 7px;
+    border-radius: var(--radius-pill);
+}
+
+.sponsored-ad-card__content {
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
 }
 
+.sponsored-ad-card__icon {
+    width: 44px;
+    height: 44px;
+    background: rgba(235, 23, 0, 0.06);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.sponsored-ad-card__icon i {
+    font-size: 18px;
+    color: var(--brand-primary);
+    opacity: 0.5;
+}
+
+.sponsored-ad-card__text h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+    letter-spacing: -0.1px;
+}
+
+.sponsored-ad-card__text p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.cart-items-list {
+    display: grid;
+    gap: 0;
+}
+
+/**
+ * CART ITEM CARD
+ * Modern, minimal card with inline stepper
+ * Highly scannable with clear hierarchy
+ */
+.cart-item-card {
+    background: var(--background-white);
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid #f0f0f0;
+    padding: 14px var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: background-color 0.15s ease;
+}
+
+.cart-item-card:first-child {
+    border-top: 1px solid #f0f0f0;
+}
+
+.cart-item-card:hover {
+    background-color: #fafafa;
+}
+
 .cart-item-card__details {
     flex-grow: 1;
+    min-width: 0;
 }
 
 .cart-item-card__title {
-    /* ✅ FLUID TYPO: Apply clamp() to item titles */
-    font-size: clamp(16px, 2.5vw, 17px);
+    font-size: clamp(15px, 2.5vw, 16px);
     font-weight: 600;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+    line-height: 1.25;
 }
 
 .cart-item-card__price {
     font-size: 14px;
-    color: var(--text-secondary);
+    color: #888;
+    font-weight: 400;
 }
 
 /* --- 3a. Quantity Stepper Component --- */
+/**
+ * INLINE QUANTITY STEPPER
+ * Minimal, lightweight controls with refined feedback
+ * Optimized for quick scanning and large quantities
+ */
 .quantity-stepper {
     display: flex;
     align-items: center;
-    background-color: var(--inactive-grey);
-    border-radius: var(--radius-pill);
+    gap: 2px;
     flex-shrink: 0;
 }
 
 .quantity-stepper__btn {
     width: 32px;
     height: 32px;
-    border: none;
-    background: transparent;
-    color: var(--brand-primary);
+    border: 1px solid #e0e0e0;
+    background: var(--background-white);
+    color: var(--text-primary);
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 400;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: all 0.15s ease;
+    border-radius: 6px;
+}
+
+.quantity-stepper__btn:hover {
+    background: var(--background-light);
+    border-color: #d0d0d0;
+}
+
+.quantity-stepper__btn:active {
+    transform: scale(0.92);
+    background: #f0f0f0;
 }
 
 .quantity-stepper__value {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
-    min-width: 24px;
+    min-width: 32px;
     text-align: center;
-    padding: 0 4px;
+    padding: 0 8px;
+    color: var(--text-primary);
 }
 
 /* ====================
