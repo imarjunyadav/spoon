@@ -15,57 +15,62 @@
 
 /**
  * BASE HEADER STYLES
+ * Modern, compact header with minimal padding
  * Used across cart, orders, account, and order-status pages
  * Provides consistent back button + title layout
  */
 .cart-header {
     position: relative;
-    padding: var(--spacing-md);
-    border-bottom: 1px solid var(--border-color);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid #f0f0f0;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 60px;
+    height: 52px;
     background-color: var(--background-white);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
 }
 
 /**
  * BACK BUTTON
+ * Clean, minimal icon with subtle hover state
+ * Touch-friendly 44x44px tap area (iOS guidelines)
  * Positioned absolutely on the left side
- * Consistent size and color across all pages
  */
 .cart-header__back-btn {
     position: absolute;
     left: var(--spacing-md);
-    font-size: 20px;
+    font-size: 18px;
     color: var(--text-primary);
     text-decoration: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
-    transition: background-color 0.2s ease;
+    transition: all 0.2s ease;
 }
 
 .cart-header__back-btn:hover {
-    background-color: var(--inactive-grey);
+    background-color: var(--background-light);
 }
 
 .cart-header__back-btn:active {
-    transform: scale(0.95);
+    transform: scale(0.92);
 }
 
 /**
  * HEADER TITLE
- * Centered text with responsive font size
+ * Compact, balanced typography with premium feel
+ * Centered with lighter font weight
  */
 .cart-header__title {
-    font-size: clamp(16px, 2.8vw, 18px);
-    font-weight: 600;
+    font-size: clamp(16px, 2.8vw, 17px);
+    font-weight: 500;
     color: var(--text-primary);
     text-align: center;
+    letter-spacing: -0.2px;
 }
 
 
