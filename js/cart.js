@@ -534,9 +534,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Show chips container, hide error
     wrapper.classList.remove('hidden');
     errorDiv.classList.add('hidden');
-    confirmBtn.disabled = false;
-    confirmBtn.style.opacity = '1';
-    confirmBtn.style.cursor = 'pointer';
+    
+    // Initially disable confirm button until user selects a time
+    confirmBtn.disabled = true;
+    confirmBtn.style.opacity = '0.5';
+    confirmBtn.style.cursor = 'not-allowed';
     
     // Create chip for each time slot
     slots.forEach((slot, index) => {
@@ -559,21 +561,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Store selected time
         selectedPreOrderTime = slot.iso;
         
+        // Enable confirm button now that user has selected a time
+        confirmBtn.disabled = false;
+        confirmBtn.style.opacity = '1';
+        confirmBtn.style.cursor = 'pointer';
+        
         // Auto-scroll to center the selected chip
         scrollToChip(chip);
       });
       
       container.appendChild(chip);
     });
-    
-    // Auto-select first chip if none selected
-    if (!selectedPreOrderTime && slots.length > 0) {
-      const firstChip = container.querySelector('.time-chip');
-      if (firstChip) {
-        firstChip.classList.add('selected');
-        selectedPreOrderTime = slots[0].iso;
-      }
-    }
   }
   
   /**

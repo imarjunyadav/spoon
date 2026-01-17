@@ -888,6 +888,19 @@
     padding-bottom: var(--spacing-sm);
 }
 
+/* Disabled state for confirm button when no time selected */
+.time-picker__confirm-container button:disabled {
+    background-color: #e0e0e0;
+    color: #999;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.time-picker__confirm-container button:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
 /* Helper class */
 .hidden {
     display: none !important;
