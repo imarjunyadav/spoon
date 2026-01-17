@@ -69,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const subtotalValueEl = document.getElementById('subtotal-value'); // Total price display
   const cartBadge = document.getElementById('cart-badge'); // Cart count badge
   const modalOverlay = document.getElementById('modal-overlay'); // Dark background for modals
+  const modalOverlaySecondary = document.getElementById('modal-overlay-secondary'); // Secondary overlay for nested modals
   const confirmOrderModal = document.getElementById('confirm-order-modal'); // Order confirmation modal
   const modalOrderSummary = document.getElementById('modal-order-summary'); // Order summary in modal
   const modalTotalValue = document.getElementById('modal-total-value'); // Total in modal
@@ -295,6 +296,53 @@ document.addEventListener('DOMContentLoaded', () => {
     // Wait for animation to finish before hiding
     setTimeout(() => {
       modalOverlay.classList.add('hidden');
+      modalElement.classList.add('hidden');
+    }, 300);
+  }
+
+  /**
+   * FUNCTION: openModalSecondary
+   * 
+   * PURPOSE: Open a nested modal (e.g., pickup time over confirm order)
+   * Uses secondary overlay to blur everything behind it
+   * 
+   * PARAMETERS:
+   * @param {HTMLElement} modalElement - The modal to show
+   * 
+   * HOW IT WORKS:
+   * 1. Removes 'hidden' class from secondary overlay and modal
+   * 2. After 10ms, adds 'visible' class for fade-in animation
+   */
+  function openModalSecondary(modalElement) {
+    modalOverlaySecondary.classList.remove('hidden');
+    modalElement.classList.remove('hidden');
+    
+    // Small delay for smooth CSS transition
+    setTimeout(() => {
+      modalOverlaySecondary.classList.add('visible');
+      modalElement.classList.add('visible');
+    }, 10);
+  }
+
+  /**
+   * FUNCTION: closeModalSecondary
+   * 
+   * PURPOSE: Hide a nested modal with smooth animation
+   * 
+   * PARAMETERS:
+   * @param {HTMLElement} modalElement - The modal to hide
+   * 
+   * HOW IT WORKS:
+   * 1. Removes 'visible' class for fade-out animation
+   * 2. After 300ms (animation duration), adds 'hidden' class
+   */
+  function closeModalSecondary(modalElement) {
+    modalOverlaySecondary.classList.remove('visible');
+    modalElement.classList.remove('visible');
+    
+    // Wait for animation to finish before hiding
+    setTimeout(() => {
+      modalOverlaySecondary.classList.add('hidden');
       modalElement.classList.add('hidden');
     }, 300);
   }
@@ -611,8 +659,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Generate and display time chips
     populateTimeChips();
     
-    // Open modal
-    openModal(preorderModal);
+    // Open modal with secondary overlay (blurs confirm order modal)
+    openModalSecondary(preorderModal);
   });
 
   /**
@@ -631,8 +679,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Close modal
-    closeModal(preorderModal);
+    // Close modal with secondary overlay
+    closeModalSecondary(preorderModal);
     
     // Parse selected time for display
     const selectedDate = new Date(selectedPreOrderTime);
@@ -657,7 +705,7 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   if (closePreorderBtn) {
     closePreorderBtn.addEventListener('click', () => {
-      closeModal(preorderModal);
+      closeModalSecondary(preorderModal);
     });
   }
 

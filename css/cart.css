@@ -366,21 +366,49 @@
    ==================== */
 
 /* --- 6a. Modal Overlay --- */
+/**
+ * MODAL OVERLAY (Primary)
+ * Full background blur with subtle dark overlay
+ * Used for first-level modals (Confirm Order)
+ */
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.4);
     z-index: 1000;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     opacity: 0;
-    transition: opacity 0.3s ease-out;
+    transition: opacity 0.3s ease-out, backdrop-filter 0.3s ease-out;
 }
 
 .modal-overlay.visible {
+    opacity: 1;
+}
+
+/**
+ * MODAL OVERLAY (Secondary)
+ * Additional overlay for nested modals (Pickup Time over Confirm Order)
+ * Blurs everything including the first modal
+ */
+.modal-overlay-secondary {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.3);
+    z-index: 1002;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    opacity: 0;
+    transition: opacity 0.3s ease-out, backdrop-filter 0.3s ease-out;
+}
+
+.modal-overlay-secondary.visible {
     opacity: 1;
 }
 
@@ -389,6 +417,10 @@
  * MODAL CONTAINER
  * Modern, compact modal with refined spacing
  * Premium feel with soft shadows
+ * 
+ * Z-INDEX LAYERING:
+ * - Confirm Order Modal: z-index 1001
+ * - Pickup Time Modal: z-index 1003 (elevated above secondary overlay)
  */
 .modal {
     position: fixed;
@@ -413,6 +445,12 @@
 
 .modal.visible {
     transform: translate(-50%, 0);
+}
+
+/* Pickup Time Modal - elevated above secondary overlay */
+#preorder-modal {
+    z-index: 1003;
+    box-shadow: 0 -6px 32px rgba(0, 0, 0, 0.16);
 }
 
 @media (max-width: 480px) {
