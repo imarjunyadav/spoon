@@ -246,7 +246,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           <span class="order-card__status ${statusClass}">${statusDisplayName}</span>
         </div>
         <button class="btn--view-details">
-          <i class="fa-solid fa-arrow-right"></i>
+          Track Order
         </button>
       </div>
       

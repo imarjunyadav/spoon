@@ -91,28 +91,31 @@
 
 /* --- 3c. View Details Button (in header) --- */
 .btn--view-details {
-    background-color: var(--background-light);
+    background-color: var(--background-white);
     color: var(--text-primary);
-    border: none;
-    width: 36px;
-    height: 36px;
+    border: 1px solid #e0e0e0;
+    padding: 8px 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    font-size: 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
     flex-shrink: 0;
+    white-space: nowrap;
+    letter-spacing: -0.2px;
 }
 
 .btn--view-details:hover {
-    background-color: #e0e0e0;
-    transform: translateX(2px);
+    background-color: var(--background-light);
+    border-color: #d0d0d0;
 }
 
 .btn--view-details:active {
-    transform: scale(0.95);
+    transform: scale(0.96);
+    background-color: #e8e8e8;
 }
 
 /* --- 3d. Card Body --- */
