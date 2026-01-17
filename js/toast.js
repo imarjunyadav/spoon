@@ -4,7 +4,7 @@
  * PURPOSE: Show user-friendly toast messages for success, error, and info
  * 
  * USAGE:
- * showToast('Order placed successfully!', 'success');
+ * showToast('Item added to cart', 'success');
  * showToast('Failed to save order', 'error');
  * showToast('Loading...', 'info');
  */

@@ -343,13 +343,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Update cart badge
     updateCartBadge();
     
-    // Check if we should show success toast
-    // This flag is set by order-handler.js after successful payment
-    if (sessionStorage.getItem('showOrderSuccessToast') === 'true') {
-      showToast('Order placed successfully! 🎉');
-      sessionStorage.removeItem('showOrderSuccessToast');
-    }
-    
     // Load orders from database
     await loadOrders();
   }

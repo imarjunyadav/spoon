@@ -819,8 +819,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
           }
 
-          // Success! Show toast and redirect
-          showToast('Order placed successfully!', 'success');
+          // Success! Clear cart and redirect to orders page
           localStorage.removeItem("spoon-cart");
           setTimeout(() => {
             window.location.href = "orders.html";

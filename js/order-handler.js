@@ -53,10 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clear the cart now that the order is placed
         clearCart();
 
-        // Set a temporary flag in sessionStorage to show a success message on the next page
-        sessionStorage.setItem('showOrderSuccessToast', 'true');
-
-        // Redirect to the final destination
+        // Redirect to orders page
         window.location.replace('orders.html');
 
     } else {
