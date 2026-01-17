@@ -292,6 +292,12 @@
 /* ====================
    5. STICKY SUMMARY FOOTER
    ==================== */
+
+/**
+ * CART SUMMARY FOOTER
+ * Modern, compact footer with clear hierarchy
+ * Subtle separation, premium feel
+ */
 .cart-summary-footer {
     position: fixed;
     bottom: 60px;
@@ -300,13 +306,14 @@
     width: 100%;
     max-width: 480px;
     background: var(--background-white);
-    border-top: 1px solid var(--border-color);
-    padding: var(--spacing-md);
+    border-top: 1px solid #f0f0f0;
+    padding: 12px var(--spacing-md);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--spacing-md);
     z-index: 50;
-    box-shadow: var(--shadow-sticky);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
     transition: bottom 0.3s ease-out;
 }
 
@@ -318,31 +325,40 @@
 }
 
 .cart-summary-footer__subtotal-label {
-    font-size: 14px;
-    color: var(--text-secondary);
+    font-size: 13px;
+    color: #888;
+    font-weight: 400;
+    margin-bottom: 2px;
 }
 
 .cart-summary-footer__subtotal-value {
-    /* ✅ FLUID TYPO: Apply clamp() to the subtotal value */
     font-size: clamp(20px, 4vw, 22px);
     font-weight: 700;
     color: var(--text-primary);
+    line-height: 1.1;
 }
 
 .cart-summary-footer__cta {
     background: var(--brand-primary);
     color: var(--text-on-brand);
     border: none;
-    border-radius: var(--radius-pill);
-    padding: 12px var(--spacing-lg);
-    font-size: 16px;
+    border-radius: 10px;
+    padding: 13px 24px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
-    transition: transform 0.2s ease;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    letter-spacing: -0.2px;
 }
 
 .cart-summary-footer__cta:hover {
-    transform: scale(1.05);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(235, 23, 0, 0.25);
+}
+
+.cart-summary-footer__cta:active {
+    transform: translateY(0);
 }
 
 /* ====================
