@@ -234,47 +234,82 @@
 }
 
 
-/* --- OTP Input & Resend Timer (No changes here) --- */
+/* --- OTP Input & Resend Timer --- */
+/**
+ * OTP INPUT CONTAINER
+ * Modern, clean layout with proper spacing
+ */
 .otp-input-container {
     display: flex;
-    justify-content: space-between;
-    gap: var(--spacing-sm);
+    justify-content: center;
+    gap: 12px;
     margin: var(--spacing-xl) 0;
 }
 
+/**
+ * OTP INPUT FIELDS
+ * Premium design with subtle borders and smooth transitions
+ */
 .otp-input {
-    width: 60px;
-    height: 70px;
+    width: 56px;
+    height: 64px;
     text-align: center;
     font-size: 24px;
     font-weight: 600;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-medium);
+    background-color: #f5f5f5;
+    border: 1px solid transparent;
+    border-radius: 12px;
     outline: none;
     transition: all 0.2s ease;
+    color: var(--text-primary);
 }
 
 .otp-input:focus {
+    background-color: var(--background-white);
     border-color: var(--brand-primary);
+    box-shadow: 0 2px 8px rgba(235, 23, 0, 0.12);
+    transform: scale(1.02);
 }
 
+/**
+ * RESEND TIMER CONTAINER
+ * Clean, centered layout with subtle styling
+ */
 .resend-timer-container {
     text-align: center;
-    color: var(--text-secondary);
+    color: #888;
     font-size: 14px;
-    margin-top: var(--spacing-lg);
+    margin-top: var(--spacing-xl);
+    line-height: 1.6;
 }
 
+/**
+ * RESEND LINK
+ * Brand-colored link with clear disabled state
+ */
 .resend-link {
     color: var(--brand-primary);
     font-weight: 600;
     cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    margin-left: 4px;
+}
+
+.resend-link:hover:not(.disabled) {
+    text-decoration: underline;
 }
 
 .resend-link.disabled {
-    color: var(--text-secondary);
+    color: #aaa;
     cursor: not-allowed;
     text-decoration: none;
+}
+
+#otp-timer {
+    color: #999;
+    font-weight: 500;
+    margin-left: 4px;
 }
 
 
