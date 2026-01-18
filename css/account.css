@@ -220,40 +220,76 @@
 /* ====================
    5. LOGOUT MODAL
    ==================== */
+/**
+ * LOGOUT MODAL
+ * Modern, calm confirmation with premium feel
+ * Soft colors, clear hierarchy, gentle backdrop
+ */
 .logout-modal__content {
     text-align: center;
-    padding: var(--spacing-md);
+    padding: var(--spacing-lg);
 }
 
 .logout-modal__icon {
-    font-size: 48px;
-    color: var(--brand-primary);
-    margin-bottom: var(--spacing-md);
+    font-size: 44px;
+    color: #ef5350;
+    margin-bottom: var(--spacing-lg);
+    opacity: 0.9;
 }
 
 .logout-modal__title {
-    /* ✅ FLUID TYPO: Make modal title responsive */
-    font-size: clamp(20px, 4vw, 22px);
-    font-weight: 700;
+    font-size: clamp(19px, 3.8vw, 21px);
+    font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: var(--spacing-sm);
+    letter-spacing: -0.3px;
 }
 
 .logout-modal__subtitle {
-    /* ✅ FLUID TYPO: Make modal subtitle responsive */
     font-size: clamp(14px, 2.5vw, 15px);
-    color: var(--text-secondary);
-    margin-bottom: var(--spacing-lg);
+    color: #888;
+    font-weight: 400;
+    margin-bottom: var(--spacing-xl);
+    line-height: 1.5;
+}
+
+#logout-modal .modal__actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
 }
 
 #logout-modal .btn--secondary {
-    background-color: var(--inactive-grey);
+    background-color: transparent;
     color: var(--text-secondary);
+    border: 1px solid #e0e0e0;
+    font-weight: 500;
+}
+
+#logout-modal .btn--secondary:hover {
+    background-color: #fafafa;
+    border-color: #d0d0d0;
 }
 
 #logout-modal .btn--primary {
-    background-color: var(--brand-primary);
-    color: var(--text-on-brand);
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+    font-weight: 600;
+}
+
+#logout-modal .btn--primary:hover {
+    background-color: #c62828;
+}
+
+#logout-modal .btn--primary:active {
+    transform: scale(0.98);
+}
+
+/* Backdrop blur for modal focus */
+#logout-modal-overlay {
+    backdrop-filter: blur(6px);
+    background-color: rgba(0, 0, 0, 0.3);
 }
 
 
