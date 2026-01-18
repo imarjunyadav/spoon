@@ -125,9 +125,11 @@ document.addEventListener('DOMContentLoaded', () => {
    * HOW IT WORKS:
    * - Calculates total quantity of all items
    * - Shows badge if cart has items, hides if empty
+   * - Switches cart icon between empty and filled states
    */
   function updateCartBadge() {
     const cart = getCart();
+    const cartIcon = document.getElementById('cart-icon');
     
     // Sum up quantities of all items
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -135,8 +137,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (totalItems > 0) {
       cartBadge.textContent = totalItems;
       cartBadge.classList.add('visible');
+      // Switch to filled cart icon when items present
+      if (cartIcon) {
+        cartIcon.className = 'fa-solid fa-shopping-cart nav-item__icon';
+      }
     } else {
       cartBadge.classList.remove('visible');
+      // Switch to empty basket icon when cart is empty
+      if (cartIcon) {
+        cartIcon.className = 'fa-solid fa-basket-shopping nav-item__icon';
+      }
     }
   }
 
