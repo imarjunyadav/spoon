@@ -41,15 +41,17 @@
 
             <!-- --- Order Summary Card --- -->
             <section class="order-summary-card">
-                <!-- Collapsible Item List -->
-                <div class="collapsible-items" id="collapsible-items-container">
-                    <button class="collapsible-items__header" id="toggle-items-btn">
-                        <span>View Items</span>
-                        <i class="fa-solid fa-chevron-down"></i>
-                    </button>
-                    <div class="collapsible-items__content" id="summary-item-list">
-                        <!-- Items will be injected here by JS -->
-                    </div>
+                <h2 class="order-summary-card__title">Order Summary</h2>
+                
+                <!-- Scrollable Item List -->
+                <div class="order-items-list" id="summary-item-list">
+                    <!-- Items will be injected here by JS -->
+                </div>
+                
+                <!-- Order Total -->
+                <div class="order-total">
+                    <span class="order-total__label">Total Amount</span>
+                    <span class="order-total__value" id="order-total-value">₹0</span>
                 </div>
             </section>
 

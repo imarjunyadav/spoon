@@ -27,9 +27,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- 1. DOM ELEMENT REFERENCES (Matches our new HTML) ---
     const orderIdHeader = document.getElementById('status-order-id-header');
-    const toggleItemsBtn = document.getElementById('toggle-items-btn');
-    const collapsibleContainer = document.getElementById('collapsible-items-container');
     const summaryItemList = document.getElementById('summary-item-list');
+    const orderTotalValue = document.getElementById('order-total-value');
     const timelineContainer = document.getElementById('timeline-container');
 
     // --- 2. APP STATE ---
@@ -205,8 +204,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Populate item list
         summaryItemList.innerHTML = currentOrder.items.map(item =>
-            `<div class="summary-item"><span>${item.title} (x${item.quantity})</span> <strong>₹${item.price * item.quantity}</strong></div>`
+            `<div class="summary-item">
+                <span class="summary-item__name">${item.title} × ${item.quantity}</span>
+                <span class="summary-item__price">₹${item.price * item.quantity}</span>
+            </div>`
         ).join('');
+        
+        // Display total
+        orderTotalValue.textContent = `₹${currentOrder.total}`;
 
         // Render the timeline
         renderTimeline();
@@ -219,10 +224,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- 5. EVENT LISTENERS ---
-
-    toggleItemsBtn.addEventListener('click', () => {
-        collapsibleContainer.classList.toggle('open');
-    });
 
     // Clean up the polling interval when the user navigates away
     window.addEventListener('beforeunload', () => {
