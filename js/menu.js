@@ -375,7 +375,6 @@ document.addEventListener('DOMContentLoaded', () => {
      * 1. Gets current cart from localStorage
      * 2. Calculates total quantity of all items
      * 3. Shows/hides badge based on whether cart has items
-     * 4. Switches cart icon between empty and filled states
      * 
      * LEARNING NOTE:
      * The .reduce() method is a powerful array function that combines all values.
@@ -383,7 +382,6 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function updateCartBadge() {
         const cart = getCart();
-        const cartIcon = document.getElementById('cart-icon');
         
         // Calculate total items: sum of all quantities
         // reduce() takes each item and adds its quantity to the running sum
@@ -393,17 +391,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Show badge with count
             cartBadge.textContent = totalItems;
             cartBadge.classList.add('visible');
-            // Switch to filled cart icon when items present
-            if (cartIcon) {
-                cartIcon.className = 'fa-solid fa-shopping-cart nav-item__icon';
-            }
         } else {
             // Hide badge when cart is empty
             cartBadge.classList.remove('visible');
-            // Switch to empty basket icon when cart is empty
-            if (cartIcon) {
-                cartIcon.className = 'fa-solid fa-basket-shopping nav-item__icon';
-            }
         }
     }
 

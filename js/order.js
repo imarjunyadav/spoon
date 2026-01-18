@@ -136,26 +136,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   /**
    * FUNCTION: updateCartBadge
    * 
-   * PURPOSE: Update cart badge count and icon state in navigation
+   * PURPOSE: Update cart badge count in navigation
    */
   function updateCartBadge() {
     const cart = JSON.parse(localStorage.getItem('spoon-cart')) || [];
-    const cartIcon = document.getElementById('cart-icon');
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
     
     if (totalItems > 0) {
       cartBadge.textContent = totalItems;
       cartBadge.classList.add('visible');
-      // Switch to filled cart icon when items present
-      if (cartIcon) {
-        cartIcon.className = 'fa-solid fa-shopping-cart nav-item__icon';
-      }
     } else {
       cartBadge.classList.remove('visible');
-      // Switch to empty basket icon when cart is empty
-      if (cartIcon) {
-        cartIcon.className = 'fa-solid fa-basket-shopping nav-item__icon';
-      }
     }
   }
 
