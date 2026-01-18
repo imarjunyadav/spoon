@@ -78,8 +78,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // If user data exists and has a name
             if (userData && userData.name) {
-                // Update greeting text with user's name
-                userGreetingEl.textContent = `Hello, ${userData.name}`;
+                // Extract first name (everything before the first space)
+                const firstName = userData.name.split(' ')[0];
+                
+                // Update greeting text with user's first name and emoji
+                userGreetingEl.textContent = `Hello, ${firstName} 👋`;
                 
                 // Show first letter of name in avatar circle
                 // .charAt(0) gets first character, .toUpperCase() makes it capital
