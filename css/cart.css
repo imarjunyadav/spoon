@@ -269,9 +269,9 @@
 }
 
 .empty-cart-view__icon {
-    font-size: 72px;
-    color: #d0d0d0;
-    opacity: 0.6;
+    font-size: 80px;
+    color: #d5d5d5;
+    opacity: 0.5;
 }
 
 .empty-cart-view__title {
