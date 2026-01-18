@@ -184,7 +184,7 @@
 /**
  * LOGOUT BUTTON
  * Soft danger style - clear but calm
- * Light red background with subtle red text
+ * Text-only, centered, minimal design
  */
 .logout-section {
     padding: var(--spacing-md);
@@ -195,7 +195,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
     padding: 13px;
     border: none;
     background-color: #fef4f2;
@@ -206,11 +205,6 @@
     cursor: pointer;
     transition: all 0.2s ease;
     letter-spacing: -0.2px;
-}
-
-.logout-btn i {
-    font-size: 16px;
-    font-weight: 400;
 }
 
 .logout-btn:hover {
