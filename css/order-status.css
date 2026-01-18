@@ -76,13 +76,26 @@
     border: 1px solid var(--border-color);
 }
 
+.order-summary-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
 .order-summary-card__title {
     font-size: 13px;
     font-weight: 500;
     color: #999;
-    margin-bottom: 6px;
     letter-spacing: 0.5px;
     text-transform: uppercase;
+    margin: 0;
+}
+
+.order-summary-card__count {
+    font-size: 12px;
+    font-weight: 400;
+    color: #bbb;
 }
 
 /* --- 2a. Scrollable Item List --- */
@@ -193,12 +206,30 @@
 
 
 /* ====================
-   4. HORIZONTAL STEPPER
-   Professional minimalist design - flat, static, clean
+   4. LIVE STATUS CARD
+   Premium, modern design with green completed and gray current/upcoming
+   Unified card matching Order Summary style
    ==================== */
+.timeline-section {
+    margin: 0 var(--spacing-md) var(--spacing-md);
+    padding: 12px var(--spacing-md);
+    background-color: var(--background-white);
+    border-radius: var(--radius-medium);
+    border: 1px solid var(--border-color);
+}
+
+.timeline-section__title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #999;
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
 .timeline-container {
-    padding: var(--spacing-md);
-    background: white;
+    padding: 0;
+    background: transparent;
 }
 
 /* --- 4a. Horizontal Stepper Layout --- */
@@ -206,7 +237,7 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    padding: var(--spacing-lg) var(--spacing-xs);
+    padding: var(--spacing-md) 0;
     gap: 0;
 }
 
@@ -220,78 +251,103 @@
     max-width: 70px;
 }
 
-/* --- 4b. Icon Styling (Clean, No Shadow) --- */
+/* --- 4b. Icon Styling (Premium, Clean) --- */
 .stepper-icon {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    color: white;
     z-index: 2;
+    transition: all 0.3s ease;
 }
 
-/* --- 4c. Label Styling (Single Line, Neutral Colors) --- */
+/* --- 4c. Label Styling (Clean Typography) --- */
 .stepper-label {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 500;
-    margin-top: 6px;
-    color: #888;
+    margin-top: 8px;
     white-space: nowrap;
     line-height: 1.2;
 }
 
 /* --- 4d. Timestamp Styling (Micro-text) --- */
 .stepper-time {
-    font-size: 9px;
-    color: #aaa;
-    margin-top: 2px;
+    font-size: 10px;
+    margin-top: 3px;
 }
 
 /* --- 4e. Connector Lines --- */
 .stepper-connector {
     flex: 1;
-    height: 3px;
+    height: 2px;
     min-width: 12px;
-    margin-top: 22px;
+    margin-top: 21px;
     border-radius: 1px;
+    transition: all 0.3s ease;
 }
 
-/* --- 4f. Stepper States (Neutral Text, Colored Icons Only) --- */
+/* --- 4f. Stepper States (Premium Design) --- */
 
-/* COMPLETED STATE: Green icon, grey text */
+/* COMPLETED STATE: Green icon, green text, green line */
 .stepper-step--complete .stepper-icon {
-    background-color: #2E7D32 !important;
+    background-color: var(--success-green);
+    color: white;
+    box-shadow: 0 2px 8px rgba(46, 125, 50, 0.2);
 }
 
 .stepper-step--complete .stepper-label {
-    color: #888;
+    color: var(--success-green);
+    font-weight: 600;
 }
 
-/* CURRENT STATE: Red icon, black text (not bold) */
+.stepper-step--complete .stepper-time {
+    color: var(--success-green);
+    opacity: 0.7;
+}
+
+.stepper-connector--complete {
+    background-color: var(--success-green);
+}
+
+/* CURRENT STATE: Gray icon, dark text, gray line */
 .stepper-step--current .stepper-icon {
-    background-color: #eb1700 !important;
+    background-color: #e0e0e0;
+    color: #666;
 }
 
 .stepper-step--current .stepper-label {
-    color: #000;
-    font-weight: 500;
+    color: var(--text-primary);
+    font-weight: 600;
 }
 
-/* PENDING STATE: Red icon (dimmed), grey text */
+.stepper-step--current .stepper-time {
+    color: #666;
+}
+
+.stepper-connector--current {
+    background-color: #e0e0e0;
+}
+
+/* PENDING STATE: Light gray icon, muted text, light gray line */
 .stepper-step--pending .stepper-icon {
-    background-color: #eb1700 !important;
-    opacity: 0.35;
+    background-color: #f5f5f5;
+    color: #bbb;
 }
 
 .stepper-step--pending .stepper-label {
-    color: #ccc;
+    color: #bbb;
+    font-weight: 400;
 }
 
 .stepper-step--pending .stepper-time {
     visibility: hidden;
+}
+
+.stepper-connector--pending {
+    background-color: #f5f5f5;
 }
 
 
@@ -328,7 +384,7 @@
 
 
 /* ====================
-   6. HERO SECTION (Flat, Minimalist - No Cards)
+   6. HERO SECTION (Minimal, Text-Only Design)
    ==================== */
 .hero-section {
     text-align: center;
@@ -337,91 +393,76 @@
     background: white;
 }
 
-/* --- 6a. Waiting State (PENDING/PLACED/PREPARING) --- */
+/* --- 6a. Waiting State (PENDING/PLACED/PREPARING - Simple Text) --- */
 .hero-section--waiting {
     background: white;
 }
 
-.hero-section--waiting .hero-icon {
-    font-size: 48px;
-    color: #888;
-    margin-bottom: var(--spacing-md);
-}
-
 .hero-message {
     font-size: 16px;
-    font-weight: 500;
-    color: #333;
-    margin: 0 0 var(--spacing-xs);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 6px;
+    letter-spacing: -0.2px;
 }
 
 .hero-submessage {
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 400;
     color: #888;
     margin: 0;
 }
 
-/* --- 6b. Ready State (COMPLETE - OTP Visible, Floating Clean) --- */
+/* --- 6b. Ready State (COMPLETE - OTP Visible, Emphasized) --- */
 .hero-section--ready {
     background: white;
 }
 
 .hero-label {
     display: block;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 500;
-    color: #888;
+    color: #999;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: var(--spacing-sm);
+    letter-spacing: 0.5px;
+    margin-bottom: var(--spacing-md);
 }
 
 .hero-code {
-    font-size: clamp(3rem, 12vw, 4.5rem);
+    font-size: clamp(4rem, 15vw, 5.5rem);
     font-weight: 900;
-    letter-spacing: 6px;
-    color: #000;
+    letter-spacing: 12px;
+    color: var(--text-primary);
     line-height: 1;
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    word-break: break-all;
 }
 
 .hero-instruction {
-    font-size: 13px;
+    font-size: 15px;
+    font-weight: 500;
+    color: #666;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* --- 6c. Complete State (PICKED_UP - Simple Text Confirmation) --- */
+.hero-section--complete {
+    background: white;
+    padding: var(--spacing-xl) var(--spacing-md);
+}
+
+.hero-complete-message {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 6px;
+    letter-spacing: -0.2px;
+}
+
+.hero-complete-submessage {
+    font-size: 14px;
     font-weight: 400;
     color: #888;
     margin: 0;
-}
-
-/* --- 6c. Complete State (PICKED_UP - NO OTP) --- */
-.hero-section--complete {
-    background: white;
-}
-
-.hero-section--complete .hero-label {
-    color: #2E7D32;
-    font-size: 12px;
-    font-weight: 500;
-    margin-bottom: var(--spacing-md);
-}
-
-.hero-complete-icon {
-    font-size: 56px;
-    color: #2E7D32;
-    margin-bottom: var(--spacing-md);
-}
-
-.hero-thanks {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-sm);
-    font-size: 15px;
-    font-weight: 500;
-    color: #333;
-    margin-top: var(--spacing-sm);
-}
-
-.hero-thanks i {
-    font-size: 18px;
-    color: #2E7D32;
 }

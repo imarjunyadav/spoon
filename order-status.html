@@ -41,7 +41,10 @@
 
             <!-- --- Order Summary Card --- -->
             <section class="order-summary-card">
-                <h2 class="order-summary-card__title">Order Summary</h2>
+                <div class="order-summary-card__header">
+                    <h2 class="order-summary-card__title">Order Summary</h2>
+                    <span class="order-summary-card__count" id="order-items-count">0 items</span>
+                </div>
                 
                 <!-- Scrollable Item List -->
                 <div class="order-items-list" id="summary-item-list">
@@ -57,9 +60,12 @@
 
             <!-- --- Vertical Timeline --- -->
             <!-- The main container ID matches the original JS -->
-            <section class="timeline-container" id="timeline-container">
-                <!-- Timeline steps will be dynamically injected here by JS -->
-                <!-- Pickup code will be injected inline within the "Ready for Pickup" step -->
+            <section class="timeline-section">
+                <h2 class="timeline-section__title">Live Status</h2>
+                <div class="timeline-container" id="timeline-container">
+                    <!-- Timeline steps will be dynamically injected here by JS -->
+                    <!-- Pickup code will be injected inline within the "Ready for Pickup" step -->
+                </div>
             </section>
 
         </main>

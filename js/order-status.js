@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- 1. DOM ELEMENT REFERENCES (Matches our new HTML) ---
     const orderIdHeader = document.getElementById('status-order-id-header');
     const summaryItemList = document.getElementById('summary-item-list');
+    const orderItemsCount = document.getElementById('order-items-count');
     const orderTotalValue = document.getElementById('order-total-value');
     const timelineContainer = document.getElementById('timeline-container');
 
@@ -201,6 +202,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // --- Populate the UI ---
         orderIdHeader.textContent = `#${currentOrder.id.substring(0, 8)}`;
+
+        // Calculate total items count
+        const totalItems = currentOrder.items.reduce((sum, item) => sum + item.quantity, 0);
+        orderItemsCount.textContent = `${totalItems} item${totalItems !== 1 ? 's' : ''}`;
 
         // Populate item list
         summaryItemList.innerHTML = currentOrder.items.map(item =>

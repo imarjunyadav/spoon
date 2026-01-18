@@ -4,13 +4,14 @@
  * 
  * Design: Simple 3-step flow - Preparing → Ready → Picked Up
  * Clean, honest status without complex timing logic.
+ * Icons: Food-centric, friendly, human-focused
  */
 const HorizontalStepperRenderer = {
-  // Stepper stages configuration - Simple 3-step flow
+  // Stepper stages configuration - Simple 3-step flow with custom food-centric icons
   STAGES: [
-    { dbStatus: 'PENDING', displayName: 'Preparing', icon: 'fa-fire' },
-    { dbStatus: 'COMPLETE', displayName: 'Ready', icon: 'fa-bowl-food' },
-    { dbStatus: 'PICKED_UP', displayName: 'Picked Up', icon: 'fa-circle-check' }
+    { dbStatus: 'PENDING', displayName: 'Preparing', icon: 'fa-utensils' },      // Chef cooking (fork & knife)
+    { dbStatus: 'COMPLETE', displayName: 'Ready', icon: 'fa-bowl-rice' },        // Hot bowl of rice (steaming food)
+    { dbStatus: 'PICKED_UP', displayName: 'Picked Up', icon: 'fa-circle-check' } // Clean checkmark
   ],
 
   // Colors
@@ -105,9 +106,6 @@ const HorizontalStepperRenderer = {
       const isComplete = state === 'complete';
       const isCurrent = state === 'current';
       
-      // Color logic: Complete = green, Current/Pending = red
-      const iconColor = isComplete ? this.COLORS.complete : this.COLORS.pending;
-      
       // State classes for CSS styling
       let stepClass = 'stepper-step--pending';
       if (isComplete) stepClass = 'stepper-step--complete';
@@ -120,27 +118,21 @@ const HorizontalStepperRenderer = {
       let connectorHTML = '';
       if (index < this.STAGES.length - 1) {
         const nextState = stepStates[index + 1];
-        const nextIsActive = nextState.state === 'complete' || nextState.state === 'current';
         
-        // Determine connector line color
-        let lineStyle;
-        if (isCurrent) {
-          // Current step: 50/50 split gradient (green to red)
-          lineStyle = 'background: linear-gradient(to right, #2E7D32 50%, #eb1700 50%)';
-        } else if (isComplete && nextIsActive) {
-          // Completed step with active next: solid green
-          lineStyle = `background-color: ${this.COLORS.complete}`;
-        } else {
-          // Pending: solid red
-          lineStyle = `background-color: ${this.COLORS.pending}`;
+        // Determine connector state class
+        let connectorClass = 'stepper-connector--pending';
+        if (isComplete) {
+          connectorClass = 'stepper-connector--complete';
+        } else if (isCurrent) {
+          connectorClass = 'stepper-connector--current';
         }
         
-        connectorHTML = `<div class="stepper-connector" style="${lineStyle}"></div>`;
+        connectorHTML = `<div class="stepper-connector ${connectorClass}"></div>`;
       }
 
       stepsHTML += `
         <div class="stepper-step ${stepClass}">
-          <div class="stepper-icon" style="background-color: ${iconColor}">
+          <div class="stepper-icon">
             <i class="fa-solid ${stage.icon}"></i>
           </div>
           <span class="stepper-label">${stage.displayName}</span>
@@ -175,14 +167,8 @@ const HorizontalStepperRenderer = {
     if (currentStatus === 'PICKED_UP') {
       return `
         <div class="hero-section hero-section--complete">
-          <div class="hero-complete-icon">
-            <i class="fa-solid fa-circle-check"></i>
-          </div>
-          <span class="hero-label">Order Complete</span>
-          <div class="hero-thanks">
-            <i class="fa-solid fa-face-smile"></i>
-            <span>Thank you! Enjoy your meal</span>
-          </div>
+          <p class="hero-complete-message">Order completed successfully</p>
+          <p class="hero-complete-submessage">Thank you for ordering</p>
         </div>
       `;
     }
@@ -191,9 +177,9 @@ const HorizontalStepperRenderer = {
     if (currentStatus === 'COMPLETE') {
       return `
         <div class="hero-section hero-section--ready">
-          <span class="hero-label">Verification Code</span>
+          <span class="hero-label">Pickup Code</span>
           <div class="hero-code">${code}</div>
-          <p class="hero-instruction">Show this code at the counter</p>
+          <p class="hero-instruction">Show this code at the counter to collect your order</p>
         </div>
       `;
     }
@@ -201,11 +187,8 @@ const HorizontalStepperRenderer = {
     // PENDING/PLACED/PREPARING: Show waiting message (NO OTP)
     return `
       <div class="hero-section hero-section--waiting">
-        <div class="hero-icon">
-          <i class="fa-solid fa-utensils"></i>
-        </div>
         <p class="hero-message">Your order is being prepared</p>
-        <p class="hero-submessage">We'll show your pickup code when it's ready</p>
+        <p class="hero-submessage">We'll notify you when it's ready for pickup</p>
       </div>
     `;
   },
