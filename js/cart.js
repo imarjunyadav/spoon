@@ -23,11 +23,11 @@
 
 // Wait for page to load
 document.addEventListener('DOMContentLoaded', () => {
-  
+
   // ========================================
   // SECTION 1: AUTHENTICATION CHECK
   // ========================================
-  
+
   /**
    * SECURITY CHECK
    * Only logged-in users can access cart page
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 2: SUPABASE DATABASE SETUP
   // ========================================
-  
+
   /**
    * SUPABASE CLIENT
    * Uses centralized config from js/config.js
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 3: DOM ELEMENT REFERENCES
   // ========================================
-  
+
   /**
    * Get references to all HTML elements we'll manipulate
    * Think of these as "handles" to grab specific parts of the page
@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 4: STATE VARIABLES
   // ========================================
-  
+
   /**
    * Variables that track the current state of the cart
    */
@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 5: CART HELPER FUNCTIONS
   // ========================================
-  
+
   /**
    * FUNCTION: getCart
    * 
@@ -128,10 +128,10 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function updateCartBadge() {
     const cart = getCart();
-    
+
     // Sum up quantities of all items
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    
+
     if (totalItems > 0) {
       cartBadge.textContent = totalItems;
       cartBadge.classList.add('visible');
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 6: UI RENDERING FUNCTIONS
   // ========================================
-  
+
   /**
    * FUNCTION: renderCart
    * 
@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function renderCart() {
     const cartData = getCart();
-    
+
     // Handle empty cart
     if (cartData.length === 0) {
       cartItemsContainer.classList.add('hidden');
@@ -171,10 +171,10 @@ document.addEventListener('DOMContentLoaded', () => {
     cartItemsContainer.classList.remove('hidden');
     cartSummaryFooter.classList.remove('hidden');
     emptyCartView.classList.add('hidden');
-    
+
     // Clear existing items
     cartItemsContainer.innerHTML = '';
-    
+
     let subtotal = 0; // Running total
 
     // Create a card for each cart item
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
       cartItemsContainer.appendChild(itemElement);
-      
+
       // Add to subtotal
       subtotal += item.price * item.quantity;
     });
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 7: EVENT HANDLER FUNCTIONS
   // ========================================
-  
+
   /**
    * FUNCTION: handleQuantityChange
    * 
@@ -230,16 +230,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Get item ID and change amount from button's data attributes
     const itemId = parseInt(button.dataset.id);
     const change = parseInt(button.dataset.change); // Will be +1 or -1
-    
+
     let cart = getCart();
-    
+
     // Find this item in the cart
     const itemIndex = cart.findIndex(item => item.id === itemId);
     if (itemIndex === -1) return; // Item not found
 
     // Update quantity
     cart[itemIndex].quantity += change;
-    
+
     // Remove item if quantity is 0 or less
     if (cart[itemIndex].quantity <= 0) {
       cart.splice(itemIndex, 1); // Remove from array
@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 8: MODAL FUNCTIONS
   // ========================================
-  
+
   /**
    * FUNCTION: openModal
    * 
@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function openModal(modalElement) {
     modalOverlay.classList.remove('hidden');
     modalElement.classList.remove('hidden');
-    
+
     // Small delay for smooth CSS transition
     setTimeout(() => {
       modalOverlay.classList.add('visible');
@@ -292,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function closeModal(modalElement) {
     modalOverlay.classList.remove('visible');
     modalElement.classList.remove('visible');
-    
+
     // Wait for animation to finish before hiding
     setTimeout(() => {
       modalOverlay.classList.add('hidden');
@@ -316,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function openModalSecondary(modalElement) {
     modalOverlaySecondary.classList.remove('hidden');
     modalElement.classList.remove('hidden');
-    
+
     // Small delay for smooth CSS transition
     setTimeout(() => {
       modalOverlaySecondary.classList.add('visible');
@@ -339,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function closeModalSecondary(modalElement) {
     modalOverlaySecondary.classList.remove('visible');
     modalElement.classList.remove('visible');
-    
+
     // Wait for animation to finish before hiding
     setTimeout(() => {
       modalOverlaySecondary.classList.add('hidden');
@@ -380,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 9: PRE-ORDER TIME PICKER
   // ========================================
-  
+
   /**
    * FUNCTION: roundUpToNearest5Minutes
    * 
@@ -405,16 +405,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const rounded = new Date(date);
     const minutes = rounded.getMinutes();
     const remainder = minutes % 5;
-    
+
     if (remainder !== 0) {
       // Add minutes to reach next 5-minute mark
       rounded.setMinutes(minutes + (5 - remainder));
     }
-    
+
     // Reset seconds and milliseconds
     rounded.setSeconds(0);
     rounded.setMilliseconds(0);
-    
+
     return rounded;
   }
 
@@ -445,48 +445,48 @@ document.addEventListener('DOMContentLoaded', () => {
   function generateTimeSlots() {
     const now = new Date();
     const slots = [];
-    
+
     // STEP 1: Round current time up to nearest 5 minutes
     const roundedNow = roundUpToNearest5Minutes(now);
-    
+
     // STEP 2: Add 45 minutes for minimum lead time
     const earliestTime = new Date(roundedNow);
     earliestTime.setMinutes(earliestTime.getMinutes() + 45);
-    
+
     // STEP 3: Set canteen closing time (6:00 PM today)
     const closingTime = new Date(now);
     closingTime.setHours(18, 0, 0, 0); // 6:00 PM
-    
+
     // STEP 4: Check if earliest time is past closing time
     if (earliestTime >= closingTime) {
       return []; // No slots available today
     }
-    
+
     // STEP 5: Generate time slots from earliest time to closing time
     let currentSlot = new Date(earliestTime);
-    
+
     while (currentSlot <= closingTime) {
       // Format time in 12-hour format with AM/PM
       const hours = currentSlot.getHours();
       const minutes = currentSlot.getMinutes();
-      
+
       // Convert to 12-hour format
       const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
       const displayMinutes = minutes.toString().padStart(2, '0');
       const period = hours >= 12 ? 'PM' : 'AM';
-      
+
       const displayText = `${displayHours}:${displayMinutes} ${period}`;
-      
+
       slots.push({
         display: displayText,
         date: new Date(currentSlot),
         iso: currentSlot.toISOString()
       });
-      
+
       // Move to next 5-minute slot
       currentSlot.setMinutes(currentSlot.getMinutes() + 5);
     }
-    
+
     return slots;
   }
 
@@ -513,13 +513,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const wrapper = container.parentElement;
     const errorDiv = document.getElementById('time-picker-error');
     const confirmBtn = document.getElementById('confirm-preorder-btn');
-    
+
     // Clear previous chips
     container.innerHTML = '';
-    
+
     // Generate time slots
     const slots = generateTimeSlots();
-    
+
     // Check if any slots are available
     if (slots.length === 0) {
       // Show error message, hide chips container
@@ -530,16 +530,16 @@ document.addEventListener('DOMContentLoaded', () => {
       confirmBtn.style.cursor = 'not-allowed';
       return;
     }
-    
+
     // Show chips container, hide error
     wrapper.classList.remove('hidden');
     errorDiv.classList.add('hidden');
-    
+
     // Initially disable confirm button until user selects a time
     confirmBtn.disabled = true;
     confirmBtn.style.opacity = '0.5';
     confirmBtn.style.cursor = 'not-allowed';
-    
+
     // Create chip for each time slot
     slots.forEach((slot, index) => {
       const chip = document.createElement('button');
@@ -547,33 +547,33 @@ document.addEventListener('DOMContentLoaded', () => {
       chip.textContent = slot.display;
       chip.dataset.iso = slot.iso;
       chip.setAttribute('type', 'button'); // Prevent form submission
-      
+
       // Click handler to select this time
       chip.addEventListener('click', () => {
         // Remove 'selected' class from all chips
         document.querySelectorAll('.time-chip').forEach(btn => {
           btn.classList.remove('selected');
         });
-        
+
         // Add 'selected' class to clicked chip
         chip.classList.add('selected');
-        
+
         // Store selected time
         selectedPreOrderTime = slot.iso;
-        
+
         // Enable confirm button now that user has selected a time
         confirmBtn.disabled = false;
         confirmBtn.style.opacity = '1';
         confirmBtn.style.cursor = 'pointer';
-        
+
         // Auto-scroll to center the selected chip
         scrollToChip(chip);
       });
-      
+
       container.appendChild(chip);
     });
   }
-  
+
   /**
    * FUNCTION: scrollToChip
    * 
@@ -589,15 +589,15 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function scrollToChip(chip) {
     const container = document.getElementById('time-chips-container');
-    
+
     // Get chip position relative to container
     const chipLeft = chip.offsetLeft;
     const chipWidth = chip.offsetWidth;
     const containerWidth = container.offsetWidth;
-    
+
     // Calculate scroll position to center the chip
     const scrollTo = chipLeft - (containerWidth / 2) + (chipWidth / 2);
-    
+
     // Smooth scroll to position
     container.scrollTo({
       left: scrollTo,
@@ -608,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 10: MODAL EVENT LISTENERS
   // ========================================
-  
+
   /**
    * EVENT: Close confirm order modal (X button)
    * Closes the order confirmation modal
@@ -653,10 +653,10 @@ document.addEventListener('DOMContentLoaded', () => {
   preorderBtn.addEventListener('click', () => {
     // Reset selected time
     selectedPreOrderTime = null;
-    
+
     // Generate and display time chips
     populateTimeChips();
-    
+
     // Open modal with secondary overlay (blurs confirm order modal)
     openModalSecondary(preorderModal);
   });
@@ -679,10 +679,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Close modal with secondary overlay
     closeModalSecondary(preorderModal);
-    
+
     // Parse selected time for display
     const selectedDate = new Date(selectedPreOrderTime);
-    
+
     // Format time for display (e.g., "2:30 PM")
     const hours = selectedDate.getHours();
     const minutes = selectedDate.getMinutes();
@@ -690,7 +690,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const displayMinutes = minutes.toString().padStart(2, '0');
     const period = hours >= 12 ? 'PM' : 'AM';
     const formattedTime = `${displayHours}:${displayMinutes} ${period}`;
-    
+
     // Update button to show selected time
     const preorderBtnLabel = preorderBtn.querySelector('.preorder-btn__label strong');
     preorderBtnLabel.textContent = `Pickup at ${formattedTime}`;
@@ -710,7 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 11: PAYMENT & CHECKOUT
   // ========================================
-  
+
   /**
    * FUNCTION: generateVerificationCode
    * 
@@ -752,7 +752,7 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   finalConfirmBtn.addEventListener("click", async () => {
     const cart = getCart();
-    
+
     // Validate cart
     if (cart.length === 0) {
       alert("Your cart is empty!");
@@ -761,7 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Calculate total
     const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    
+
     // Validate amount
     if (typeof subtotal !== 'number' || subtotal <= 0 || isNaN(subtotal)) {
       alert("Invalid subtotal. Cannot proceed with payment.");
@@ -769,15 +769,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
+      // Get user data for validation
+      const userData = JSON.parse(localStorage.getItem("spoon-user") || "{}");
+      let userEmail = userData.email;
+
+      // Fallback: Check direct email key if not in user object
+      if (!userEmail) {
+        userEmail = localStorage.getItem("spoon-user-email");
+      }
+
+      // If still no email, user must log in
+      if (!userEmail) {
+        console.error("❌ No user email found in localStorage");
+        alert("Please log in again to place your order.");
+        window.location.href = "login.html";
+        return;
+      }
+
       // STEP 1: Create Razorpay order on backend
       const res = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/payment/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: subtotal })
+        body: JSON.stringify({
+          amount: subtotal,
+          userEmail: userEmail,
+          phoneNumber: userPhoneNumber,
+          items: cart,
+          preorderTime: selectedPreOrderTime
+        })
       });
 
       if (!res.ok) throw new Error("Server error during order creation");
-      
+
       const order = await res.json();
 
       // STEP 2: Configure Razorpay payment options
@@ -788,51 +811,57 @@ document.addEventListener('DOMContentLoaded', () => {
         name: "SPOON",
         description: "Canteen Order",
         order_id: order.id,
-        
+
         // STEP 3: Handler function called after successful payment
+        // NOTE: Call verification endpoint to create order (works for localhost & prod)
         handler: async function (response) {
-          // Get user data from localStorage
-          const userData = JSON.parse(localStorage.getItem("spoon-user") || "{}");
-          const customerEmail = userData.email || null;
-          
-          // Save order to Supabase database
-          const { error } = await supabase.from("orders").insert([{
-            id: response.razorpay_payment_id,
-            total: subtotal,
-            created_at: new Date().toISOString(),
-            items: cart,
-            status: "PENDING",
-            preorder_time: selectedPreOrderTime || null,
-            phone_number: userPhoneNumber || null,
-            customer_email: customerEmail,
-            verification_code: generateVerificationCode()
-          }]);
+          console.log('✅ Payment successful:', response.razorpay_payment_id);
 
-          if (error) {
-            console.error("❌ Supabase insert failed", error);
-            showToast('Payment successful but order not saved. Please contact support.', 'error', 5000);
-            // Still redirect but show error
+          try {
+            // Call backend to verify payment and create order
+            const verifyRes = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/payment/verify-payment`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+
+            const verifyData = await verifyRes.json();
+
+            if (!verifyRes.ok) {
+              throw new Error(verifyData.error || 'Payment verification failed');
+            }
+
+            console.log('✅ Order created successfully:', verifyData.orderId);
+
+            // Show success message
+            showToast('Order placed successfully! Redirecting...', 'success');
+
+            // Clear cart immediately
+            localStorage.removeItem("spoon-cart");
+
+            // Redirect to orders page
             setTimeout(() => {
-              localStorage.removeItem("spoon-cart");
               window.location.href = "orders.html";
-            }, 5000);
-            return;
-          }
+            }, 1000);
 
-          // Success! Clear cart and redirect to orders page
-          localStorage.removeItem("spoon-cart");
-          setTimeout(() => {
-            window.location.href = "orders.html";
-          }, 1000);
+          } catch (error) {
+            console.error('❌ Verification error:', error);
+            showToast(`Order creation failed: ${error.message}`, 'error');
+            // Don't clear cart so user doesn't lose items, but maybe still redirect or show help info
+          }
         },
-        
+
         theme: { color: "#e53935" } // Brand color
       };
 
       // STEP 4: Open Razorpay payment gateway
       const rzp = new Razorpay(options);
       rzp.open();
-      
+
     } catch (error) {
       alert("Payment setup failed. Try again.");
       console.error(error);
@@ -842,13 +871,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 12: CART INTERACTION EVENT LISTENERS
   // ========================================
-  
+
   /**
    * EVENT: Quantity change buttons (+/-)
    * Delegates to handleQuantityChange function
    */
   cartItemsContainer.addEventListener('click', handleQuantityChange);
-  
+
   /**
    * EVENT: Checkout button click
    * Opens confirmation modal with order summary
@@ -861,7 +890,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 13: INITIALIZATION
   // ========================================
-  
+
   /**
    * FUNCTION: init
    * 
@@ -871,23 +900,23 @@ document.addEventListener('DOMContentLoaded', () => {
   async function init() {
     // Wait for config to load from backend API
     await window.waitForConfig();
-    
+
     // Get Supabase client from centralized config
     supabase = window.getSupabaseClient();
-    
+
     if (!supabase) {
       console.error('❌ Supabase client not initialized');
       showToast('Failed to connect to database. Please refresh.', 'error');
       return;
     }
-    
+
     renderCart();
   }
 
   // ========================================
   // SECTION 14: CROSS-TAB SYNCHRONIZATION
   // ========================================
-  
+
   /**
    * STORAGE EVENT LISTENER
    * 
@@ -908,7 +937,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderCart();
     }
   });
-  
+
   // Start the app!
   init();
 });

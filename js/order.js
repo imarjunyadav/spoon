@@ -23,11 +23,11 @@
 
 // Wait for page to load
 document.addEventListener('DOMContentLoaded', async () => {
-  
+
   // ========================================
   // SECTION 1: AUTHENTICATION CHECK
   // ========================================
-  
+
   /**
    * SECURITY CHECK
    * Only logged-in users can view orders
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ========================================
   // SECTION 2: SUPABASE DATABASE SETUP
   // ========================================
-  
+
   /**
    * SUPABASE CLIENT
    * Uses centralized config from js/config.js
@@ -55,19 +55,46 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ========================================
   // SECTION 3: DOM ELEMENT REFERENCES
   // ========================================
-  
+
   const ordersListContainer = document.getElementById('orders-list-container');
   const emptyOrdersView = document.getElementById('empty-orders-view');
   const toastNotification = document.getElementById('toast-notification');
   const cartBadge = document.getElementById('cart-badge');
-  
+
   // Get user's phone number for filtering orders
   const userPhoneNumber = localStorage.getItem('spoon-user-phone');
 
   // ========================================
   // SECTION 4: HELPER FUNCTIONS
   // ========================================
-  
+
+  /**
+   * FUNCTION: normalizePreorderTime
+   * 
+   * PURPOSE: Normalize preorder time to ISO string
+   * Handles both ISO strings and "HH:MM:SS" time-only formats (assuming today)
+   */
+  function normalizePreorderTime(timeStr) {
+    if (!timeStr) return null;
+
+    // 1. Try standard date parsing first (ISO)
+    const timestamp = new Date(timeStr).getTime();
+    if (!isNaN(timestamp)) {
+      return timeStr;
+    }
+
+    // 2. Try time-only format (HH:MM:SS or HH:MM)
+    const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (timeMatch) {
+      const [_, h, m, s] = timeMatch;
+      const now = new Date();
+      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(h, 10), parseInt(m, 10), parseInt(s || '0', 10));
+      return date.toISOString();
+    }
+
+    return null;
+  }
+
   /**
    * FUNCTION: formatDate
    * 
@@ -80,9 +107,9 @@ document.addEventListener('DOMContentLoaded', async () => {
    */
   function formatDate(isoString) {
     const date = new Date(isoString);
-    const options = { 
-      month: 'short', 
-      day: 'numeric', 
+    const options = {
+      month: 'short',
+      day: 'numeric',
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
@@ -141,7 +168,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateCartBadge() {
     const cart = JSON.parse(localStorage.getItem('spoon-cart')) || [];
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    
+
     if (totalItems > 0) {
       cartBadge.textContent = totalItems;
       cartBadge.classList.add('visible');
@@ -161,7 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function showToast(message) {
     toastNotification.textContent = message;
     toastNotification.classList.add('show');
-    
+
     // Hide after 3 seconds
     setTimeout(() => {
       toastNotification.classList.remove('show');
@@ -171,7 +198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ========================================
   // SECTION 5: RENDER FUNCTIONS
   // ========================================
-  
+
   /**
    * FUNCTION: renderOrders
    * 
@@ -189,7 +216,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderOrders(orders) {
     // Clear existing content
     ordersListContainer.innerHTML = '';
-    
+
     // Handle empty state
     if (!orders || orders.length === 0) {
       ordersListContainer.classList.add('hidden');
@@ -227,17 +254,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   function createOrderCard(order) {
     const card = document.createElement('div');
     card.className = 'order-card';
-    
+
     // Calculate total items
     const totalItems = order.items ? order.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
-    
+
     // Format date
     const orderDate = formatDate(order.created_at);
-    
+
     // Get status class for badge styling
     const statusClass = getStatusClass(order.status);
     const statusDisplayName = getStatusDisplayName(order.status);
-    
+
     // Build card HTML
     card.innerHTML = `
       <div class="order-card__header">
@@ -272,21 +299,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
       ` : ''}
     `;
-    
+
     // Add click handler to view details button
     const viewDetailsBtn = card.querySelector('.btn--view-details');
     viewDetailsBtn.addEventListener('click', () => {
       // Navigate to order status page with order ID
       window.location.href = `order-status.html?id=${order.id}`;
     });
-    
+
     return card;
   }
 
   // ========================================
   // SECTION 6: DATA FETCHING
   // ========================================
-  
+
   /**
    * FUNCTION: loadOrders
    * 
@@ -321,9 +348,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
+      // Normalize preorder_time dates
+      const normalizedData = (data || []).map(order => {
+        if (order.preorder_time) {
+          const normalized = normalizePreorderTime(order.preorder_time);
+          if (normalized) {
+            order.preorder_time = normalized;
+          }
+        }
+        return order;
+      });
+
       // Render orders
-      renderOrders(data);
-      
+      renderOrders(normalizedData);
+
     } catch (error) {
       console.error('❌ Unexpected error:', error);
       showToast('Something went wrong. Please try again later.');
@@ -335,7 +373,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ========================================
   // SECTION 7: INITIALIZATION
   // ========================================
-  
+
   /**
    * FUNCTION: init
    * 
@@ -350,19 +388,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function init() {
     // Wait for config to load from backend API
     await window.waitForConfig();
-    
+
     // Get Supabase client from centralized config
     supabase = window.getSupabaseClient();
-    
+
     if (!supabase) {
       console.error('❌ Supabase client not initialized');
       showToast('Failed to connect to database. Please refresh.');
       return;
     }
-    
+
     // Update cart badge
     updateCartBadge();
-    
+
     // Load orders from database
     await loadOrders();
   }
@@ -370,7 +408,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ========================================
   // SECTION 8: CROSS-TAB SYNCHRONIZATION
   // ========================================
-  
+
   /**
    * STORAGE EVENT LISTENER
    * 
@@ -387,7 +425,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       updateCartBadge();
     }
   });
-  
+
   // Start the app!
   init();
 });

@@ -77,9 +77,20 @@ const PORT = 7070;
 /**
  * CORS Middleware
  * Allows frontend (running on different port) to make requests
- * Without this, browser would block requests due to security
+ * SECURITY FIX: Whitelist production domains
  */
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? [
+      'https://spoon.tcetswb.org',
+      'https://admin.spoon.tcetswb.org',
+      process.env.FRONTEND_URL
+    ].filter(Boolean)
+    : true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 /**
  * JSON Parser Middleware
@@ -89,7 +100,41 @@ app.use(cors());
 app.use(express.json());
 
 // ========================================
-// SECTION 4: API ROUTES
+// SECTION 4: RATE LIMITING (SECURITY FIX)
+// ========================================
+
+const rateLimit = require('express-rate-limit');
+
+// Strict limiter for payments (prevent card testing/spam)
+const paymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 requests per IP per window
+  message: {
+    success: false,
+    error: 'Too many payment attempts, please try again after 15 minutes'
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// General limiter for other API endpoints
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // 100 requests per IP per window
+  message: {
+    success: false,
+    error: 'Too many requests, please slow down'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply limiters
+app.use('/api/payment', paymentLimiter);
+app.use('/api', apiLimiter);
+
+// ========================================
+// SECTION 5: API ROUTES
 // ========================================
 
 /**

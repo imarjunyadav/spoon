@@ -14,6 +14,7 @@ const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const nodemailer = require('nodemailer');
+const adminService = require('../services/adminService');
 
 // Initialize Supabase client with SERVICE_ROLE_KEY
 // This bypasses RLS policies and allows admin operations
@@ -89,6 +90,38 @@ router.patch('/:orderId/status', async (req, res) => {
     const { status } = req.body;
 
     // ========================================
+    // AUTHENTICATION CHECK (SECURITY FIX)
+    // ========================================
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
+    const token = authHeader.slice(7);
+    const tokenResult = await adminService.validateToken(token);
+
+    if (tokenResult.error) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid or expired token'
+      });
+    }
+
+    // Verify user is admin
+    const adminResult = await adminService.isUserAdmin(tokenResult.user.email);
+    if (!adminResult.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access required'
+      });
+    }
+
+    console.log('✅ Admin authenticated:', tokenResult.user.email);
+
+    // ========================================
     // DIAGNOSTIC LOGGING - STEP 1: REQUEST
     // ========================================
     console.log('\n========================================');
@@ -114,7 +147,7 @@ router.patch('/:orderId/status', async (req, res) => {
     // DIAGNOSTIC LOGGING - STEP 2: FETCH
     // ========================================
     console.log('\n🔍 DIAGNOSTIC: Fetching order...');
-    
+
     const { data: order, error: fetchError, count } = await supabase
       .from('orders')
       .select('*', { count: 'exact' })
@@ -126,7 +159,7 @@ router.patch('/:orderId/status', async (req, res) => {
     console.log('  - Order ID match:', order?.id === orderId);
     console.log('  - Fetch error:', fetchError);
     console.log('  - Count:', count);
-    
+
     if (order) {
       console.log('  - Order details:');
       console.log('    * ID:', order.id);
@@ -155,10 +188,10 @@ router.patch('/:orderId/status', async (req, res) => {
     console.log('\n🔍 DIAGNOSTIC: Updating order status...');
     console.log('  - Updating ID:', orderId);
     console.log('  - New status:', status);
-    
+
     // Build update object with status and appropriate timestamp
     const updateData = { status };
-    
+
     // Set timestamp based on status change
     if (status === 'COMPLETE') {
       updateData.ready_at = new Date().toISOString();
@@ -167,9 +200,9 @@ router.patch('/:orderId/status', async (req, res) => {
       updateData.picked_up_at = new Date().toISOString();
       console.log('  - Setting picked_up_at:', updateData.picked_up_at);
     }
-    
+
     console.log('  - Full updateData:', JSON.stringify(updateData, null, 2));
-    
+
     const { data: updatedOrders, error: updateError, count: updateCount } = await supabase
       .from('orders')
       .update(updateData)
@@ -180,7 +213,7 @@ router.patch('/:orderId/status', async (req, res) => {
     console.log('  - Update error:', updateError);
     console.log('  - Rows returned:', updatedOrders?.length || 0);
     console.log('  - Update count:', updateCount);
-    
+
     if (updateError) {
       console.error('❌ DIAGNOSTIC: Update failed');
       console.error('   Error details:', JSON.stringify(updateError, null, 2));
@@ -223,7 +256,7 @@ router.patch('/:orderId/status', async (req, res) => {
 
     // Send email notification based on status
     let emailResult = { sent: false };
-    
+
     if (order.customer_email) {
       let subject = '';
       let htmlContent = '';
@@ -231,12 +264,12 @@ router.patch('/:orderId/status', async (req, res) => {
       if (status === 'COMPLETE') {
         // Order ready for pickup - send verification code
         subject = 'Your SPOON order is ready for pickup!';
-        
+
         // Generate items list
-        const itemsList = order.items.map(item => 
+        const itemsList = order.items.map(item =>
           `<li>${item.title} × ${item.quantity} - ₹${item.price * item.quantity}</li>`
         ).join('');
-        
+
         htmlContent = `
           <div style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333;">
             <p>Your SPOON order is ready for pickup.</p>
