@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
     
     <!-- Order Status Styles -->
-    <link rel="stylesheet" href="css/order-status.css">
+    <link rel="stylesheet" href="../css/order-status.css">
     
     <!-- Supabase Client Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.4/dist/umd/supabase.min.js"></script>
@@ -74,10 +74,10 @@
     </div>
 
     <!-- Centralized configuration (must load before other scripts) -->
-    <script src="js/config.js"></script>
+    <script src="../js/core/config.js"></script>
     
     <!-- Horizontal Stepper Renderer (must load before order-status.js) -->
-    <script src="js/timelineRenderer.js"></script>
+    <script src="../js/admin/timelineRenderer.js"></script>
     
     <!-- Initialize Supabase from centralized config -->
     <script>
@@ -91,7 +91,7 @@
     </script>
     
     <!-- Order Status Logic -->
-    <script src="js/order-status.js"></script>
+    <script src="../js/pages/order-status.js"></script>
 
 </body>
 

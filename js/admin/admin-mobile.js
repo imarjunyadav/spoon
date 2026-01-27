@@ -2864,7 +2864,7 @@ function showAccessDenied() {
   supabase.auth.signOut();
 
   setTimeout(() => {
-    window.location.href = "../index.html";
+    window.location.href = "../public/index.html";
   }, 3000);
 }
 
