@@ -189,38 +189,24 @@ app.use("/api/health", healthRoutes);
 const adminRoutes = require("./routes/admin");
 app.use("/api/admin", adminRoutes);
 
-// ========================================
-// SECTION 5: SERVE FRONTEND FILES
-// ========================================
-
 /**
  * STATIC FILE SERVING
- * Serves HTML, CSS, JS files from parent directory
+ * Serves files from project root directory
  * 
- * HOW IT WORKS:
- * - __dirname is current directory (backend/)
- * - "../" goes up one level to project root
- * - Express serves all files from there
+ * HTML files use relative paths like "../css/menu.css"
+ * We serve everything from root so these paths resolve correctly.
  */
-const publicDir = path.join(__dirname, "../");
-app.use(express.static(publicDir));
+const rootDir = path.join(__dirname, "../");
+
+// Serve all static files from root directory
+app.use(express.static(rootDir));
 
 /**
- * CATCH-ALL ROUTE
- * For any route not matched above, serve index.html
- * This enables client-side routing (SPA behavior)
- * 
- * LEARNING NOTE:
- * The "*" matches any route. This must be LAST
- * so it doesn't override other routes.
+ * ROOT ROUTE
+ * Redirect root URL to the public folder's index.html
  */
-app.get("*", (req, res) => {
-  try {
-    res.sendFile(path.join(publicDir, "public", "index.html"));
-  } catch (err) {
-    console.error("💥 Error sending index.html:", err);
-    res.status(500).send("Frontend not found");
-  }
+app.get("/", (req, res) => {
+  res.redirect("/public/index.html");
 });
 
 // ========================================
@@ -237,7 +223,7 @@ app.get("*", (req, res) => {
  */
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
-  console.log(`📁 Serving files from: ${publicDir}`);
+  console.log(`📁 Serving files from: ${rootDir}`);
   console.log(`💳 Payment API available at: http://localhost:${PORT}/api/payment`);
   console.log(`\n✅ Ready to accept requests!`);
 });
