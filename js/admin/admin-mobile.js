@@ -1987,8 +1987,8 @@ function renderCompletedOrders() {
     ].filter(Boolean).join(' ');
 
     // Button state determined atomically
-    const btnClasses = isPending ? 'ready-card__btn ready-card__btn--pending' : 'ready-card__btn';
-    const btnText = isPending ? '...' : 'Handed Over';
+    const btnClasses = isPending ? 'ready-card__btn ready-card__btn--pending loading' : 'ready-card__btn';
+    const btnText = isPending ? '' : 'Handed Over';
     const btnDisabled = isPending ? 'disabled' : '';
 
     return `

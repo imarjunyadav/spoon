@@ -789,6 +789,50 @@ body {
 }
 
 /* ====================
+   13. LOADING ANIMATIONS
+   ==================== */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Generic Loading Loading State */
+.loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+    cursor: default;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    top: 50%;
+    left: 50%;
+    margin-left: -9px;
+    margin-top: -9px;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 0.8s linear infinite;
+}
+
+/* Button specific loading overrides to ensure contrast */
+.admin-btn.loading::after,
+.order-card__btn.loading::after,
+.ready-card__btn.loading::after {
+    border-color: #ffffff;
+    border-top-color: transparent;
+}
+
+/* If button is secondary/outline, use brand color for spinner */
+.admin-btn--secondary.loading::after {
+    border-color: var(--brand-primary);
+    border-top-color: transparent;
+}
+
+/* ====================
    13. LOADING & OVERLAY STATES
    ==================== */
 .admin-overlay {

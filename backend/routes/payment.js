@@ -235,13 +235,16 @@ router.post("/verify-payment", async (req, res) => {
     const payment = paymentDetails.data;
 
     // Use shared logic with webhook handler
+    // IMPORTANT: Always use notes.email (our trusted source) over payment.email
+    // Razorpay allows users to enter any email in the payment form, which may not
+    // exist in our users table, causing FK constraint violations.
     const result = await paymentFlowValidator.handlePaymentSuccess({
       razorpayPaymentId: payment.id,
       razorpayOrderId: payment.order_id,
       razorpaySignature: razorpay_signature,
       amount: payment.amount,
       currency: payment.currency,
-      userEmail: payment.email || payment.notes?.email,
+      userEmail: payment.notes?.email || payment.email, // Our app email takes priority
       cartItems: payment.notes?.cart_items ? JSON.parse(payment.notes.cart_items) : [],
       preorderTime: payment.notes?.preorder_time,
       phoneNumber: payment.notes?.phone_number
@@ -335,13 +338,14 @@ router.post("/webhook", async (req, res) => {
 async function handlePaymentSuccess(payment, webhookBody) {
   try {
     // Extract payment details
+    // IMPORTANT: Use notes.email (our trusted source) over payment.email
     const paymentData = {
       razorpayPaymentId: payment.id,
       razorpayOrderId: payment.order_id,
       razorpaySignature: webhookBody.payload.payment.entity.signature || '',
       amount: payment.amount,
       currency: payment.currency,
-      userEmail: payment.email || payment.notes?.email,
+      userEmail: payment.notes?.email || payment.email, // Our app email takes priority
       cartItems: payment.notes?.cart_items ? JSON.parse(payment.notes.cart_items) : [],
       preorderTime: payment.notes?.preorder_time,
       phoneNumber: payment.notes?.phone_number
@@ -375,7 +379,7 @@ async function handlePaymentFailure(payment) {
       razorpayOrderId: payment.order_id,
       amount: payment.amount,
       currency: payment.currency,
-      userEmail: payment.email || payment.notes?.email,
+      userEmail: payment.notes?.email || payment.email, // Our app email takes priority
       errorReason: payment.error_description || 'Payment failed'
     };
 

@@ -751,6 +751,9 @@ document.addEventListener('DOMContentLoaded', () => {
    * This is an async function because it waits for API responses
    */
   finalConfirmBtn.addEventListener("click", async () => {
+    // Prevent double clicks
+    if (finalConfirmBtn.disabled) return;
+
     const cart = getCart();
 
     // Validate cart
@@ -767,6 +770,10 @@ document.addEventListener('DOMContentLoaded', () => {
       alert("Invalid subtotal. Cannot proceed with payment.");
       return;
     }
+
+    // START LOADING STATE
+    finalConfirmBtn.classList.add('loading');
+    finalConfirmBtn.disabled = true;
 
     try {
       // Get user data for validation
@@ -851,7 +858,18 @@ document.addEventListener('DOMContentLoaded', () => {
           } catch (error) {
             console.error('❌ Verification error:', error);
             showToast(`Order creation failed: ${error.message}`, 'error');
-            // Don't clear cart so user doesn't lose items, but maybe still redirect or show help info
+            // Re-enable button on verification failure so user can try again or contact support
+            finalConfirmBtn.classList.remove('loading');
+            finalConfirmBtn.disabled = false; // Re-enable for retry
+          }
+        },
+
+        // Handle modal dismissal/failure
+        modal: {
+          ondismiss: function () {
+            console.log('Payment modal closed');
+            finalConfirmBtn.classList.remove('loading');
+            finalConfirmBtn.disabled = false; // Re-enable for retry
           }
         },
 
@@ -860,11 +878,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // STEP 4: Open Razorpay payment gateway
       const rzp = new Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        console.error('Payment Failed', response.error);
+        alert("Payment failed: " + response.error.reason);
+        alert("Payment failed: " + response.error.reason);
+        finalConfirmBtn.classList.remove('loading');
+        finalConfirmBtn.disabled = false; // Re-enable for retry
+      });
       rzp.open();
 
     } catch (error) {
       alert("Payment setup failed. Try again.");
       console.error(error);
+      console.error(error);
+      finalConfirmBtn.classList.remove('loading');
+      finalConfirmBtn.disabled = false; // Re-enable for retry
     }
   });
 

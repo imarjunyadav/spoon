@@ -61,8 +61,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   const toastNotification = document.getElementById('toast-notification');
   const cartBadge = document.getElementById('cart-badge');
 
-  // Get user's phone number for filtering orders
-  const userPhoneNumber = localStorage.getItem('spoon-user-phone');
+  // Get user's email for filtering orders (more reliable than phone)
+  // Email is set during login/OTP verification
+  const userData = JSON.parse(localStorage.getItem('spoon-user') || '{}');
+  let userEmail = userData.email || localStorage.getItem('spoon-user-email');
+
+  // Edge case: Redirect to login if no email found
+  if (!userEmail) {
+    console.error('❌ User email not found, redirecting to login');
+    window.location.replace('login.html');
+    return;
+  }
 
   // ========================================
   // SECTION 4: HELPER FUNCTIONS
@@ -331,11 +340,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function loadOrders() {
     try {
       // Query Supabase for user's orders
-      // Filter by phone_number and order by created_at DESC (newest first)
+      // Filter by customer_email (reliable) and order by created_at DESC (newest first)
+      console.log('📝 Fetching orders for email:', userEmail);
+
       const { data, error } = await supabase
         .from('orders')
         .select('*')
-        .eq('phone_number', userPhoneNumber)
+        .eq('customer_email', userEmail)
         .order('created_at', { ascending: false });
 
       // Handle errors
