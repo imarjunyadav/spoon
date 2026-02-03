@@ -216,7 +216,7 @@ app.use(express.static(publicDir));
  */
 app.get("*", (req, res) => {
   try {
-    res.sendFile(path.join(publicDir, "index.html"));
+    res.sendFile(path.join(publicDir, "public", "index.html"));
   } catch (err) {
     console.error("💥 Error sending index.html:", err);
     res.status(500).send("Frontend not found");
