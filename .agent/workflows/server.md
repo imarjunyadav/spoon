@@ -1,36 +1,40 @@
 ---
-description: Start, stop, or restart the local development server
+description: Manage the local Node.js development environment
 ---
 
-# Server Management
+# 💻 Dev Server Control
 
-## Start Server
+**Port:** `7070`
+**Entry Point:** `backend/server.js`
+
+## 🟢 Start Server
 // turbo
 ```bash
-cd c:\Users\arjun\Desktop\spoon\v1
 node backend/server.js
 ```
+*Accessible at: http://localhost:7070/public/index.html*
 
-## Stop Server (Kill Port 7070)
+## 🔴 Force Stop (Kill Port 7070)
+Used when you see `EADDRINUSE` errors.
 ```powershell
 Get-NetTCPConnection -LocalPort 7070 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }
 ```
 
-## Restart Server
-1. Stop any running server (command above)
-2. Start fresh:
-// turbo
-```bash
-node backend/server.js
+## 🟡 Restart Server
+Combines stop and start.
+```powershell
+Get-NetTCPConnection -LocalPort 7070 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }; Start-Sleep -Seconds 1; node backend/server.js
 ```
 
-## Check Server Health
+## 🩺 Health Check
+Quickly verify the API is responding.
 // turbo
 ```bash
 curl -s http://localhost:7070/api/health
 ```
 
-## URLs
-- **User App**: http://localhost:7070/public/index.html
+## 📂 Project Structure Map
+- **Frontend**: http://localhost:7070/public/index.html
 - **Admin**: http://localhost:7070/admin/admin-mobile.html
-- **API Health**: http://localhost:7070/api/health
+- **API**: http://localhost:7070/api/
+- **Webhooks**: http://localhost:7070/api/payment/verify-payment

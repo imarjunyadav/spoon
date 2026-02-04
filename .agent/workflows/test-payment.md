@@ -1,63 +1,50 @@
 ---
-description: Test payment flow end-to-end
+description: End-to-end payment testing checklist using Razorpay Test Mode
 ---
 
-# Test Payment Flow
+# 💳 Test Payment Flow
 
-## Prerequisites
-- Server running on localhost:7070
-- Razorpay test mode enabled
-- Test user logged in
+**Environment**: `localhost:7070` (Dev)
+**Mode**: Razorpay Test Mode
 
-## Test Credentials (Razorpay Test Mode)
-- **Card**: 4111 1111 1111 1111
-- **Expiry**: Any future date
-- **CVV**: Any 3 digits
-- **OTP**: 1234 (for 3D Secure)
+## 1. Setup
+1. Ensure `.env` has `RAZORPAY_KEY_ID` starting with `rzp_test_`.
+2. Start server: `node backend/server.js`.
 
-## Steps
+## 2. User Flow (Frontend)
+1. Go to **[Menu](http://localhost:7070/public/index.html)**.
+2. Login (Email: `test@spoon.com`).
+3. Add item to cart.
+4. Click **Checkout**.
+5. **Razorpay Popup**:
+   - **Card**: `4111 1111 1111 1111`
+   - **Expiry**: `12/30`
+   - **CVV**: `123`
+   - **OTP**: `1234`
+6. Verify "Order Placed" toast appears.
+7. Verify redirection to **Orders** page.
 
-### 1. Start Server
-Use `/server` workflow
-
-### 2. Open User App
-Navigate to: http://localhost:7070/public/index.html
-
-### 3. Login
-- Use valid email
-- Get OTP from email or server logs (in-memory fallback)
-
-### 4. Add Items to Cart
-- Add at least one item
-- Verify cart total
-
-### 5. Checkout
-- Click "Place Order"
-- Complete Razorpay payment
-
-### 6. Verify Order Created
-Check database:
+## 3. Data Verification (Database)
+Run this query to confirm integrity:
 ```sql
-SELECT id, status, total, verification_code 
-FROM orders 
-ORDER BY created_at DESC 
+SELECT 
+    o.id, 
+    o.status, 
+    o.total, 
+    pt.status as payment_status
+FROM orders o
+JOIN payment_transactions pt ON o.razorpay_payment_id = pt.razorpay_payment_id
+ORDER BY o.created_at DESC 
 LIMIT 1;
 ```
+*Expected*: `o.status` = 'PLACED', `pt.status` = 'captured'
 
-### 7. Test Admin Flow
-- Open: http://localhost:7070/admin/admin-mobile.html
-- Login with admin email
-- Find the order in Active tab
-- Mark as Complete
-- Verify in Ready tab
-- Mark as Picked Up
+## 4. Admin Flow (Kitchen)
+1. Go to **[Admin Dashboard](http://localhost:7070/admin/admin-mobile.html)**.
+2. Verify order appears in **Active** tab.
+3. Click **Ready** -> Verify moves to **Ready** tab.
+4. Click **Picked Up** -> Verify removed from list.
 
-## Expected Results
-| Step | Expected |
-|------|----------|
-| Payment | Success toast, redirect to orders |
-| Order Status | PLACED or PENDING |
-| Verification Code | 4-digit code generated |
-| Admin View | Order visible in Active tab |
-| After Complete | Moves to Ready tab |
-| After Pickup | Disappears from Ready tab |
+## 🔴 Common Failure Points
+- **Foreign Key Error**: `payment.email` vs `user.email` mismatch (Fixed in v1.1).
+- **Webhook Failure**: If order created but status stuck at `PENDING` (Check `ngrok` if testing webhooks locally).
