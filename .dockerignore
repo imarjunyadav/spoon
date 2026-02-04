@@ -1,0 +1,11 @@
+node_modules
+.git
+.gitignore
+.env
+.env.*
+logs
+tmp
+tests
+.vscode
+.agent
+*.md
