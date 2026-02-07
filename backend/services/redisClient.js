@@ -37,7 +37,10 @@ let connectionStatus = 'disconnected';
  */
 function createClient() {
   // Simple connection - ioredis handles rediss:// URLs automatically
-  const client = new Redis(REDIS_URL);
+  // Force IPv4 to prevent ECONNRESET on Cloud Run
+  const client = new Redis(REDIS_URL, {
+    family: 4
+  });
 
   // ========================================
   // EVENT HANDLERS

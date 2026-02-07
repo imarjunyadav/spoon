@@ -2,6 +2,11 @@
 # SPOON - GIT IGNORE FILE
 # ========================================
 
+# Antigravity Internal Files (Private)
+.agent/
+.agent_workflows/
+*.agent
+
 # Kiro AI specs and configurations
 .kiro/
 

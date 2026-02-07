@@ -1,21 +1,21 @@
-# Use lightweight Node.js 20 Alpine image
-FROM node:20-alpine
+# Switch to Debian-based image (Slim) for maximum compatibility
+# Alpine (musl) often fails with missing libraries for native modules
+FROM node:20-slim
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files first to leverage Docker cache
+# Copy package files
 COPY package*.json ./
 
 # Install production dependencies
-RUN npm ci --only=production
+# "npm install" is more robust than "npm ci" across OS boundaries
+RUN npm install --only=production --no-audit
 
 # Copy application source code
 COPY . .
 
-# Expose port (Cloud Run usually defaults to 8080, but we use PORT env var)
-# Our app defaults to 7070, but Cloud Run injects PORT=8080 usually.
-# server.js should respect process.env.PORT
+# Expose port 7070 (matching our server.js defaults)
 ENV PORT=7070
 EXPOSE 7070
 

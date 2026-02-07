@@ -22,11 +22,11 @@
 
 // Wait for page to load
 document.addEventListener('DOMContentLoaded', () => {
-  
+
   // ========================================
   // SECTION 1: DOM ELEMENT REFERENCES
   // ========================================
-  
+
   const loginForm = document.getElementById('login-form');
   const emailInput = document.getElementById('email-input');
   const emailInputGroup = document.querySelector('.email-input-group');
@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 2: VALIDATION FUNCTION
   // ========================================
-  
+
   /**
    * FUNCTION: validateEmail
    * 
@@ -59,10 +59,10 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function validateEmail() {
     const email = emailInput.value.trim();
-    
+
     // Test if email matches valid email pattern
     const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    
+
     // Update UI based on validation
     if (email.length === 0) {
       // Empty - neutral state
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
       emailHint.classList.add('error');
       emailHint.classList.remove('success');
     }
-    
+
     // Enable button only if valid
     continueBtn.disabled = !isValid;
   }
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 3: API CALL FUNCTION
   // ========================================
-  
+
   /**
    * FUNCTION: sendOTP
    * 
@@ -104,8 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
    * @returns {Promise<{success: boolean, message?: string, error?: object}>}
    */
   async function sendOTP(email) {
-    const apiBaseUrl = window.SPOON_CONFIG?.API_BASE_URL || 'http://localhost:7070';
-    
+    const apiBaseUrl = window.SPOON_CONFIG?.API_BASE_URL || '';
+
     const response = await fetch(`${apiBaseUrl}/api/auth/send-otp`, {
       method: 'POST',
       headers: {
@@ -113,14 +113,14 @@ document.addEventListener('DOMContentLoaded', () => {
       },
       body: JSON.stringify({ email })
     });
-    
+
     return response.json();
   }
 
   // ========================================
   // SECTION 4: FORM SUBMISSION HANDLER
   // ========================================
-  
+
   /**
    * FUNCTION: handleFormSubmit
    * 
@@ -148,11 +148,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const result = await sendOTP(email);
-      
+
       if (result.success) {
         // Save email to localStorage for later use
         localStorage.setItem("spoon-user-email", email);
-        
+
         // Redirect to OTP page with email as URL parameter
         window.location.href = `otp.html?email=${encodeURIComponent(email)}`;
       } else {
@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 5: UI HELPER FUNCTIONS
   // ========================================
-  
+
   /**
    * FUNCTION: setLoadingState
    * 
@@ -220,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function getErrorMessage(error) {
     if (!error) return 'Something went wrong. Please try again.';
-    
+
     switch (error.code) {
       case 'INVALID_EMAIL':
         return 'Please enter a valid email address.';
@@ -236,13 +236,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 6: EVENT LISTENERS
   // ========================================
-  
+
   /**
    * EVENT: Email input changes
    * Validates email every time user types
    */
   emailInput.addEventListener('input', validateEmail);
-  
+
   /**
    * EVENT: Form submission
    * Handles when user presses Enter or clicks Continue button
@@ -252,6 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // ========================================
   // SECTION 7: INITIALIZATION
   // ========================================
-  
+
   console.log("✅ Login page script initialized.");
 });

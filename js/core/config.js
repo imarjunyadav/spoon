@@ -18,12 +18,12 @@
  * 3. Access Supabase client via window.spoonSupabase
  */
 
-(function() {
+(function () {
   'use strict';
 
   // Default config (fallback if API fails)
   const DEFAULT_CONFIG = {
-    API_BASE_URL: 'http://localhost:7070',
+    API_BASE_URL: '',
     SUPABASE_URL: '',
     SUPABASE_ANON_KEY: '',
     RAZORPAY_KEY_ID: ''
@@ -48,13 +48,13 @@
   async function loadConfig() {
     try {
       const response = await fetch(`${DEFAULT_CONFIG.API_BASE_URL}/api/config`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to load configuration');
       }
 
       const config = await response.json();
-      
+
       // Merge with defaults
       window.SPOON_CONFIG = {
         ...DEFAULT_CONFIG,
@@ -73,19 +73,19 @@
 
       window.configLoaded = true;
       console.log('✅ Configuration loaded successfully');
-      
+
       // Dispatch event for scripts waiting on config
       window.dispatchEvent(new CustomEvent('spoon-config-loaded'));
-      
+
       return window.SPOON_CONFIG;
 
     } catch (error) {
       console.error('❌ Failed to load configuration:', error.message);
       console.warn('⚠️ Using fallback configuration');
-      
+
       // Dispatch event even on failure so scripts don't hang
       window.dispatchEvent(new CustomEvent('spoon-config-loaded', { detail: { error: true } }));
-      
+
       throw error;
     }
   }
@@ -99,7 +99,7 @@
    * await window.waitForConfig();
    * // Now safe to use window.SPOON_CONFIG and window.spoonSupabase
    */
-  window.waitForConfig = function() {
+  window.waitForConfig = function () {
     return new Promise((resolve) => {
       if (window.configLoaded) {
         resolve(window.SPOON_CONFIG);
@@ -118,7 +118,7 @@
    * 
    * RETURNS: Supabase client instance or null if not initialized
    */
-  window.getSupabaseClient = function() {
+  window.getSupabaseClient = function () {
     return window.spoonSupabase;
   };
 

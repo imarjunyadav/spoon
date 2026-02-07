@@ -39,7 +39,7 @@ router.get('/', (req, res) => {
     SUPABASE_URL: process.env.SUPABASE_URL || '',
     SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
     RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || '',
-    API_BASE_URL: `http://localhost:${process.env.PORT || 7070}`
+    API_BASE_URL: '' // Use relative path for production
   };
 
   // Validate that required config exists

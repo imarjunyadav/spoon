@@ -1,0 +1,20 @@
+# Exclude internal process files from Cloud Build
+.agent/
+.agent_workflows/
+.agent-workflows/
+.git/
+.gitignore
+.dockerignore
+.vscode/
+.idea/
+.env
+node_modules/
+logs/
+tmp/
+tests/
+# Dockerfile (Must be allowed for Cloud Build)
+# Dockerfile
+deploy.ps1
+DEPLOYMENT_STEPS.md
+DEPLOYMENT_STEPS_EASY.md
+*.md

@@ -49,8 +49,8 @@ document.addEventListener('DOMContentLoaded', () => {
      * @returns {Promise<{success: boolean, isNewUser?: boolean, user?: object, error?: object}>}
      */
     async function verifyOTP(email, otp) {
-        const apiBaseUrl = window.SPOON_CONFIG?.API_BASE_URL || 'http://localhost:7070';
-        
+        const apiBaseUrl = window.SPOON_CONFIG?.API_BASE_URL || '';
+
         const response = await fetch(`${apiBaseUrl}/api/auth/verify-otp`, {
             method: 'POST',
             headers: {
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             body: JSON.stringify({ email, otp })
         });
-        
+
         return response.json();
     }
 
@@ -74,8 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
      * @returns {Promise<{success: boolean, message?: string, error?: object}>}
      */
     async function resendOTPApi(email) {
-        const apiBaseUrl = window.SPOON_CONFIG?.API_BASE_URL || 'http://localhost:7070';
-        
+        const apiBaseUrl = window.SPOON_CONFIG?.API_BASE_URL || '';
+
         const response = await fetch(`${apiBaseUrl}/api/auth/send-otp`, {
             method: 'POST',
             headers: {
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             body: JSON.stringify({ email })
         });
-        
+
         return response.json();
     }
 
@@ -124,22 +124,22 @@ document.addEventListener('DOMContentLoaded', () => {
         otpInputs.forEach((input, index) => {
             input.addEventListener('paste', (e) => {
                 e.preventDefault();
-                
+
                 const pastedData = e.clipboardData.getData('text');
                 const digits = pastedData.replace(/\D/g, '');
-                
+
                 if (digits.length === 0) return;
-                
+
                 for (let i = 0; i < digits.length && (index + i) < otpInputs.length; i++) {
                     otpInputs[index + i].value = digits[i];
                 }
-                
+
                 const nextEmptyIndex = Array.from(otpInputs).findIndex(inp => !inp.value);
                 if (nextEmptyIndex !== -1) {
                     otpInputs[nextEmptyIndex].focus();
                 } else {
                     otpInputs[otpInputs.length - 1].focus();
-                    
+
                     const allFilled = Array.from(otpInputs).every(inp => inp.value);
                     if (allFilled) {
                         otpForm.requestSubmit();
@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const result = await resendOTPApi(userEmail);
-            
+
             if (result.success) {
                 alert('A new OTP has been sent to your email.');
                 startTimer();
@@ -214,10 +214,10 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     async function handleOtpVerification(e) {
         e.preventDefault();
-        
+
         // Prevent double submission
         if (isSubmitting) return;
-        
+
         let otp = '';
         otpInputs.forEach(input => otp += input.value);
 
@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success) {
                 // Store email in localStorage
                 localStorage.setItem('spoon-user-email', userEmail);
-                
+
                 if (result.isNewUser) {
                     // New user: redirect to signup page with verified email
                     window.location.href = `signup.html?email=${encodeURIComponent(userEmail)}`;
@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function getErrorMessage(error) {
         if (!error) return 'Something went wrong. Please try again.';
-        
+
         switch (error.code) {
             case 'INVALID_OTP':
                 return 'Invalid OTP. Please check and try again.';

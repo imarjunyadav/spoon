@@ -1,11 +1,23 @@
+# Build Context Exclusions
 node_modules
 .git
 .gitignore
+.dockerignore
+.gcloudignore
 .env
 .env.*
 logs
 tmp
 tests
 .vscode
-.agent
+.idea
+
+# Antigravity Internal Files (Private)
+.agent/
+.agent_workflows/
+.agent-workflows/
+*.agent
 *.md
+deploy.ps1
+DEPLOYMENT_STEPS.md
+DEPLOYMENT_STEPS_EASY.md

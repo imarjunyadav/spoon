@@ -4,6 +4,7 @@
   "description": "Latest Version of Spoon Food Ordering Web App",
   "main": "index.js",
   "scripts": {
+    "start": "node backend/server.js",
     "test": "jest"
   },
   "repository": {

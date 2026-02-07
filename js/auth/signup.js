@@ -42,8 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
      * @returns {Promise<{success: boolean, user?: object, error?: object}>}
      */
     async function createUserApi(email, name) {
-        const apiBaseUrl = window.SPOON_CONFIG?.API_BASE_URL || 'http://localhost:7070';
-        
+        const apiBaseUrl = window.SPOON_CONFIG?.API_BASE_URL || '';
+
         const response = await fetch(`${apiBaseUrl}/api/auth/signup`, {
             method: 'POST',
             headers: {
@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             body: JSON.stringify({ email, name })
         });
-        
+
         return response.json();
     }
 
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function validateName() {
         const name = nameInput.value.trim();
-        
+
         // Only validate if user has started typing
         if (name.length === 0) {
             nameError.textContent = '';
@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateButtonState();
             return;
         }
-        
+
         if (name.length < 3) {
             nameError.textContent = 'Name must be at least 3 characters.';
             nameInput.classList.add('error');
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function getErrorMessage(error) {
         if (!error) return 'Something went wrong. Please try again.';
-        
+
         switch (error.code) {
             case 'INVALID_EMAIL':
                 return 'Invalid email address.';
@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         nameInput.disabled = disabled;
         signupBtn.disabled = disabled;
         isSubmitting = disabled;
-        
+
         if (disabled) {
             signupBtn.textContent = 'Creating Account...';
         } else {
@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success) {
                 // Store user data from response
                 const userData = result.user || { email: verifiedEmail, name };
-                
+
                 // Use email as the unique key for the user record
                 localStorage.setItem(`user-${verifiedEmail}`, JSON.stringify(userData));
                 // Set the generic 'spoon-user' for the current session

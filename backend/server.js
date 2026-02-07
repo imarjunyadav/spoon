@@ -58,11 +58,14 @@ const cors = require("cors");
  */
 const app = express();
 
+// SECURITY FIX: Trust Cloud Run proxy (required for rate limiting)
+app.set('trust proxy', 1);
+
 /**
  * Define port number
  * Server will listen on http://localhost:7070
  */
-const PORT = 7070;
+const PORT = process.env.PORT || 7070;
 
 // ========================================
 // SECTION 3: MIDDLEWARE SETUP
