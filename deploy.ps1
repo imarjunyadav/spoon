@@ -32,10 +32,14 @@ gcloud services enable cloudbuild.googleapis.com run.googleapis.com
 
 # 5. Environment Variables Prompt
 Write-Host "`n[SETUP] Configure Environment Variables (Press Enter to skip if already set)" -ForegroundColor Cyan
+Write-Host "[TIP] You can find these in your backend/.env file" -ForegroundColor DarkGray
 $supabaseUrl = Read-Host "Supabase URL"
-$supabaseKey = Read-Host "Supabase Service Role Key"
+$supabaseAnonKey = Read-Host "Supabase ANON Key (public, for frontend)"
+$supabaseKey = Read-Host "Supabase Service Role Key (secret, for backend)"
 $razorpayKey = Read-Host "Razorpay Key ID"
 $razorpaySecret = Read-Host "Razorpay Secret"
+$smtpEmail = Read-Host "SMTP Email (Gmail address for OTPs)"
+$smtpPassword = Read-Host "SMTP Password (Gmail App Password)"
 $redisUrl = Read-Host "Redis URL (rediss://user:pass@host:port)"
 if ([string]::IsNullOrWhiteSpace($redisUrl)) {
     $redisUrl = "rediss://default:AUyqAAIncDIzZmI1ODRmMTFmNWI0M2QyYjliYWMwMDk5YWYzNmIxMnAyMTk2MjY@massive-panda-19626.upstash.io:6379"
@@ -43,9 +47,12 @@ if ([string]::IsNullOrWhiteSpace($redisUrl)) {
 
 $envVars = "NODE_ENV=production"
 if ($supabaseUrl) { $envVars += ",SUPABASE_URL=$supabaseUrl" }
+if ($supabaseAnonKey) { $envVars += ",SUPABASE_ANON_KEY=$supabaseAnonKey" }
 if ($supabaseKey) { $envVars += ",SUPABASE_SERVICE_ROLE_KEY=$supabaseKey" }
 if ($razorpayKey) { $envVars += ",RAZORPAY_KEY_ID=$razorpayKey" }
-if ($razorpaySecret) { $envVars += ",RAZORPAY_WEBHOOK_SECRET=$razorpaySecret" }
+if ($razorpaySecret) { $envVars += ",RAZORPAY_SECRET=$razorpaySecret,RAZORPAY_WEBHOOK_SECRET=$razorpaySecret" }
+if ($smtpEmail) { $envVars += ",SMTP_EMAIL=$smtpEmail" }
+if ($smtpPassword) { $envVars += ",SMTP_PASSWORD=$smtpPassword" }
 if ($redisUrl) { $envVars += ",REDIS_URL=$redisUrl" }
 
 # 5a. Fix IAM Permissions (Critical for Cloud Build)

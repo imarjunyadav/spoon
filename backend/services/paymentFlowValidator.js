@@ -20,11 +20,24 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // Use service role for backend operations
-);
+// Lazy-initialize Supabase client (env vars may not be available at module load time in Cloud Run)
+let supabaseClient = null;
+
+function getSupabase() {
+  if (!supabaseClient) {
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!url || !key) {
+      console.error('❌ Supabase credentials missing. SUPABASE_URL:', !!url, 'SUPABASE_SERVICE_ROLE_KEY:', !!key);
+      throw new Error('Supabase configuration missing. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.');
+    }
+
+    supabaseClient = createClient(url, key);
+    console.log('✅ Supabase client initialized for payment flow');
+  }
+  return supabaseClient;
+}
 
 class PaymentFlowValidator {
 
@@ -71,7 +84,7 @@ class PaymentFlowValidator {
     // ========================================
     // Fetch actual prices from database to prevent price manipulation
     const itemIds = items.map(item => item.id);
-    const { data: dbItems, error: menuError } = await supabase
+    const { data: dbItems, error: menuError } = await getSupabase()
       .from('menu_items')
       .select('id, price, name, is_available')
       .in('id', itemIds);
@@ -121,7 +134,7 @@ class PaymentFlowValidator {
     }
 
     // Validate user exists
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await getSupabase()
       .from('users')
       .select('email')
       .eq('email', userEmail)
@@ -204,7 +217,7 @@ class PaymentFlowValidator {
   async validateIdempotency(paymentId) {
     try {
       // Check if payment ID already exists in database
-      const { data: existingPayment, error } = await supabase
+      const { data: existingPayment, error } = await getSupabase()
         .from('payment_transactions')
         .select('id, order_id, status, created_at')
         .eq('razorpay_payment_id', paymentId)
@@ -275,7 +288,7 @@ class PaymentFlowValidator {
       }
 
       // STEP 2: Create payment transaction record (idempotency lock)
-      const { data: paymentTransaction, error: paymentError } = await supabase
+      const { data: paymentTransaction, error: paymentError } = await getSupabase()
         .from('payment_transactions')
         .insert([{
           razorpay_payment_id: razorpayPaymentId,
@@ -298,7 +311,7 @@ class PaymentFlowValidator {
           console.log(`⚠️ Duplicate payment detected: ${razorpayPaymentId}`);
 
           // Fetch existing order
-          const { data: existing } = await supabase
+          const { data: existing } = await getSupabase()
             .from('payment_transactions')
             .select('order_id')
             .eq('razorpay_payment_id', razorpayPaymentId)
@@ -325,7 +338,7 @@ class PaymentFlowValidator {
       // TODO: This will be enhanced in Task 3 (Stock Management) with proper locking
       const orderId = razorpayPaymentId; // Use payment ID as order ID
 
-      const { data: order, error: orderError } = await supabase
+      const { data: order, error: orderError } = await getSupabase()
         .from('orders')
         .insert([{
           id: orderId,
@@ -346,7 +359,7 @@ class PaymentFlowValidator {
         console.error('❌ Failed to create order:', orderError);
 
         // Update payment transaction status to failed
-        await supabase
+        await getSupabase()
           .from('payment_transactions')
           .update({
             status: 'failed',
@@ -358,7 +371,7 @@ class PaymentFlowValidator {
       }
 
       // STEP 4: Update payment transaction with order ID
-      await supabase
+      await getSupabase()
         .from('payment_transactions')
         .update({
           order_id: orderId,
@@ -415,7 +428,7 @@ class PaymentFlowValidator {
 
     try {
       // Record failed payment
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('payment_transactions')
         .insert([{
           razorpay_payment_id: razorpayPaymentId,
@@ -465,7 +478,7 @@ class PaymentFlowValidator {
   async reconcilePaymentOrder(paymentId) {
     try {
       // Fetch payment transaction
-      const { data: payment, error: paymentError } = await supabase
+      const { data: payment, error: paymentError } = await getSupabase()
         .from('payment_transactions')
         .select('*')
         .eq('razorpay_payment_id', paymentId)
@@ -479,7 +492,7 @@ class PaymentFlowValidator {
       }
 
       // Fetch order
-      const { data: order, error: orderError } = await supabase
+      const { data: order, error: orderError } = await getSupabase()
         .from('orders')
         .select('*')
         .eq('payment_id', paymentId)
