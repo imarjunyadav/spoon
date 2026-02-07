@@ -39,14 +39,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupProtectedRoutes() {
         // Check localStorage for login status (returns 'true' or null)
         const isLoggedIn = localStorage.getItem('spoon-is-logged-in') === 'true';
-        
+
         // If user is NOT logged in
         if (!isLoggedIn) {
             // Find the navigation links in the bottom nav bar
             const cartLink = document.querySelector('a[href="cart.html"]');
             const ordersLink = document.querySelector('a[href="orders.html"]');
             const accountLink = document.querySelector('a[href="account.html"]');
-            
+
             // Change their destination to login page instead
             if (cartLink) cartLink.href = 'login.html';
             if (ordersLink) ordersLink.href = 'login.html';
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function personalizeHeader() {
         // Check if user is logged in
         const isLoggedIn = localStorage.getItem('spoon-is-logged-in') === 'true';
-        
+
         // Get references to HTML elements we want to update
         const userGreetingEl = document.getElementById('user-greeting');
         const userAvatarEl = document.querySelector('.greeting-card__avatar');
@@ -75,15 +75,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isLoggedIn) {
             // Get user data from localStorage (stored as JSON string, so we parse it)
             const userData = JSON.parse(localStorage.getItem('spoon-user'));
-            
+
             // If user data exists and has a name
             if (userData && userData.name) {
                 // Extract first name (everything before the first space)
                 const firstName = userData.name.split(' ')[0];
-                
+
                 // Update greeting text with user's first name and emoji
                 userGreetingEl.textContent = `Hello, ${firstName}! 👋`;
-                
+
                 // Show first letter of name in avatar circle
                 // .charAt(0) gets first character, .toUpperCase() makes it capital
                 userAvatarEl.innerHTML = `<span>${userData.name.charAt(0).toUpperCase()}</span>`;
@@ -99,14 +99,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================
     // SECTION 2: SUPABASE SETUP & MENU DATA
     // ========================================
-    
+
     /**
      * SUPABASE CLIENT
      * Uses centralized config from js/config.js
      * Config is loaded from backend API for security
      */
     let supabase = null;
-    
+
     /**
      * MENU DATA STRUCTURE
      * Now fetched dynamically from Supabase database
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let menuData = {
         categories: []
     };
-    
+
     /**
      * CATEGORY MAPPING
      * Maps database category IDs to display names
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'chinese': 'CHINESE',
         'soup': 'SOUP'
     };
-    
+
     /**
      * FUNCTION: fetchMenuItems
      * 
@@ -146,19 +146,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 .from('menu_items')
                 .select('*')
                 .order('name', { ascending: true });
-            
+
             if (error) {
-                console.error('Error fetching menu items:', error);
+                console.error('❌ Error fetching menu items:', error);
                 showToast('Failed to load menu. Please refresh the page.', 'error');
                 return;
             }
-            
+
+            console.log('✅ Raw menu data from Supabase:', data); // DEBUG LOG
+
+            if (!data || data.length === 0) {
+                console.warn('⚠️ Menu data is empty!');
+            }
+
             // Group items by category
             const categoriesMap = {};
-            
+
             data.forEach(item => {
                 const categoryId = item.category_id || item.category.toLowerCase();
-                
+
                 if (!categoriesMap[categoryId]) {
                     categoriesMap[categoryId] = {
                         category: item.category || CATEGORY_MAP[categoryId] || categoryId.toUpperCase(),
@@ -166,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         items: []
                     };
                 }
-                
+
                 // Add item with availability status
                 categoriesMap[categoryId].items.push({
                     id: item.id,
@@ -175,12 +181,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     is_available: item.is_available
                 });
             });
-            
+
             // Convert map to array
             menuData.categories = Object.values(categoriesMap);
-            
+
             console.log('✅ Menu loaded from Supabase:', menuData.categories.length, 'categories');
-            
+
         } catch (err) {
             console.error('Unexpected error loading menu:', err);
             showToast('Failed to load menu. Please refresh the page.', 'error');
@@ -190,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================
     // SECTION 3: DOM REFERENCES & STATE VARIABLES
     // ========================================
-    
+
     /**
      * DOM REFERENCES
      * These variables store references to HTML elements we'll manipulate.
@@ -203,25 +209,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartBadge = document.getElementById('cart-badge'); // Red circle showing cart item count
     const userGreetingEl = document.getElementById('user-greeting'); // "Hello, [Name]" text
     const greetingTaglineEl = document.getElementById('greeting-tagline'); // Funny tagline below greeting
-    
+
     /**
      * STATE VARIABLES
      * These track the current state of the app
      */
     let currentCategory = null; // Will be set after menu loads
-    
+
     // Array of fun taglines that appear randomly
     const taglines = [
-        "Canteen queue vs. Spoon speed... you choose!", 
+        "Canteen queue vs. Spoon speed... you choose!",
         "Love at first bite? That's just Spoon.",
-        "Stop scrolling, start ordering.", 
+        "Stop scrolling, start ordering.",
         "Your tummy's favorite app."
     ];
 
     // ========================================
     // SECTION 4: CART HELPER FUNCTIONS
     // ========================================
-    
+
     /**
      * FUNCTION: getCart
      * 
@@ -234,10 +240,10 @@ document.addEventListener('DOMContentLoaded', () => {
      * - Parses the JSON string back into a JavaScript array
      * - Returns empty array [] if nothing found (using || operator)
      */
-    function getCart() { 
-        return JSON.parse(localStorage.getItem('spoon-cart')) || []; 
+    function getCart() {
+        return JSON.parse(localStorage.getItem('spoon-cart')) || [];
     }
-    
+
     /**
      * FUNCTION: saveCart
      * 
@@ -250,14 +256,14 @@ document.addEventListener('DOMContentLoaded', () => {
      * - Converts JavaScript array to JSON string (localStorage only stores strings)
      * - Saves it with key 'spoon-cart'
      */
-    function saveCart(cartData) { 
-        localStorage.setItem('spoon-cart', JSON.stringify(cartData)); 
+    function saveCart(cartData) {
+        localStorage.setItem('spoon-cart', JSON.stringify(cartData));
     }
-    
+
     // ========================================
     // SECTION 5: UI RENDERING FUNCTIONS
     // ========================================
-    
+
     /**
      * FUNCTION: renderCategories
      * 
@@ -273,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderCategories() {
         // Clear any existing category buttons
         categoriesContainer.innerHTML = '';
-        
+
         // Loop through each category and create a button
         menuData.categories.forEach(category => {
             // Create a new button element
@@ -281,17 +287,17 @@ document.addEventListener('DOMContentLoaded', () => {
             chip.className = 'category-chip';
             chip.textContent = category.category; // Button text (e.g., "SANDWICH")
             chip.dataset.categoryId = category.id; // Store category ID for later use
-            
+
             // Highlight the currently selected category
-            if (category.id === currentCategory) { 
-                chip.classList.add('active'); 
+            if (category.id === currentCategory) {
+                chip.classList.add('active');
             }
-            
+
             // Add button to the container
             categoriesContainer.appendChild(chip);
         });
     }
-    
+
     /**
      * FUNCTION: renderProducts
      * 
@@ -311,26 +317,26 @@ document.addEventListener('DOMContentLoaded', () => {
         // Find the category object that matches the given ID
         const category = menuData.categories.find(cat => cat.id === categoryId);
         if (!category) return; // Exit if category not found
-        
+
         // Clear existing product cards
         productsGrid.innerHTML = '';
-        
+
         // Update the title to show current category
         productListTitle.textContent = category.category;
         productListTitle.style.display = 'block'; // Make sure title is visible
         categoriesContainer.style.display = 'flex'; // Make sure categories are visible
-        
+
         // Create a card for each food item in this category
         category.items.forEach((item, index) => {
             // Create card element
             const card = document.createElement('div');
             card.className = 'product-card';
-            
+
             // Add out-of-stock class if item is unavailable
             if (!item.is_available) {
                 card.classList.add('out-of-stock');
             }
-            
+
             /**
              * STAGGER ANIMATION (OPTIMIZED)
              * 
@@ -345,12 +351,12 @@ document.addEventListener('DOMContentLoaded', () => {
              */
             const delay = Math.min(index * 30, 300);
             card.style.animationDelay = `${delay}ms`;
-            
+
             // Set the HTML content of the card
             const outOfStockLabel = !item.is_available ? '<span class="out-of-stock-label">Out of Stock</span>' : '';
             const buttonDisabled = !item.is_available ? 'disabled' : '';
             const buttonClass = !item.is_available ? 'product-card__add-btn disabled' : 'product-card__add-btn';
-            
+
             card.innerHTML = `
                 <div class="product-card__info">
                     <h4>${item.name}</h4>
@@ -360,15 +366,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="${buttonClass}" data-id="${item.id}" data-title="${item.name}" data-price="${item.price}" ${buttonDisabled}>
                     <i class="fa-solid fa-plus"></i>
                 </button>`;
-            
+
             // Add card to the grid
             productsGrid.appendChild(card);
-            
+
             // Trigger animation after a tiny delay (10ms)
             setTimeout(() => card.classList.add('visible'), 10);
         });
     }
-    
+
     /**
      * FUNCTION: updateCartBadge
      * 
@@ -385,11 +391,11 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function updateCartBadge() {
         const cart = getCart();
-        
+
         // Calculate total items: sum of all quantities
         // reduce() takes each item and adds its quantity to the running sum
         const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-        
+
         if (totalItems > 0) {
             // Show badge with count
             cartBadge.textContent = totalItems;
@@ -403,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================
     // SECTION 6: EVENT HANDLER FUNCTIONS
     // ========================================
-    
+
     /**
      * FUNCTION: handleCategoryClick
      * 
@@ -422,29 +428,29 @@ document.addEventListener('DOMContentLoaded', () => {
         // Find the clicked category button (even if user clicked inside it)
         const clickedChip = e.target.closest('.category-chip');
         if (!clickedChip) return; // Exit if click wasn't on a category button
-        
+
         // Clear search when switching categories
         searchInput.value = '';
-        
+
         // Get the category ID from the button's data attribute
         const categoryId = clickedChip.dataset.categoryId;
-        
+
         // Don't do anything if user clicked the already-active category
         if (categoryId === currentCategory) return;
-        
+
         // Update which category is active
         currentCategory = categoryId;
-        
+
         // Remove 'active' class from old category button
         categoriesContainer.querySelector('.active')?.classList.remove('active');
-        
+
         // Add 'active' class to new category button
         clickedChip.classList.add('active');
-        
+
         // Show products for the new category
         renderProducts(currentCategory);
     }
-    
+
     /**
      * FUNCTION: handleAddToCart
      * 
@@ -464,61 +470,61 @@ document.addEventListener('DOMContentLoaded', () => {
         // Find the add button that was clicked
         const addButton = e.target.closest('.product-card__add-btn');
         if (!addButton) return; // Exit if click wasn't on add button
-        
+
         // Don't process if button is already disabled
         if (addButton.disabled) return;
-        
+
         // Extract item data from button's data attributes
         const { id, title, price } = addButton.dataset;
         const itemId = parseInt(id); // Convert string to number
-        
+
         // Show loading state on button
         const originalContent = addButton.innerHTML;
         addButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
         addButton.disabled = true;
-        
+
         try {
             // Lazy stock validation (Requirements: 3.3)
             // Check availability before adding to cart
             const stockResult = await StockValidator.checkAvailability(itemId);
-            
+
             if (!stockResult.available) {
                 // Item is unavailable (Requirements: 3.4)
                 // Mark item as unavailable in UI
                 StockValidator.markItemUnavailable(itemId);
-                
+
                 // Show alert to user
                 const itemName = stockResult.item?.name || title;
                 StockValidator.showOutOfStockAlert(itemName);
-                
+
                 // Don't add to cart
                 return;
             }
-            
+
             // Item is available - proceed with add to cart
             // Get current cart
             const cart = getCart();
-            
+
             // Check if this item is already in the cart
             const existingItem = cart.find(item => item.id === itemId);
-            
+
             if (existingItem) {
                 // Item exists: just increase quantity
                 existingItem.quantity += 1;
             } else {
                 // New item: add it to cart with quantity 1
-                cart.push({ 
-                    id: itemId, 
-                    title: title, 
-                    price: parseFloat(price), 
-                    quantity: 1 
+                cart.push({
+                    id: itemId,
+                    title: title,
+                    price: parseFloat(price),
+                    quantity: 1
                 });
             }
-            
+
             // Save updated cart and update badge
             saveCart(cart);
             updateCartBadge();
-            
+
             // VISUAL FEEDBACK: Change button to show success
             addButton.disabled = false;
             addButton.style.transform = 'scale(0.9)'; // Shrink slightly
@@ -526,7 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
             addButton.style.borderColor = 'var(--success-green)';
             addButton.style.color = 'var(--text-on-brand)';
             addButton.innerHTML = '<i class="fa-solid fa-check"></i>'; // Checkmark icon
-            
+
             // After 1 second, reset button back to normal
             setTimeout(() => {
                 addButton.style.transform = '';
@@ -535,30 +541,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 addButton.style.color = '';
                 addButton.innerHTML = '<i class="fa-solid fa-plus"></i>'; // Plus icon
             }, 1000);
-            
+
         } catch (error) {
             // Network error - handle optimistically (Requirements: 3.5)
             // Allow add to cart, backend will validate at checkout
             console.warn('Stock validation failed, proceeding optimistically:', error);
-            
+
             // Get current cart
             const cart = getCart();
             const existingItem = cart.find(item => item.id === itemId);
-            
+
             if (existingItem) {
                 existingItem.quantity += 1;
             } else {
-                cart.push({ 
-                    id: itemId, 
-                    title: title, 
-                    price: parseFloat(price), 
-                    quantity: 1 
+                cart.push({
+                    id: itemId,
+                    title: title,
+                    price: parseFloat(price),
+                    quantity: 1
                 });
             }
-            
+
             saveCart(cart);
             updateCartBadge();
-            
+
             // Reset button
             addButton.disabled = false;
             addButton.innerHTML = originalContent;
@@ -600,7 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
          * This helps users understand which category the item belongs to
          */
         const matchedItems = [];
-        
+
         // Loop through every category
         menuData.categories.forEach(category => {
             // Loop through every item in this category
@@ -624,18 +630,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Clear the products grid
         productsGrid.innerHTML = '';
-        
+
         if (matchedItems.length > 0) {
             // Display all matching items
             matchedItems.forEach((item, index) => {
                 const card = document.createElement('div');
                 card.className = 'product-card';
-                
+
                 // Add out-of-stock class if item is unavailable
                 if (!item.is_available) {
                     card.classList.add('out-of-stock');
                 }
-                
+
                 /**
                  * STAGGER ANIMATION FOR SEARCH RESULTS (OPTIMIZED)
                  * Same optimization as category view:
@@ -644,7 +650,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  */
                 const delay = Math.min(index * 30, 300);
                 card.style.animationDelay = `${delay}ms`;
-                
+
                 /**
                  * SEARCH RESULT CARD WITH CATEGORY BADGE
                  * Shows which category the item belongs to
@@ -653,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const outOfStockLabel = !item.is_available ? '<span class="out-of-stock-label">Out of Stock</span>' : '';
                 const buttonDisabled = !item.is_available ? 'disabled' : '';
                 const buttonClass = !item.is_available ? 'product-card__add-btn disabled' : 'product-card__add-btn';
-                
+
                 card.innerHTML = `
                     <div class="product-card__info">
                         <div class="product-card__header">
@@ -678,7 +684,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================
     // SECTION 7: INITIALIZATION
     // ========================================
-    
+
     /**
      * FUNCTION: init
      * 
@@ -700,23 +706,23 @@ document.addEventListener('DOMContentLoaded', () => {
     async function init() {
         // Wait for config to load from backend API
         await window.waitForConfig();
-        
+
         // Get Supabase client from centralized config
         supabase = window.getSupabaseClient();
-        
+
         if (!supabase) {
             console.error('❌ Supabase client not initialized');
             showToast('Failed to connect to database. Please refresh.', 'error');
             return;
         }
-        
+
         // Initialize StockValidator with Supabase client (Requirements: 3.3)
         // NOTE: No Realtime subscription is created (Requirements: 3.2)
         if (typeof StockValidator !== 'undefined') {
             StockValidator.init(supabase);
             console.log('✅ StockValidator initialized for lazy stock validation');
         }
-        
+
         // Set up authentication
         setupProtectedRoutes();
         personalizeHeader();
@@ -725,34 +731,34 @@ document.addEventListener('DOMContentLoaded', () => {
         // Math.random() gives 0-1, multiply by array length, floor to get integer
         const randomTagline = taglines[Math.floor(Math.random() * taglines.length)];
         greetingTaglineEl.textContent = randomTagline;
-        
+
         // Fetch menu items from Supabase
         await fetchMenuItems();
-        
+
         // Set current category to first available category
         if (menuData.categories.length > 0) {
             currentCategory = menuData.categories[0].id;
         }
-        
+
         // Render initial UI
         renderCategories();
         renderProducts(currentCategory);
         updateCartBadge();
-        
+
         // ATTACH EVENT LISTENERS
         // These make the page interactive by listening for user actions
         categoriesContainer.addEventListener('click', handleCategoryClick); // Category button clicks
         productsGrid.addEventListener('click', handleAddToCart); // Add to cart button clicks
         searchInput.addEventListener('input', handleSearch); // Search bar typing
-        
+
         // Promo card CTA handler
         setupPromoCardHandler();
     }
-    
+
     // ========================================
     // SECTION 8: PROMO CARD HANDLER
     // ========================================
-    
+
     /**
      * FUNCTION: setupPromoCardHandler
      * 
@@ -768,17 +774,17 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function setupPromoCardHandler() {
         const promoCta = document.getElementById('promo-cta');
-        
+
         if (promoCta) {
             promoCta.addEventListener('click', (e) => {
                 e.preventDefault(); // Prevent default anchor behavior
-                
+
                 // Select Chinese category (noodles)
                 const chineseCategory = 'chinese';
-                
+
                 // Update current category
                 currentCategory = chineseCategory;
-                
+
                 // Update active category button
                 const allChips = categoriesContainer.querySelectorAll('.category-chip');
                 allChips.forEach(chip => {
@@ -788,26 +794,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         chip.classList.remove('active');
                     }
                 });
-                
+
                 // Render products for Chinese category
                 renderProducts(chineseCategory);
-                
+
                 // Smooth scroll to categories section
                 const categoriesSection = document.getElementById('categories-section');
                 if (categoriesSection) {
-                    categoriesSection.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'start' 
+                    categoriesSection.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
                     });
                 }
             });
         }
     }
-    
+
     // ========================================
     // SECTION 9: CROSS-TAB SYNCHRONIZATION
     // ========================================
-    
+
     /**
      * STORAGE EVENT LISTENER
      * 
@@ -828,7 +834,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateCartBadge();
         }
     });
-    
+
     // Start the app!
     init();
 });
