@@ -2644,7 +2644,9 @@ async function fetchOrders() {
   // Clean up told counts for items no longer in pending orders
   cleanupToldCounts();
 
-  renderAll();
+  // Debounce render to prevent UI jitter on rapid updates (Requirement: Scalability)
+  if (window.renderTimeout) clearTimeout(window.renderTimeout);
+  window.renderTimeout = setTimeout(renderAll, 50);
 }
 
 /**
@@ -2675,6 +2677,70 @@ async function fetchMenuItems() {
 // ============================================
 
 /**
+ * Handle realtime order changes with surgical state updates.
+ * Avoids full refetch by updating local state directly from payload.
+ * 
+ * @param {Object} payload - Realtime event payload
+ * @param {string} payload.eventType - 'INSERT' | 'UPDATE' | 'DELETE'
+ * @param {Object} payload.new - The new/updated order record
+ * @param {Object} payload.old - Previous order state (UPDATE/DELETE)
+ */
+function handleOrderChange(payload) {
+  // Fallback to full refetch if payload is malformed
+  if (!payload) {
+    console.warn('⚠️ Malformed payload, falling back to full refetch');
+    fetchOrders();
+    return;
+  }
+
+  const { eventType, new: newOrder, old: oldOrder } = payload;
+
+  if (eventType === 'INSERT' && newOrder) {
+    // Normalize preorder_time
+    if (newOrder.preorder_time) {
+      newOrder.preorder_time = normalizePreorderTime(newOrder.preorder_time);
+    }
+
+    // Prevent duplicates
+    const exists = AdminState.orders.find(o => o.id === newOrder.id);
+    if (!exists) {
+      console.log('📥 Surgical INSERT:', newOrder.id);
+      AdminState.orders.unshift(newOrder);
+    }
+  } else if (eventType === 'UPDATE' && newOrder) {
+    // Normalize preorder_time
+    if (newOrder.preorder_time) {
+      newOrder.preorder_time = normalizePreorderTime(newOrder.preorder_time);
+    }
+
+    // Find and update existing order
+    const index = AdminState.orders.findIndex(o => o.id === newOrder.id);
+    if (index > -1) {
+      console.log('📝 Surgical UPDATE:', newOrder.id);
+      // Preserve local-only properties if needed, but for now strict overwrite is safer
+      AdminState.orders[index] = newOrder;
+    } else {
+      // Order not in local state (edge case: late subscription)
+      console.warn('⚠️ Order not found locally, adding:', newOrder.id);
+      AdminState.orders.unshift(newOrder);
+    }
+  } else if (eventType === 'DELETE' && oldOrder) {
+    // Handle rare deletion cases (e.g. cleanup)
+    console.log('🗑️ Surgical DELETE:', oldOrder.id);
+    AdminState.orders = AdminState.orders.filter(o => o.id !== oldOrder.id);
+  } else {
+    // Fallback for unhandled cases
+    // fetchOrders();
+  }
+
+  // Clean up told counts for items no longer in pending orders
+  cleanupToldCounts();
+
+  // Re-render UI from local state (no DB call)
+  renderAll();
+}
+
+/**
  * Initialize realtime subscriptions
  */
 function initRealtimeSubscriptions() {
@@ -2683,8 +2749,8 @@ function initRealtimeSubscriptions() {
   // Register state change callback (Requirements: 14.1, 14.2, 14.3)
   RealtimeSubscriptionManager.onStateChange(updateConnectionStatus);
 
-  // Subscribe to orders
-  RealtimeSubscriptionManager.subscribeToTable('orders', fetchOrders);
+  // Subscribe to orders with surgical handler
+  RealtimeSubscriptionManager.subscribeToTable('orders', handleOrderChange, fetchOrders);
 
   // Subscribe to menu items
   RealtimeSubscriptionManager.subscribeToTable('menu_items', fetchMenuItems);

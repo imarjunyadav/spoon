@@ -8,16 +8,16 @@
 const RealtimeSubscriptionManager = {
   // Track active channels by name (Requirements: 5.2)
   channels: {},
-  
+
   // Track fallback polling intervals
   fallbackIntervals: {},
-  
+
   // Connection state flag
   isConnected: true,
-  
+
   // Reference to Supabase client
   _supabase: null,
-  
+
   // State change callback (Requirements: 14.1, 14.2)
   _onStateChange: null,
 
@@ -72,9 +72,10 @@ const RealtimeSubscriptionManager = {
    * 
    * @param {string} tableName - Table to subscribe to ('orders' | 'menu_items')
    * @param {Function} onChangeCallback - Function to call when data changes
+   * @param {Function} [pollCallback] - Optional function to call for fallback polling (defaults to onChangeCallback)
    * @returns {RealtimeChannel|null} - The created channel or null if failed
    */
-  subscribeToTable(tableName, onChangeCallback) {
+  subscribeToTable(tableName, onChangeCallback, pollCallback) {
     if (!this._supabase) {
       console.error('RealtimeSubscriptionManager: Supabase client not initialized');
       return null;
@@ -87,7 +88,7 @@ const RealtimeSubscriptionManager = {
     }
 
     const channelName = `realtime-${tableName}-${Date.now()}`;
-    
+
     try {
       const channel = this._supabase
         .channel(channelName)
@@ -121,7 +122,7 @@ const RealtimeSubscriptionManager = {
         )
         .subscribe((status, err) => {
           console.log(`📡 Channel ${tableName} status:`, status);
-          
+
           if (status === 'SUBSCRIBED') {
             this.isConnected = true;
             // Stop fallback polling if it was running (Requirements: 4.2)
@@ -133,7 +134,7 @@ const RealtimeSubscriptionManager = {
             console.error(`❌ Realtime subscription error for ${tableName}:`, err);
             this.isConnected = false;
             // Start fallback polling (Requirements: 4.1)
-            this.startFallbackPolling(tableName, onChangeCallback);
+            this.startFallbackPolling(tableName, pollCallback || onChangeCallback);
             // Notify state change (Requirements: 14.2)
             this._notifyStateChange('polling');
           } else if (status === 'CLOSED') {
@@ -151,7 +152,7 @@ const RealtimeSubscriptionManager = {
 
       // Track the channel (Requirements: 5.2)
       this.channels[tableName] = channel;
-      
+
       return channel;
     } catch (error) {
       console.error(`❌ Error creating subscription for ${tableName}:`, error);
@@ -174,7 +175,7 @@ const RealtimeSubscriptionManager = {
         console.error(`❌ Error unsubscribing from ${tableName}:`, error);
       }
     }
-    
+
     // Also stop any fallback polling
     this.stopFallbackPolling(tableName);
   },
@@ -185,7 +186,7 @@ const RealtimeSubscriptionManager = {
    */
   cleanup() {
     console.log('🧹 Cleaning up all Realtime subscriptions...');
-    
+
     // Unsubscribe from all channels
     Object.keys(this.channels).forEach(tableName => {
       const channel = this.channels[tableName];
@@ -197,20 +198,20 @@ const RealtimeSubscriptionManager = {
         }
       }
     });
-    
+
     // Clear all fallback polling intervals
     Object.keys(this.fallbackIntervals).forEach(tableName => {
       this.stopFallbackPolling(tableName);
     });
-    
+
     // Reset state
     this.channels = {};
     this.fallbackIntervals = {};
     this.isConnected = false;
-    
+
     // Notify disconnected state (Requirements: 14.3)
     this._notifyStateChange('disconnected');
-    
+
     console.log('✅ All subscriptions cleaned up');
   },
 
@@ -227,9 +228,9 @@ const RealtimeSubscriptionManager = {
     if (this.fallbackIntervals[tableName]) {
       return;
     }
-    
+
     console.log(`⏰ Starting fallback polling for ${tableName} (${intervalMs}ms interval)`);
-    
+
     this.fallbackIntervals[tableName] = setInterval(() => {
       console.log(`🔄 Fallback poll for ${tableName}`);
       if (typeof fetchFunction === 'function') {
