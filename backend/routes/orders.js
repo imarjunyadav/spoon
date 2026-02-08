@@ -1,12 +1,9 @@
 /**
- * ========================================
- * SPOON - ORDERS API ROUTES
- * ========================================
+ * Spoon - Orders API Routes
  * 
- * PURPOSE:
- * Handles order status updates with email notifications
+ * Handles order status updates with email notifications.
  * 
- * ENDPOINTS:
+ * Endpoints:
  * - PATCH /api/orders/:orderId/status - Update order status and send email
  */
 
@@ -35,16 +32,13 @@ const transporter = nodemailer.createTransport({
 });
 
 /**
- * HELPER FUNCTION: Send Order Email
+ * Send minimal HTML email notification to customer.
  * 
- * PURPOSE: Send minimal HTML email notification to customer
- * 
- * PARAMETERS:
  * @param {string} toEmail - Customer email address
  * @param {string} subject - Email subject line
  * @param {string} htmlContent - Minimal HTML email body
  * 
- * RETURNS: Promise<{success: boolean, messageId?: string, error?: string}>
+ * @returns {Promise<{success: boolean, messageId?: string, error?: string}>}
  */
 async function sendOrderEmail(toEmail, subject, htmlContent) {
   try {
@@ -65,19 +59,17 @@ async function sendOrderEmail(toEmail, subject, htmlContent) {
 }
 
 /**
- * ENDPOINT: Update Order Status
+ * Update order status and send email notification.
  * 
- * METHOD: PATCH
- * PATH: /api/orders/:orderId/status
+ * Method: PATCH
+ * Path: /api/orders/:orderId/status
  * 
- * PURPOSE: Update order status and send email notification
- * 
- * REQUEST BODY:
+ * Request Body:
  * {
  *   "status": "COMPLETE" | "PICKED_UP"
  * }
  * 
- * RESPONSE:
+ * Response:
  * {
  *   "success": true,
  *   "order": { ... },
@@ -89,9 +81,7 @@ router.patch('/:orderId/status', async (req, res) => {
     const { orderId } = req.params;
     const { status } = req.body;
 
-    // ========================================
-    // AUTHENTICATION CHECK (SECURITY FIX)
-    // ========================================
+    // Authentication Check
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
@@ -121,9 +111,7 @@ router.patch('/:orderId/status', async (req, res) => {
 
     console.log('✅ Admin authenticated:', tokenResult.user.email);
 
-    // ========================================
-    // DIAGNOSTIC LOGGING - STEP 1: REQUEST
-    // ========================================
+    // Diagnostic Logging - Request
     console.log('\n========================================');
     console.log('🔍 DIAGNOSTIC: Status Update Request');
     console.log('========================================');
@@ -143,9 +131,7 @@ router.patch('/:orderId/status', async (req, res) => {
       });
     }
 
-    // ========================================
-    // DIAGNOSTIC LOGGING - STEP 2: FETCH
-    // ========================================
+    // Diagnostic Logging - Fetch
     console.log('\n🔍 DIAGNOSTIC: Fetching order...');
 
     const { data: order, error: fetchError, count } = await supabase
@@ -182,9 +168,7 @@ router.patch('/:orderId/status', async (req, res) => {
       });
     }
 
-    // ========================================
-    // DIAGNOSTIC LOGGING - STEP 3: UPDATE
-    // ========================================
+    // Diagnostic Logging - Update
     console.log('\n🔍 DIAGNOSTIC: Updating order status...');
     console.log('  - Updating ID:', orderId);
     console.log('  - New status:', status);
