@@ -1,98 +1,49 @@
 /**
- * ========================================
- * SPOON - ORDERS PAGE JAVASCRIPT
- * ========================================
+ * Spoon - Orders Page Script
  * 
- * PURPOSE:
- * This file displays the user's order history from Supabase database.
- * 
- * WHAT IT DOES:
- * 1. Fetches orders from Supabase for current user
- * 2. Displays orders in chronological order (newest first)
- * 3. Shows order status with color-coded badges
- * 4. Allows clicking to view detailed order status
- * 5. Shows success toast if redirected from payment
- * 
- * KEY CONCEPTS FOR INTERNS:
- * - Supabase queries: Fetching data from cloud database
- * - Array filtering: Separating orders by status
- * - DOM manipulation: Creating order cards dynamically
- * - Date formatting: Making timestamps readable
- * - Toast notifications: Temporary success messages
+ * Displays the user's order history.
+ * - Fetches orders from Supabase.
+ * - Displays orders chronologically.
+ * - Handles navigation to order status.
  */
 
-// Wait for page to load
 document.addEventListener('DOMContentLoaded', async () => {
 
-  // ========================================
-  // SECTION 1: AUTHENTICATION CHECK
-  // ========================================
-
-  /**
-   * SECURITY CHECK
-   * Only logged-in users can view orders
-   */
+  // --- Authentication Check ---
   if (localStorage.getItem('spoon-is-logged-in') !== 'true') {
     window.location.replace('login.html');
     return;
   }
 
-  // ========================================
-  // SECTION 2: SUPABASE DATABASE SETUP
-  // ========================================
-
-  /**
-   * SUPABASE CLIENT
-   * Uses centralized config from js/config.js
-   * Config is loaded from backend API for security
-   * 
-   * LEARNING NOTE:
-   * - Credentials are fetched from backend, not hardcoded
-   * - This prevents exposing keys in source code
-   */
+  // --- Supabase Client ---
   let supabase = null;
 
-  // ========================================
-  // SECTION 3: DOM ELEMENT REFERENCES
-  // ========================================
-
+  // --- DOM Elements ---
   const ordersListContainer = document.getElementById('orders-list-container');
   const emptyOrdersView = document.getElementById('empty-orders-view');
   const toastNotification = document.getElementById('toast-notification');
   const cartBadge = document.getElementById('cart-badge');
 
-  // Get user's email for filtering orders (more reliable than phone)
-  // Email is set during login/OTP verification
+  // User Data
   const userData = JSON.parse(localStorage.getItem('spoon-user') || '{}');
   let userEmail = userData.email || localStorage.getItem('spoon-user-email');
 
-  // Edge case: Redirect to login if no email found
   if (!userEmail) {
     console.error('❌ User email not found, redirecting to login');
     window.location.replace('login.html');
     return;
   }
 
-  // ========================================
-  // SECTION 4: HELPER FUNCTIONS
-  // ========================================
+  // --- Helper Functions ---
 
-  /**
-   * FUNCTION: normalizePreorderTime
-   * 
-   * PURPOSE: Normalize preorder time to ISO string
-   * Handles both ISO strings and "HH:MM:SS" time-only formats (assuming today)
-   */
   function normalizePreorderTime(timeStr) {
     if (!timeStr) return null;
 
-    // 1. Try standard date parsing first (ISO)
     const timestamp = new Date(timeStr).getTime();
     if (!isNaN(timestamp)) {
       return timeStr;
     }
 
-    // 2. Try time-only format (HH:MM:SS or HH:MM)
     const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
     if (timeMatch) {
       const [_, h, m, s] = timeMatch;
@@ -104,16 +55,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return null;
   }
 
-  /**
-   * FUNCTION: formatDate
-   * 
-   * PURPOSE: Convert ISO date string to readable format
-   * 
-   * PARAMETERS:
-   * @param {string} isoString - ISO date string (e.g., "2024-12-07T10:30:00Z")
-   * 
-   * RETURNS: Formatted date string (e.g., "Dec 7, 2024 at 10:30 AM")
-   */
   function formatDate(isoString) {
     const date = new Date(isoString);
     const options = {
@@ -127,16 +68,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return date.toLocaleString('en-US', options).replace(',', ' at');
   }
 
-  /**
-   * FUNCTION: getStatusClass
-   * 
-   * PURPOSE: Get CSS class for order status badge
-   * 
-   * PARAMETERS:
-   * @param {string} status - Order status from database (e.g., "PENDING", "COMPLETE", "PICKED_UP")
-   * 
-   * RETURNS: CSS class name for styling
-   */
   function getStatusClass(status) {
     const statusMap = {
       'PENDING': 'status--preparing',
@@ -148,16 +79,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return statusMap[status] || 'status--preparing';
   }
 
-  /**
-   * FUNCTION: getStatusDisplayName
-   * 
-   * PURPOSE: Get user-friendly display name for order status
-   * 
-   * PARAMETERS:
-   * @param {string} status - Order status from database
-   * 
-   * RETURNS: User-friendly status label
-   */
   function getStatusDisplayName(status) {
     const displayMap = {
       'PENDING': 'Preparing',
@@ -169,11 +90,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return displayMap[status] || 'Preparing';
   }
 
-  /**
-   * FUNCTION: updateCartBadge
-   * 
-   * PURPOSE: Update cart badge count in navigation
-   */
   function updateCartBadge() {
     const cart = JSON.parse(localStorage.getItem('spoon-cart')) || [];
     const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -186,95 +102,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  /**
-   * FUNCTION: showToast
-   * 
-   * PURPOSE: Show success toast notification
-   * 
-   * PARAMETERS:
-   * @param {string} message - Message to display
-   */
   function showToast(message) {
     toastNotification.textContent = message;
     toastNotification.classList.add('show');
 
-    // Hide after 3 seconds
     setTimeout(() => {
       toastNotification.classList.remove('show');
     }, 3000);
   }
 
-  // ========================================
-  // SECTION 5: RENDER FUNCTIONS
-  // ========================================
+  // --- Render Functions ---
 
-  /**
-   * FUNCTION: renderOrders
-   * 
-   * PURPOSE: Display all orders in the UI
-   * 
-   * PARAMETERS:
-   * @param {Array} orders - Array of order objects from database
-   * 
-   * HOW IT WORKS:
-   * 1. Checks if orders array is empty
-   * 2. If empty, shows empty state view
-   * 3. If has orders, creates a card for each order
-   * 4. Adds click handler to view order details
-   */
   function renderOrders(orders) {
-    // Clear existing content
     ordersListContainer.innerHTML = '';
 
-    // Handle empty state
     if (!orders || orders.length === 0) {
       ordersListContainer.classList.add('hidden');
       emptyOrdersView.classList.remove('hidden');
       return;
     }
 
-    // Show orders container
     ordersListContainer.classList.remove('hidden');
     emptyOrdersView.classList.add('hidden');
 
-    // Create a card for each order
     orders.forEach(order => {
       const orderCard = createOrderCard(order);
       ordersListContainer.appendChild(orderCard);
     });
   }
 
-  /**
-   * FUNCTION: createOrderCard
-   * 
-   * PURPOSE: Create HTML element for a single order
-   * 
-   * PARAMETERS:
-   * @param {Object} order - Order object from database
-   * 
-   * RETURNS: HTML div element with order details
-   * 
-   * HOW IT WORKS:
-   * 1. Creates card container
-   * 2. Builds HTML with order details
-   * 3. Adds click handler for navigation
-   * 4. Returns completed element
-   */
   function createOrderCard(order) {
     const card = document.createElement('div');
     card.className = 'order-card';
 
-    // Calculate total items
     const totalItems = order.items ? order.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
-
-    // Format date
     const orderDate = formatDate(order.created_at);
-
-    // Get status class for badge styling
     const statusClass = getStatusClass(order.status);
     const statusDisplayName = getStatusDisplayName(order.status);
 
-    // Build card HTML
     card.innerHTML = `
       <div class="order-card__header">
         <div class="order-card__header-left">
@@ -309,38 +174,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       ` : ''}
     `;
 
-    // Add click handler to view details button
     const viewDetailsBtn = card.querySelector('.btn--view-details');
     viewDetailsBtn.addEventListener('click', () => {
-      // Navigate to order status page with order ID
       window.location.href = `order-status.html?id=${order.id}`;
     });
 
     return card;
   }
 
-  // ========================================
-  // SECTION 6: DATA FETCHING
-  // ========================================
+  // --- Data Fetching ---
 
-  /**
-   * FUNCTION: loadOrders
-   * 
-   * PURPOSE: Fetch orders from Supabase database
-   * 
-   * HOW IT WORKS:
-   * 1. Queries Supabase for orders matching user's phone
-   * 2. Orders by creation date (newest first)
-   * 3. Handles errors gracefully
-   * 4. Renders orders in UI
-   * 
-   * LEARNING NOTE:
-   * This is an async function because it waits for database response
-   */
   async function loadOrders() {
     try {
-      // Query Supabase for user's orders
-      // Filter by customer_email (reliable) and order by created_at DESC (newest first)
       console.log('📝 Fetching orders for email:', userEmail);
 
       const { data, error } = await supabase
@@ -349,17 +194,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         .eq('customer_email', userEmail)
         .order('created_at', { ascending: false });
 
-      // Handle errors
       if (error) {
         console.error('❌ Error fetching orders:', error);
-        showToast('Failed to load orders. Please check your connection and try again.');
-        // Show empty state on error
+        showToast('Failed to load orders.');
         ordersListContainer.classList.add('hidden');
         emptyOrdersView.classList.remove('hidden');
         return;
       }
 
-      // Normalize preorder_time dates
       const normalizedData = (data || []).map(order => {
         if (order.preorder_time) {
           const normalized = normalizePreorderTime(order.preorder_time);
@@ -370,37 +212,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         return order;
       });
 
-      // Render orders
       renderOrders(normalizedData);
 
     } catch (error) {
       console.error('❌ Unexpected error:', error);
-      showToast('Something went wrong. Please try again later.');
+      showToast('Something went wrong.');
       ordersListContainer.classList.add('hidden');
       emptyOrdersView.classList.remove('hidden');
     }
   }
 
-  // ========================================
-  // SECTION 7: INITIALIZATION
-  // ========================================
+  // --- Initialization ---
 
-  /**
-   * FUNCTION: init
-   * 
-   * PURPOSE: Initialize the orders page
-   * 
-   * HOW IT WORKS:
-   * 1. Waits for config to load from backend
-   * 2. Updates cart badge
-   * 3. Checks for success toast flag
-   * 4. Loads orders from database
-   */
   async function init() {
-    // Wait for config to load from backend API
     await window.waitForConfig();
-
-    // Get Supabase client from centralized config
     supabase = window.getSupabaseClient();
 
     if (!supabase) {
@@ -409,34 +234,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // Update cart badge
     updateCartBadge();
-
-    // Load orders from database
     await loadOrders();
   }
 
-  // ========================================
-  // SECTION 8: CROSS-TAB SYNCHRONIZATION
-  // ========================================
-
-  /**
-   * STORAGE EVENT LISTENER
-   * 
-   * PURPOSE: Update cart badge when cart changes in another tab/window
-   * 
-   * HOW IT WORKS:
-   * - Listens for localStorage changes from other tabs
-   * - Updates badge when 'spoon-cart' changes
-   * - Enables real-time sync across tabs
-   */
+  // Cross-tab sync
   window.addEventListener('storage', (e) => {
-    // Only update if cart data changed
     if (e.key === 'spoon-cart') {
       updateCartBadge();
     }
   });
 
-  // Start the app!
   init();
 });
