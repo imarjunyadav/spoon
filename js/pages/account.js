@@ -1,23 +1,21 @@
 /**
- * SPOON REDESIGN - ACCOUNT DASHBOARD SCRIPT
+ * Spoon - Account Dashboard Script
  *
- * This script handles all client-side logic for the logged-in user's account page.
- * - Performs a final gatekeeper check to ensure the user is authenticated.
- * - Reads the current user's data from localStorage to populate the profile card.
- * - Handles the secure logout flow, including a confirmation modal.
- * - Clears all user-related data from localStorage upon logout.
+ * Handles client-side logic for the logged-in user's account page.
+ * - Authenticates user.
+ * - Populates profile data.
+ * - Handles secure logout.
  */
+
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- 1. AUTHENTICATION GATEKEEPER ---
-    // This is the final check. If a user somehow lands on this page without
-    // being logged in, they are immediately redirected.
+    // --- Authentication Check ---
     if (localStorage.getItem('spoon-is-logged-in') !== 'true') {
         window.location.replace('login.html');
-        return; // Stop all other script execution
+        return;
     }
 
-    // --- 2. DOM ELEMENT REFERENCES ---
+    // --- DOM Elements ---
     const profileNameEl = document.getElementById('profile-name');
     const profileContactEl = document.getElementById('profile-contact');
     const userInitialEl = document.getElementById('user-initial');
@@ -31,17 +29,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmLogoutBtn = document.getElementById('confirm-logout-btn');
 
 
-    // --- 3. HELPER FUNCTIONS ---
+    // --- Helper Functions ---
 
     /**
-     * Retrieves the current user's data from localStorage.
-     * @returns {Object|null} The user data object.
+     * Get current user data from localStorage.
+     * @returns {Object|null} User data object.
      */
     function getCurrentUser() {
         return JSON.parse(localStorage.getItem('spoon-user'));
     }
 
-    // Re-usable modal functions
     function openModal(modalElement) {
         logoutModalOverlay.classList.remove('hidden');
         modalElement.classList.remove('hidden');
@@ -60,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 300);
     }
 
-    // --- 4. CORE FUNCTIONS ---
+    // --- Core Functions ---
 
     /**
      * Populates the profile card with the logged-in user's data.
@@ -79,19 +76,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 profileContactEl.textContent = user.email; // Fallback to email
             }
         } else {
-            // This case should ideally not be reached due to the gatekeeper
             console.error("User data not found despite being logged in.");
             handleLogout(); // Force logout if data is inconsistent
         }
     }
 
     /**
-     * Clears all user-related data from storage and redirects to the login page.
+     * Clears all user-related data from storage and redirects to login.
      */
     function handleLogout() {
         console.log("Logging out user and clearing all session data...");
 
-        // Define all keys related to a user session
         const userSessionKeys = [
             'spoon-is-logged-in',
             'spoon-user',
@@ -105,10 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
             userSessionKeys.push(`user-${user.phone}`);
         }
 
-        // Clear all keys from localStorage
         userSessionKeys.forEach(key => localStorage.removeItem(key));
 
-        // Redirect to the login page to start fresh
         window.location.replace('login.html');
     }
 
@@ -127,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- 5. EVENT LISTENERS ---
+    // --- Event Listeners ---
 
     logoutBtn.addEventListener('click', () => {
         openModal(logoutModal);
@@ -137,34 +130,22 @@ document.addEventListener('DOMContentLoaded', () => {
     logoutModalOverlay.addEventListener('click', () => closeModal(logoutModal));
     confirmLogoutBtn.addEventListener('click', handleLogout);
 
-    // --- 6. INITIALIZATION ---
+    // --- Initialization ---
 
     function init() {
         populateProfile();
         updateCartBadge();
-        console.log("Account dashboard initialized for logged-in user.");
+        console.log("Account dashboard initialized.");
     }
 
-    // ========================================
-    // SECTION 7: CROSS-TAB SYNCHRONIZATION
-    // ========================================
-    
-    /**
-     * STORAGE EVENT LISTENER
-     * 
-     * PURPOSE: Update cart badge when cart changes in another tab/window
-     * 
-     * HOW IT WORKS:
-     * - Listens for localStorage changes from other tabs
-     * - Updates badge when 'spoon-cart' changes
-     * - Keeps all tabs synchronized
-     */
+    // --- Cross-Tab Synchronization ---
+
+    // Update cart badge when cart changes in another tab
     window.addEventListener('storage', (e) => {
-        // Only update if cart data changed
         if (e.key === 'spoon-cart') {
             updateCartBadge();
         }
     });
-    
+
     init();
 });

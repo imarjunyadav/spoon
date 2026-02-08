@@ -1,49 +1,21 @@
 /**
- * ========================================
- * SPOON - PAYMENT API ROUTES
- * ========================================
+ * Spoon - Payment API Routes
  * 
- * PURPOSE:
- * This file handles payment-related API endpoints with production-level validation.
- * It creates Razorpay orders and processes webhooks with idempotency guarantees.
+ * Handles payment-related API endpoints with production-level validation.
+ * Creates Razorpay orders and processes webhooks with idempotency guarantees.
  * 
- * WHAT IT DOES:
- * 1. Receives payment amount from frontend
- * 2. Creates order in Razorpay system with validation
- * 3. Processes Razorpay webhooks with signature verification
- * 4. Ensures idempotent payment processing (no duplicates)
- * 5. Creates orders atomically with payment records
- * 
- * KEY CONCEPTS:
+ * Key Concepts:
  * - Idempotency: Same payment ID always produces same result
  * - Webhook Verification: Cryptographic signature validation
  * - Atomic Transactions: Order + Payment created together
  * - Single Source of Truth: Payment record is authoritative
- * 
- * REQUIREMENTS:
- * - 3.5, 3.6, 3.7: Cart checkout and payment flow
- * - 9.1, 9.2, 9.3, 9.5, 9.9: Payment validation and idempotency
- * 
- * TASK: 2. Implement payment flow validation and idempotency (P0)
  */
 
-// ========================================
-// SECTION 1: IMPORT DEPENDENCIES
-// ========================================
-
-// Express Router: For creating modular route handlers
+// Import Dependencies
 const express = require("express");
-
-// Razorpay: Payment gateway SDK
 const Razorpay = require("razorpay");
-
-// Axios: HTTP client for making API requests
 const axios = require("axios");
-
-// HTTPS: Node.js module for HTTPS requests
 const https = require("https");
-
-// Payment Flow Validator: Production-level payment validation
 const paymentFlowValidator = require("../services/paymentFlowValidator");
 
 // Create router instance
@@ -53,52 +25,32 @@ const router = express.Router();
 require("dotenv").config();
 
 // ========================================
-// SECTION 2: CONFIGURATION
+// CONFIGURATION
 // ========================================
 
 /**
- * HTTPS AGENT CONFIGURATION
- * 
- * LEARNING NOTE:
- * rejectUnauthorized: false disables SSL certificate verification
- * This is needed for development but should be true in production
+ * HTTPS Agent Configuration
+ * rejectUnauthorized: false disables SSL certificate verification.
+ * Needed for development; ensures requests don't fail on self-signed certs.
  */
 const agent = new https.Agent({ rejectUnauthorized: false });
 
 // ========================================
-// SECTION 3: CREATE ORDER ENDPOINT
+// ENDPOINT: Create Order
 // ========================================
 
 /**
- * ROUTE: POST /api/payment/create-order
+ * Create a new Razorpay order.
  * 
- * PURPOSE: Create a new Razorpay order
+ * Method: POST
+ * Path: /api/payment/create-order
+ * Request Body: { "amount": number }
  * 
- * REQUEST BODY:
- * {
- *   "amount": 100  // Amount in rupees
- * }
- * 
- * RESPONSE:
- * {
- *   "id": "order_xyz123",
- *   "amount": 10000,  // Amount in paise (100 rupees = 10000 paise)
- *   "currency": "INR",
- *   ...other Razorpay fields
- * }
- * 
- * HOW IT WORKS:
- * 1. Validates amount from request
- * 2. Converts rupees to paise (Razorpay uses paise)
- * 3. Calls Razorpay API to create order
- * 4. Returns order details to frontend
+ * @returns {object} Razorpay order details
  */
 router.post("/create-order", async (req, res) => {
 
-  // ========================================
-  // STEP 1: EXTRACT AND VALIDATE REQUEST
-  // ========================================
-
+  // Step 1: Extract and Validate Request
   console.log('🔍 Debug: /create-order request body:', JSON.stringify(req.body, null, 2));
 
   const { amount, userEmail, items } = req.body;
@@ -117,10 +69,7 @@ router.post("/create-order", async (req, res) => {
 
   console.log(`✅ Payment validation passed for ${userEmail}`);
 
-  // ========================================
-  // STEP 2: PREPARE ORDER DATA
-  // ========================================
-
+  // Step 2: Prepare Order Data
   const orderPayload = {
     amount: amount * 100,  // Convert rupees to paise
     currency: "INR",
@@ -139,19 +88,13 @@ router.post("/create-order", async (req, res) => {
     userEmail: userEmail
   });
 
-  // ========================================
-  // STEP 3: AUTHENTICATION CREDENTIALS
-  // ========================================
-
+  // Step 3: Authentication Credentials
   const auth = {
     username: process.env.RAZORPAY_KEY_ID,
     password: process.env.RAZORPAY_SECRET
   };
 
-  // ========================================
-  // STEP 4: CALL RAZORPAY API
-  // ========================================
-
+  // Step 4: Call Razorpay API
   try {
     const response = await axios.post(
       "https://api.razorpay.com/v1/orders",
@@ -181,25 +124,16 @@ router.post("/create-order", async (req, res) => {
 });
 
 // ========================================
-// SECTION 4: WEBHOOK ENDPOINT
-// ========================================
-
-// ========================================
-// SECTION 4: WEBHOOK & VERIFICATION ENDPOINTS
+// ENDPOINT: Verify Payment
 // ========================================
 
 /**
- * ROUTE: POST /api/payment/verify-payment
- * 
- * PURPOSE: Allow client-side verification of payment to triggering order creation.
+ * Allow client-side verification of payment to triggering order creation.
  * Essential for environments where webhooks are unreliable or delayed (e.g. localhost).
  * 
- * REQUEST BODY:
- * {
- *   razorpay_payment_id: "pay_...",
- *   razorpay_order_id: "order_...",
- *   razorpay_signature: "..."
- * }
+ * Method: POST
+ * Path: /api/payment/verify-payment
+ * Request Body: { razorpay_payment_id, razorpay_order_id, razorpay_signature }
  */
 router.post("/verify-payment", async (req, res) => {
   try {
@@ -235,9 +169,7 @@ router.post("/verify-payment", async (req, res) => {
     const payment = paymentDetails.data;
 
     // Use shared logic with webhook handler
-    // IMPORTANT: Always use notes.email (our trusted source) over payment.email
-    // Razorpay allows users to enter any email in the payment form, which may not
-    // exist in our users table, causing FK constraint violations.
+    // ALWAYS use notes.email (our trusted source) over payment.email
     const result = await paymentFlowValidator.handlePaymentSuccess({
       razorpayPaymentId: payment.id,
       razorpayOrderId: payment.order_id,
@@ -267,15 +199,21 @@ router.post("/verify-payment", async (req, res) => {
   }
 });
 
+// ========================================
+// ENDPOINT: Webhook
+// ========================================
+
 /**
- * ROUTE: POST /api/payment/webhook
- * ...
+ * Handle Razorpay webhooks.
+ * 
+ * Method: POST
+ * Path: /api/payment/webhook
  */
 router.post("/webhook", async (req, res) => {
   try {
     console.log("📥 Webhook received from Razorpay");
 
-    // STEP 1: Extract signature from headers
+    // Step 1: Extract signature from headers
     const signature = req.headers['x-razorpay-signature'];
 
     if (!signature) {
@@ -283,7 +221,7 @@ router.post("/webhook", async (req, res) => {
       return res.status(400).json({ error: "Signature missing" });
     }
 
-    // STEP 2: Verify webhook signature
+    // Step 2: Verify webhook signature
     const isValid = await paymentFlowValidator.validateWebhookSignature(
       req.body,
       signature
@@ -296,14 +234,14 @@ router.post("/webhook", async (req, res) => {
 
     console.log("✅ Webhook signature verified");
 
-    // STEP 3: Extract webhook data
+    // Step 3: Extract webhook data
     const event = req.body.event;
     const payload = req.body.payload.payment.entity;
 
     console.log(`📋 Webhook event: ${event}`);
     console.log(`💳 Payment ID: ${payload.id}`);
 
-    // STEP 4: Handle different webhook events
+    // Step 4: Handle different webhook events
     switch (event) {
       case 'payment.captured':
       case 'payment.authorized':
@@ -320,7 +258,7 @@ router.post("/webhook", async (req, res) => {
         console.log(`⚠️ Unhandled webhook event: ${event}`);
     }
 
-    // STEP 5: Always return 200 to acknowledge webhook receipt
+    // Step 5: Always return 200 to acknowledge webhook receipt
     // Razorpay will retry if we don't return 200
     return res.status(200).json({ status: "ok" });
 
@@ -333,12 +271,11 @@ router.post("/webhook", async (req, res) => {
 });
 
 /**
- * HELPER: Handle successful payment webhook
+ * Helper: Handle successful payment webhook
  */
 async function handlePaymentSuccess(payment, webhookBody) {
   try {
     // Extract payment details
-    // IMPORTANT: Use notes.email (our trusted source) over payment.email
     const paymentData = {
       razorpayPaymentId: payment.id,
       razorpayOrderId: payment.order_id,
@@ -370,7 +307,7 @@ async function handlePaymentSuccess(payment, webhookBody) {
 }
 
 /**
- * HELPER: Handle failed payment webhook
+ * Helper: Handle failed payment webhook
  */
 async function handlePaymentFailure(payment) {
   try {
@@ -391,15 +328,5 @@ async function handlePaymentFailure(payment) {
   }
 }
 
-// ========================================
-// SECTION 5: EXPORT ROUTER
-// ========================================
-
-/**
- * EXPORT ROUTER
- * Makes this router available to server.js
- * 
- * LEARNING NOTE:
- * module.exports is how Node.js shares code between files
- */
+// Export Router
 module.exports = router;

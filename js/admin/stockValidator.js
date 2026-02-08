@@ -1,30 +1,26 @@
 /**
- * StockValidator
- * Performs lazy stock validation for customer menu page.
+ * Spoon - Stock Validator
+ * 
+ * Performs lazy stock validation for the customer menu.
  * Validates stock availability on add-to-cart action.
- * 
- * Requirements: 3.3, 3.4, 3.5
- * 
- * NOTE: This module does NOT create Realtime subscriptions (Requirements: 3.2)
- * to preserve connection quotas for admin users.
+ * Note: Does not create Realtime subscriptions to preserve connection quotas.
  */
+
 const StockValidator = {
   // Reference to Supabase client
   _supabase: null,
 
   /**
-   * Initialize the stock validator with a Supabase client
-   * @param {SupabaseClient} supabase - Initialized Supabase client
+   * Initialize the stock validator.
+   * @param {SupabaseClient} supabase - Initialized Supabase client.
    */
   init(supabase) {
     this._supabase = supabase;
   },
 
   /**
-   * Check if an item is currently available
-   * Requirements: 3.3
-   * 
-   * @param {number} itemId - Menu item ID to check
+   * Check if an item is currently available.
+   * @param {number} itemId - Menu item ID.
    * @returns {Promise<{available: boolean, item: Object|null, error: string|null}>}
    */
   async checkAvailability(itemId) {
@@ -42,8 +38,7 @@ const StockValidator = {
 
       if (error) {
         console.error('StockValidator: Error checking availability:', error);
-        // Return optimistic result on error (Requirements: 3.5)
-        // Backend will validate at checkout
+        // Return optimistic result on error
         return { available: true, item: null, error: error.message };
       }
 
@@ -59,16 +54,13 @@ const StockValidator = {
       };
     } catch (err) {
       console.error('StockValidator: Unexpected error:', err);
-      // Return optimistic result on network error (Requirements: 3.5)
       return { available: true, item: null, error: err.message };
     }
   },
 
   /**
-   * Update UI to show item as out of stock
-   * Requirements: 3.4
-   * 
-   * @param {number} itemId - Menu item ID
+   * Update UI to show item as out of stock.
+   * @param {number} itemId - Menu item ID.
    */
   markItemUnavailable(itemId) {
     // Find the product card containing this item
@@ -104,10 +96,8 @@ const StockValidator = {
   },
 
   /**
-   * Show user-friendly alert for out-of-stock item
-   * Requirements: 3.4
-   * 
-   * @param {string} itemName - Name of the item
+   * Show user-friendly alert for out-of-stock item.
+   * @param {string} itemName - Name of the item.
    */
   showOutOfStockAlert(itemName) {
     // Use the existing showToast function if available, otherwise use alert
@@ -116,7 +106,7 @@ const StockValidator = {
     } else {
       // Fallback to a simple notification
       const message = `Sorry! "${itemName}" just went out of stock.`;
-      
+
       // Try to create a toast-like notification
       const existingToast = document.querySelector('.stock-alert-toast');
       if (existingToast) {

@@ -1,14 +1,15 @@
 /**
- * SPOON - INFO PAGES SCRIPT
+ * Spoon - Info Pages Script
  * 
- * Lightweight script for public info pages (About, Privacy, Help)
- * Handles cart badge updates without authentication requirements
+ * Lightweight script for public info pages (About, Privacy, Help).
+ * Handles cart badge updates.
  */
+
 document.addEventListener('DOMContentLoaded', () => {
     const cartBadge = document.getElementById('cart-badge');
 
     /**
-     * Updates the cart badge count
+     * Updates the cart badge count.
      */
     function updateCartBadge() {
         const cart = JSON.parse(localStorage.getItem('spoon-cart')) || [];
@@ -22,9 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Listen for cart changes from other tabs
-     */
+    // Listen for cart changes from other tabs
     window.addEventListener('storage', (e) => {
         if (e.key === 'spoon-cart') {
             updateCartBadge();

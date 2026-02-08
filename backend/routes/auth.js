@@ -1,28 +1,12 @@
 /**
- * ========================================
- * SPOON - AUTH API ROUTES
- * ========================================
+ * Spoon - Auth API Routes
  * 
- * PURPOSE:
- * Handles OTP-based email authentication with Redis storage
+ * Handles OTP-based email authentication with Redis storage.
  * 
- * ENDPOINTS:
+ * Endpoints:
  * - POST /api/auth/send-otp - Generate and send OTP to email
  * - POST /api/auth/verify-otp - Verify OTP and authenticate user
  * - POST /api/auth/signup - Create new user in Supabase
- * 
- * REQUIREMENTS COVERED:
- * - 1.5: Return service unavailable error when Redis connection fails
- * - 3.1: Validate OTP against stored value
- * - 3.2: Return success on valid OTP
- * - 3.3: Return invalid OTP error
- * - 3.4: Return expiration error
- * - 4.1: Return service unavailable error when Redis is unavailable
- * - 4.2: Return rate limit error with retry time
- * - 5.1: Validate email format
- * - 5.2: Return validation error for invalid email
- * - 6.1: Create user in Supabase on signup
- * - 6.2: Check if user exists in Supabase after OTP verification
  */
 
 const express = require('express');
@@ -36,7 +20,8 @@ const userService = require('../services/userService');
 // ========================================
 
 /**
- * Validate email format
+ * Validate email format.
+ * 
  * @param {string} email - Email address to validate
  * @returns {boolean} True if valid email format
  */
@@ -44,7 +29,7 @@ function isValidEmail(email) {
   if (!email || typeof email !== 'string') {
     return false;
   }
-  
+
   // Basic email regex: must have @ and valid domain
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email.trim());
@@ -55,25 +40,19 @@ function isValidEmail(email) {
 // ========================================
 
 /**
- * ENDPOINT: Send OTP to email
+ * Send OTP to email.
  * 
- * METHOD: POST
- * PATH: /api/auth/send-otp
+ * Method: POST
+ * Path: /api/auth/send-otp
+ * Body: { "email": "user@example.com" }
  * 
- * REQUEST BODY:
- * { "email": "user@example.com" }
- * 
- * RESPONSES:
- * - 200: { success: true, message: "OTP sent successfully" }
- * - 400: { success: false, error: { code: "INVALID_EMAIL", message: "..." } }
- * - 429: { success: false, error: { code: "RATE_LIMITED", message: "...", retryAfter: number } }
- * - 500: { success: false, error: { code: "EMAIL_SEND_FAILED", message: "..." } }
+ * @returns {object} Success status
  */
 router.post('/send-otp', async (req, res) => {
   try {
     const { email } = req.body;
 
-    // Validate email format (Requirement 5.1, 5.2)
+    // Validate email format
     if (!isValidEmail(email)) {
       return res.status(400).json({
         success: false,
@@ -86,7 +65,7 @@ router.post('/send-otp', async (req, res) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check Redis availability (Requirement 1.5, 4.1)
+    // Check Redis availability
     if (!redisOtpStore.isConnected()) {
       console.error('❌ Redis unavailable for send-otp');
       return res.status(503).json({
@@ -98,7 +77,7 @@ router.post('/send-otp', async (req, res) => {
       });
     }
 
-    // Check rate limit (Requirement 4.1, 4.2)
+    // Check rate limit
     const rateLimitResult = await redisOtpStore.checkRateLimit(normalizedEmail);
     if (!rateLimitResult.allowed) {
       return res.status(429).json({
@@ -111,14 +90,13 @@ router.post('/send-otp', async (req, res) => {
       });
     }
 
-    // Generate OTP (Requirement 1.1, 1.3, 1.4)
+    // Generate OTP
     const otp = redisOtpStore.generateOTP(normalizedEmail);
 
-    // Send OTP email FIRST (Requirement 4.3 - don't store if email fails)
+    // Send OTP email FIRST (Authentication 4.3 - don't store if email fails)
     const emailResult = await emailService.sendOTPEmail(normalizedEmail, otp);
 
     if (!emailResult.success) {
-      // Requirement 4.3: Email failed - do NOT store OTP
       console.error(`❌ Failed to send OTP email to ${normalizedEmail}:`, emailResult.error);
       return res.status(500).json({
         success: false,
@@ -133,7 +111,7 @@ router.post('/send-otp', async (req, res) => {
     await redisOtpStore.storeOTP(normalizedEmail, otp);
 
     console.log(`✅ OTP sent to ${normalizedEmail}`);
-    
+
     res.json({
       success: true,
       message: 'OTP sent successfully'
@@ -156,23 +134,18 @@ router.post('/send-otp', async (req, res) => {
 // ========================================
 
 /**
- * ENDPOINT: Verify OTP
+ * Verify OTP and authenticate user.
  * 
- * METHOD: POST
- * PATH: /api/auth/verify-otp
+ * Method: POST
+ * Path: /api/auth/verify-otp
+ * Body: { "email": "user@example.com", "otp": "1234" }
  * 
- * REQUEST BODY:
- * { "email": "user@example.com", "otp": "1234" }
- * 
- * RESPONSES:
- * - 200: { success: true, isNewUser: boolean, user?: object }
- * - 400: { success: false, error: { code: "INVALID_EMAIL|INVALID_OTP|OTP_EXPIRED|OTP_NOT_FOUND|MAX_ATTEMPTS", message: "..." } }
+ * @returns {object} { success: true, isNewUser: boolean, user?: object }
  */
 router.post('/verify-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    // Validate email format (Requirement 5.1, 5.2)
     if (!isValidEmail(email)) {
       return res.status(400).json({
         success: false,
@@ -196,7 +169,7 @@ router.post('/verify-otp', async (req, res) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check Redis availability (Requirement 1.5, 4.1)
+    // Check Redis availability
     if (!redisOtpStore.isConnected()) {
       console.error('❌ Redis unavailable for verify-otp');
       return res.status(503).json({
@@ -208,7 +181,7 @@ router.post('/verify-otp', async (req, res) => {
       });
     }
 
-    // Verify OTP (Requirement 3.1, 3.2, 3.3, 3.4, 3.5, 4.3)
+    // Verify OTP
     const verifyResult = await redisOtpStore.verifyOTP(normalizedEmail, otp);
 
     if (!verifyResult.valid) {
@@ -231,9 +204,9 @@ router.post('/verify-otp', async (req, res) => {
     // OTP verified successfully
     console.log(`✅ OTP verified for ${normalizedEmail}`);
 
-    // Check if user exists in Supabase (Requirement 3.2, 6.2)
+    // Check if user exists in Supabase
     const userResult = await userService.getUserByEmail(normalizedEmail);
-    
+
     if (userResult.error && userResult.error !== 'USER_NOT_FOUND') {
       // Database error but OTP was valid - still allow login
       console.error(`⚠️ Error checking user in Supabase: ${userResult.error}`);
@@ -265,25 +238,18 @@ router.post('/verify-otp', async (req, res) => {
 // ========================================
 
 /**
- * ENDPOINT: Create new user
+ * Create new user.
  * 
- * METHOD: POST
- * PATH: /api/auth/signup
+ * Method: POST
+ * Path: /api/auth/signup
+ * Body: { "email": "user@example.com", "name": "John Doe" }
  * 
- * REQUEST BODY:
- * { "email": "user@example.com", "name": "John Doe" }
- * 
- * RESPONSES:
- * - 201: { success: true, user: object }
- * - 400: { success: false, error: { code: "INVALID_EMAIL|INVALID_NAME", message: "..." } }
- * - 409: { success: false, error: { code: "USER_EXISTS", message: "..." } }
- * - 503: { success: false, error: { code: "SERVICE_UNAVAILABLE", message: "..." } }
+ * @returns {object} { success: true, user: object }
  */
 router.post('/signup', async (req, res) => {
   try {
     const { email, name } = req.body;
 
-    // Validate email format (Requirement 5.1, 5.2)
     if (!isValidEmail(email)) {
       return res.status(400).json({
         success: false,
@@ -294,7 +260,6 @@ router.post('/signup', async (req, res) => {
       });
     }
 
-    // Validate name
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return res.status(400).json({
         success: false,
@@ -307,7 +272,7 @@ router.post('/signup', async (req, res) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Create user in Supabase (Requirement 3.1, 6.1)
+    // Create user in Supabase
     const result = await userService.createUser(normalizedEmail, name.trim());
 
     if (result.error) {
@@ -349,6 +314,5 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-// Export for testing
 module.exports = router;
 module.exports.isValidEmail = isValidEmail;

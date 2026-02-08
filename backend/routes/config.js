@@ -1,35 +1,20 @@
 /**
- * ========================================
- * SPOON - PUBLIC CONFIGURATION API
- * ========================================
+ * Spoon - Public Configuration API
  * 
- * PURPOSE:
- * Serves public configuration to the frontend.
+ * Serves public configuration to the frontend at GET /api/config.
  * Only exposes keys that are safe for client-side use.
- * 
- * SECURITY NOTE:
- * - Supabase ANON_KEY is designed to be public (has RLS restrictions)
- * - Razorpay KEY_ID is the public key (not the secret)
- * - NEVER expose: SUPABASE_SERVICE_ROLE_KEY, RAZORPAY_SECRET, SMTP_PASSWORD
  */
 
 const express = require('express');
 const router = express.Router();
 
 /**
- * ENDPOINT: GET /api/config
+ * Return public configuration for frontend.
  * 
- * PURPOSE: Return public configuration for frontend
+ * Method: GET
+ * Path: /api/config
  * 
- * RESPONSE:
- * {
- *   "SUPABASE_URL": "https://xxx.supabase.co",
- *   "SUPABASE_ANON_KEY": "eyJ...",
- *   "RAZORPAY_KEY_ID": "rzp_test_xxx",
- *   "API_BASE_URL": "http://localhost:7070"
- * }
- * 
- * SECURITY:
+ * Security:
  * - Only PUBLIC keys are returned
  * - Secret keys are never exposed
  */

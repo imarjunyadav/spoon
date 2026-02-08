@@ -2,11 +2,9 @@
  * RealtimeSubscriptionManager
  * Manages Supabase Realtime subscriptions for the admin dashboard.
  * Handles subscription lifecycle, fallback polling, and cleanup.
- * 
- * Requirements: 5.2 - Track all active subscriptions in a manageable data structure
  */
 const RealtimeSubscriptionManager = {
-  // Track active channels by name (Requirements: 5.2)
+  // Track active channels by name
   channels: {},
 
   // Track fallback polling intervals
@@ -18,7 +16,7 @@ const RealtimeSubscriptionManager = {
   // Reference to Supabase client
   _supabase: null,
 
-  // State change callback (Requirements: 14.1, 14.2)
+  // State change callback
   _onStateChange: null,
 
   /**
@@ -34,7 +32,7 @@ const RealtimeSubscriptionManager = {
   },
 
   /**
-   * Set callback for connection state changes (Requirements: 14.1, 14.2)
+   * Set callback for connection state changes
    * @param {Function} callback - Function to call with state ('realtime' | 'polling' | 'disconnected')
    */
   onStateChange(callback) {
@@ -68,7 +66,6 @@ const RealtimeSubscriptionManager = {
 
   /**
    * Subscribe to a specific table's changes
-   * Requirements: 1.1, 1.2, 1.3, 2.1, 2.2
    * 
    * @param {string} tableName - Table to subscribe to ('orders' | 'menu_items')
    * @param {Function} onChangeCallback - Function to call when data changes
@@ -81,7 +78,7 @@ const RealtimeSubscriptionManager = {
       return null;
     }
 
-    // Check for existing subscription to prevent duplicates (Requirements: 5.4)
+    // Check for existing subscription to prevent duplicates
     if (this.channels[tableName]) {
       console.warn(`RealtimeSubscriptionManager: Already subscribed to ${tableName}`);
       return this.channels[tableName];
@@ -125,17 +122,17 @@ const RealtimeSubscriptionManager = {
 
           if (status === 'SUBSCRIBED') {
             this.isConnected = true;
-            // Stop fallback polling if it was running (Requirements: 4.2)
+            // Stop fallback polling if it was running
             this.stopFallbackPolling(tableName);
-            // Notify state change (Requirements: 14.1)
+            // Notify state change
             this._notifyStateChange('realtime');
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            // Handle subscription errors (Requirements: 4.1, 4.3)
+            // Handle subscription errors
             console.error(`❌ Realtime subscription error for ${tableName}:`, err);
             this.isConnected = false;
-            // Start fallback polling (Requirements: 4.1)
+            // Start fallback polling
             this.startFallbackPolling(tableName, pollCallback || onChangeCallback);
-            // Notify state change (Requirements: 14.2)
+            // Notify state change
             this._notifyStateChange('polling');
           } else if (status === 'CLOSED') {
             console.log(`🔌 Channel ${tableName} closed`);
@@ -150,7 +147,7 @@ const RealtimeSubscriptionManager = {
           }
         });
 
-      // Track the channel (Requirements: 5.2)
+      // Track the channel
       this.channels[tableName] = channel;
 
       return channel;
@@ -181,8 +178,7 @@ const RealtimeSubscriptionManager = {
   },
 
   /**
-   * Cleanup all subscriptions (called on page unload)
-   * Requirements: 1.4, 2.3, 5.1
+   * unsubscribing from all channels and clearing intervals
    */
   cleanup() {
     console.log('🧹 Cleaning up all Realtime subscriptions...');
@@ -209,39 +205,44 @@ const RealtimeSubscriptionManager = {
     this.fallbackIntervals = {};
     this.isConnected = false;
 
-    // Notify disconnected state (Requirements: 14.3)
+    // Notify disconnected state
     this._notifyStateChange('disconnected');
 
     console.log('✅ All subscriptions cleaned up');
   },
 
   /**
-   * Start fallback polling for a table
-   * Requirements: 4.1
+   * Start fallback polling when realtime fails
    * 
    * @param {string} tableName - Table to poll
-   * @param {Function} fetchFunction - Function to fetch data
-   * @param {number} intervalMs - Polling interval (default: 30000)
+   * @param {Function} callback - Function to call on poll
    */
-  startFallbackPolling(tableName, fetchFunction, intervalMs = 30000) {
-    // Don't start if already polling
+  startFallbackPolling(tableName, callback) {
+    // Prevent duplicate polling intervals
     if (this.fallbackIntervals[tableName]) {
       return;
     }
 
-    console.log(`⏰ Starting fallback polling for ${tableName} (${intervalMs}ms interval)`);
+    console.log(`🔄 Starting fallback polling for ${tableName} (30s interval)`);
+    this.isConnected = false;
+    this._notifyStateChange('polling');
 
+    // Immediate fetch to ensure data freshness
+    if (typeof callback === 'function') {
+      callback();
+    }
+
+    // Start polling every 30 seconds
     this.fallbackIntervals[tableName] = setInterval(() => {
       console.log(`🔄 Fallback poll for ${tableName}`);
-      if (typeof fetchFunction === 'function') {
-        fetchFunction();
+      if (typeof callback === 'function') {
+        callback();
       }
-    }, intervalMs);
+    }, 30000); // 30 seconds
   },
 
   /**
    * Stop fallback polling for a table
-   * Requirements: 4.2
    * 
    * @param {string} tableName - Table to stop polling
    */

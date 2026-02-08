@@ -1,15 +1,8 @@
 /**
- * ========================================
- * REDIS CLIENT SERVICE
- * ========================================
+ * Redis Client Service
  * 
- * PURPOSE:
  * Singleton Redis client with connection pooling, automatic reconnection,
  * and health check capabilities for production OTP storage.
- * 
- * REQUIREMENTS COVERED:
- * - 5.1: Maintain connection pool with automatic reconnection on failure
- * - 5.4: Use connection timeouts to prevent hanging requests
  */
 
 const Redis = require('ioredis');
@@ -32,7 +25,8 @@ let redisClient = null;
 let connectionStatus = 'disconnected';
 
 /**
- * Create and configure Redis client with reconnection logic
+ * Create and configure Redis client with reconnection logic.
+ * 
  * @returns {Redis} Configured Redis client instance
  */
 function createClient() {
@@ -83,8 +77,9 @@ function createClient() {
 // ========================================
 
 /**
- * Get the singleton Redis client instance
- * Creates a new client if one doesn't exist
+ * Get the singleton Redis client instance.
+ * Creates a new client if one doesn't exist.
+ * 
  * @returns {Redis} Redis client instance
  */
 function getClient() {
@@ -95,7 +90,8 @@ function getClient() {
 }
 
 /**
- * Check if Redis is currently connected and ready
+ * Check if Redis is currently connected and ready.
+ * 
  * @returns {boolean} True if connected and ready for commands
  */
 function isConnected() {
@@ -106,7 +102,8 @@ function isConnected() {
 }
 
 /**
- * Get current connection status
+ * Get current connection status.
+ * 
  * @returns {string} Connection status: 'connected', 'disconnected', 'reconnecting'
  */
 function getStatus() {
@@ -114,7 +111,8 @@ function getStatus() {
 }
 
 /**
- * Gracefully disconnect from Redis
+ * Gracefully disconnect from Redis.
+ * 
  * @returns {Promise<void>}
  */
 async function disconnect() {
@@ -134,7 +132,8 @@ async function disconnect() {
 }
 
 /**
- * Ping Redis to check connectivity
+ * Ping Redis to check connectivity.
+ * 
  * @returns {Promise<boolean>} True if ping successful
  */
 async function ping() {

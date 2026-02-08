@@ -1,22 +1,28 @@
 /**
- * ========================================
- * SPOON - FRONTEND CONFIGURATION
- * ========================================
- * 
- * PURPOSE:
- * Centralized configuration for all frontend JavaScript files.
- * This file fetches public configuration from the backend API.
- * 
- * SECURITY NOTE:
- * - Only PUBLIC keys are exposed here (Supabase anon key, Razorpay public key)
- * - These keys are safe to expose in frontend as they have limited permissions
- * - SECRET keys remain on the server only
- * 
- * USAGE:
- * 1. Include this script BEFORE other JS files in HTML
- * 2. Access config via window.SPOON_CONFIG
- * 3. Access Supabase client via window.spoonSupabase
+ * Global Configuration
+ * Centralizes application settings, environment variables, and constants.
  */
+
+const Config = {
+  // Supabase Configuration
+  supabase: {
+    url: 'https://mnvxojjbbiqmymlatigh.supabase.co',
+    // Anon key is safe to expose on frontend
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1udnhvampiYmlxbXltbGF0aWdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzcwMjgsImV4cCI6MjA4MDc1MzAyOH0.pejckebDO7ieQlsbrlpqg3K6Xds5uBJCqkSJRaWubZE'
+  },
+
+  // Razorpay Configuration
+  razorpay: {
+    keyId: 'rzp_test_RzVKDlWgrurqra'
+  },
+
+  // API Endpoints
+  api: {
+    baseUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? 'http://localhost:7070'
+      : 'https://spoon-backend-122591058801.asia-south1.run.app'
+  }
+};
 
 (function () {
   'use strict';

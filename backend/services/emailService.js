@@ -1,18 +1,8 @@
 /**
- * ========================================
  * SPOON - EMAIL SERVICE
- * ========================================
  * 
- * PURPOSE:
  * Centralized email service for sending OTP verification
  * and other transactional emails via Nodemailer.
- * 
- * REQUIREMENTS:
- * - 2.1: Send email within 10 seconds
- * - 2.2: Include 4-digit OTP prominently
- * - 2.3: Include expiration time (5 minutes)
- * - 2.4: Clear subject line for SPOON verification
- * - 2.5: Handle email delivery errors gracefully
  */
 
 const nodemailer = require('nodemailer');
@@ -29,7 +19,7 @@ const transporter = nodemailer.createTransport({
 });
 
 /**
- * Generate HTML email template for OTP verification
+ * Generate HTML email template for OTP verification.
  * 
  * @param {string} otp - 4-digit OTP code
  * @returns {string} HTML email content
@@ -71,27 +61,17 @@ function generateOTPEmailTemplate(otp) {
 }
 
 /**
- * Send OTP verification email
+ * Send OTP verification email.
  * 
- * PURPOSE: Send OTP code to user's email for verification
- * 
- * PARAMETERS:
  * @param {string} email - Recipient email address
  * @param {string} otp - 4-digit OTP code
- * 
- * RETURNS: Promise<{success: boolean, error?: string}>
- * 
- * REQUIREMENTS:
- * - 2.1: Sends email (within 10 seconds handled by SMTP timeout)
- * - 2.2: OTP prominently displayed in template
- * - 2.3: Expiration time (5 minutes) included
- * - 2.4: Clear subject line "SPOON - Your Verification Code"
- * - 2.5: Returns error object on failure instead of throwing
+ * @returns {Promise<{success: boolean, error?: string}>} Success status or error
  */
 async function sendOTPEmail(email, otp) {
   try {
     const htmlContent = generateOTPEmailTemplate(otp);
-    
+
+    // Note: Implicitly handles 10-second timeout via SMTP connection
     const info = await transporter.sendMail({
       from: `"SPOON Canteen" <${process.env.SMTP_EMAIL}>`,
       to: email,
