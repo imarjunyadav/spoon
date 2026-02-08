@@ -30,55 +30,57 @@ Write-Host "[OK] Using Project: $projectId" -ForegroundColor Green
 Write-Host "`n[INFO] Enabling Cloud Run & Cloud Build APIs (this may take a minute)..." -ForegroundColor Yellow
 gcloud services enable cloudbuild.googleapis.com run.googleapis.com
 
-# 5. Environment Variables Prompt
-Write-Host "`n[SETUP] Configure Environment Variables (Press Enter to skip if already set)" -ForegroundColor Cyan
-Write-Host "[TIP] You can find these in your backend/.env file" -ForegroundColor DarkGray
-$supabaseUrl = Read-Host "Supabase URL"
-$supabaseAnonKey = Read-Host "Supabase ANON Key (public, for frontend)"
-$supabaseKey = Read-Host "Supabase Service Role Key (secret, for backend)"
-$razorpayKey = Read-Host "Razorpay Key ID"
-$razorpaySecret = Read-Host "Razorpay Secret"
-$smtpEmail = Read-Host "SMTP Email (Gmail address for OTPs)"
-$smtpPassword = Read-Host "SMTP Password (Gmail App Password)"
-$redisUrl = Read-Host "Redis URL (rediss://user:pass@host:port)"
-if ([string]::IsNullOrWhiteSpace($redisUrl)) {
-    $redisUrl = "rediss://default:AUyqAAIncDIzZmI1ODRmMTFmNWI0M2QyYjliYWMwMDk5YWYzNmIxMnAyMTk2MjY@massive-panda-19626.upstash.io:6379"
+# 5. Load Environment Variables from backend/.env
+Write-Host "`n[SETUP] Loading Environment Variables from backend/.env..." -ForegroundColor Cyan
+$envParams = @()
+$envParams += "NODE_ENV=production"
+
+$envFile = "backend\.env"
+
+if (Test-Path $envFile) {
+    $lines = Get-Content $envFile
+    foreach ($line in $lines) {
+        # Skip comments and empty lines
+        if ($line.Trim().StartsWith("#") -or [string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+
+        # Parse KEY=VALUE
+        if ($line -match "^([^=]+)=(.*)$") {
+            $key = $matches[1].Trim()
+            $value = $matches[2].Trim()
+            
+            # Map specific keys if needed, otherwise pass through
+            if ($key -in @("SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_SECRET", "SMTP_EMAIL", "SMTP_PASSWORD", "REDIS_URL")) {
+                $envParams += "$key=$value"
+                Write-Host "   + Loaded $key" -ForegroundColor Gray
+            }
+            
+            # Also handle the special webhook secret mapping
+            if ($key -eq "RAZORPAY_SECRET") {
+                $envParams += "RAZORPAY_WEBHOOK_SECRET=$value"
+                Write-Host "   + Loaded RAZORPAY_WEBHOOK_SECRET (from RAZORPAY_SECRET)" -ForegroundColor Gray
+            }
+        }
+    }
+    Write-Host "[OK] Environment variables loaded." -ForegroundColor Green
+}
+else {
+    Write-Error "[ERROR] backend/.env file not found! Deployment cannot proceed safely."
+    exit 1
 }
 
-$envVars = "NODE_ENV=production"
-if ($supabaseUrl) { $envVars += ",SUPABASE_URL=$supabaseUrl" }
-if ($supabaseAnonKey) { $envVars += ",SUPABASE_ANON_KEY=$supabaseAnonKey" }
-if ($supabaseKey) { $envVars += ",SUPABASE_SERVICE_ROLE_KEY=$supabaseKey" }
-if ($razorpayKey) { $envVars += ",RAZORPAY_KEY_ID=$razorpayKey" }
-if ($razorpaySecret) { $envVars += ",RAZORPAY_SECRET=$razorpaySecret,RAZORPAY_WEBHOOK_SECRET=$razorpaySecret" }
-if ($smtpEmail) { $envVars += ",SMTP_EMAIL=$smtpEmail" }
-if ($smtpPassword) { $envVars += ",SMTP_PASSWORD=$smtpPassword" }
-if ($redisUrl) { $envVars += ",REDIS_URL=$redisUrl" }
-
-# 5a. Fix IAM Permissions (Critical for Cloud Build)
-Write-Host "`n[SETUP] Fixing Service Account Permissions..." -ForegroundColor Cyan
-$projectNumber = gcloud projects list --filter="projectId:$projectId" --format="value(projectNumber)"
-$computeServiceAccount = "$projectNumber-compute@developer.gserviceaccount.com"
-$cloudBuildServiceAccount = "$projectNumber@cloudbuild.gserviceaccount.com"
-
-# Grant roles to Compute SA
-Write-Host "[INFO] Granting permissions to Compute SA ($computeServiceAccount)..." -ForegroundColor Yellow
-gcloud projects add-iam-policy-binding $projectId --member="serviceAccount:$computeServiceAccount" --role="roles/storage.admin" --condition=None --quiet | Out-Null
-gcloud projects add-iam-policy-binding $projectId --member="serviceAccount:$computeServiceAccount" --role="roles/logging.logWriter" --condition=None --quiet | Out-Null
-gcloud projects add-iam-policy-binding $projectId --member="serviceAccount:$computeServiceAccount" --role="roles/artifactregistry.writer" --condition=None --quiet | Out-Null
-
-# Grant roles to Cloud Build SA (if different)
-Write-Host "[INFO] Granting permissions to Cloud Build SA ($cloudBuildServiceAccount)..." -ForegroundColor Yellow
-gcloud projects add-iam-policy-binding $projectId --member="serviceAccount:$cloudBuildServiceAccount" --role="roles/logging.logWriter" --condition=None --quiet | Out-Null
-gcloud projects add-iam-policy-binding $projectId --member="serviceAccount:$cloudBuildServiceAccount" --role="roles/artifactregistry.writer" --condition=None --quiet | Out-Null
+# Join into comma-separated string for gcloud
+$envVars = $envParams -join ","
 
 # 6. Deploy
 Write-Host "`n[ACTION] Deploying to Cloud Run (Region: asia-south1)..." -ForegroundColor Cyan
 Write-Host "[INFO] This will take 2-5 minutes." -ForegroundColor Yellow
 
+# Note: Added --update-env-vars to ensures keys are refreshed on every deploy
 $deployCommand = "gcloud run deploy spoon-backend --source . --platform managed --region asia-south1 --allow-unauthenticated --min-instances 0 --max-instances 3 --memory 512Mi --cpu 1 --concurrency 80 --timeout 30s --port 7070 --update-env-vars ""$envVars"""
 
-# Execute and check for error
+# Execute
 Invoke-Expression $deployCommand
 
 if ($LASTEXITCODE -eq 0) {
