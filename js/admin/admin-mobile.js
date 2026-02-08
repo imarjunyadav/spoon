@@ -1,8 +1,8 @@
 /**
- * Admin Mobile Dashboard
- * Mobile-first admin interface for kitchen and counter staff
+ * Spoon - Admin Mobile Dashboard
  * 
- * Requirements: 2.3, 2.5, 10.2
+ * Mobile-first admin interface for kitchen and counter staff.
+ * Handles order management, stock control, and realtime updates.
  */
 
 // ============================================
@@ -122,7 +122,7 @@ const DOM = {
 // ============================================
 
 /**
- * Initialize DOM references
+ * Initialize DOM references.
  */
 function initDOMReferences() {
   // Tabs
@@ -204,7 +204,7 @@ function initDOMReferences() {
 }
 
 /**
- * Initialize event listeners
+ * Initialize event listeners.
  */
 function initEventListeners() {
   // Tab switching (Requirements: 2.3)
@@ -303,8 +303,8 @@ function initEventListeners() {
 // ============================================
 
 /**
- * Handle tab switch
- * @param {string} viewId - The view to switch to ('items' | 'active' | 'completed')
+ * Handle tab switching logic.
+ * @param {string} viewId - The view to switch to ('items' | 'active' | 'completed').
  */
 function handleTabSwitch(viewId) {
   // Performance: Should complete within 100ms (Requirements: 10.2)
@@ -353,7 +353,7 @@ function handleTabSwitch(viewId) {
 // ============================================
 
 /**
- * Update all badge counts based on current data
+ * Update all badge counts based on current data.
  */
 function updateBadgeCounts() {
   // Active badge: count of pending orders (statuses: PENDING, PAID, PLACED, PREPARING)
@@ -414,21 +414,16 @@ const ACTIVATION_THRESHOLD_MS = 45 * 60 * 1000;
 // ============================================
 
 /**
- * Generate aggregation key for an item based on order type and scheduled time
+ * Generate aggregation key for an item.
  * 
  * Key formats:
- * - Live orders: "live:{itemName}"
- * - Pre-orders: "preorder:{itemName}:{scheduledTimeISO}"
+ * - Live: "live:{itemName}"
+ * - Pre-order: "preorder:{itemName}:{scheduledTimeISO}"
  * 
- * This ensures:
- * 1. Live orders and pre-orders with same item name are tracked separately
- * 2. Pre-orders with different scheduled times are tracked separately
- * 3. Told state doesn't leak between different aggregation buckets
- * 
- * @param {string} itemName - The item name
- * @param {boolean} isPreOrder - Whether this is from a pre-order
- * @param {string|null} scheduledTimeISO - ISO string of scheduled pickup time (required for pre-orders)
- * @returns {string} The aggregation key
+ * @param {string} itemName - The item name.
+ * @param {boolean} isPreOrder - Whether this is from a pre-order.
+ * @param {string|null} scheduledTimeISO - ISO string of scheduled pickup time.
+ * @returns {string} The aggregation key.
  */
 function getAggregationKey(itemName, isPreOrder, scheduledTimeISO) {
   if (isPreOrder && scheduledTimeISO) {
@@ -438,8 +433,8 @@ function getAggregationKey(itemName, isPreOrder, scheduledTimeISO) {
 }
 
 /**
- * Parse an aggregation key to extract its components
- * @param {string} key - The aggregation key
+ * Parse an aggregation key to extract its components.
+ * @param {string} key - The aggregation key.
  * @returns {{ type: 'live' | 'preorder', itemName: string, scheduledTimeISO: string | null }}
  */
 function parseAggregationKey(key) {
@@ -475,13 +470,11 @@ function parseAggregationKey(key) {
 // ============================================
 
 /**
- * Determine if an order needs announcing (cook now)
- * Returns true for:
- * - Immediate orders (no preorder_time)
- * - Pre-orders within 45 minutes of their scheduled pickup time
+ * Determine if an order needs announcing (cook now).
+ * Includes immediate orders and pre-orders within the activation threshold.
  * 
- * @param {Object} order - Order object with optional preorder_time
- * @returns {boolean} True if order needs announcing, false if future pre-order
+ * @param {Object} order - Order object.
+ * @returns {boolean} True if order needs announcing.
  */
 function needsAnnouncing(order) {
   // No preorder_time = immediate order (always needs announcing)
@@ -516,9 +509,8 @@ function isTransitionedPreOrder(order) {
 }
 
 /**
- * Partition orders into needs-announcing and future pre-orders
- * 
- * @param {Array} orders - All orders
+ * Partition orders into needs-announcing and future pre-orders.
+ * @param {Array} orders - All orders.
  * @returns {{ needsAnnouncingOrders: Array, futurePreOrders: Array }}
  */
 function partitionOrders(orders) {
@@ -543,24 +535,9 @@ const NORMAL_ORDER_MERGE_THRESHOLD_MS = 3 * 60 * 1000;
 const LIVE_ORDER_DELTA_WINDOW_MS = 3 * 60 * 1000;
 
 /**
- * Get items for Needs Announcing section
- * 
- * CRITICAL: Live orders and pre-orders use DIFFERENT told state models:
- * 
- * LIVE ORDERS (Announce-Cycle Model):
- * - When TOLD is clicked, we store { toldTimestamp, toldQuantity }
- * - Orders created BEFORE toldTimestamp are "told" (up to toldQuantity)
- * - Orders created AFTER toldTimestamp are "new" and show as delta
- * - If new order arrives within 3 min of toldTimestamp: shows as +X delta
- * - If new order arrives after 3 min: stays in "Already Told" (told state persists)
- * - Live orders NEVER auto-told, NEVER hidden without explicit TOLD action
- * 
- * PRE-ORDERS (Absolute Model):
- * - Pre-orders use simple quantity-based told state
- * - Once told, pre-orders NEVER return to Needs Announcing
- * - Pre-orders are grouped by item name AND scheduled time
- * 
- * @returns {Array} Items with quantity, delta, aggregationKey, etc.
+ * Get items for Needs Announcing section.
+ * @deprecated Use the strict batching implementation below.
+ * @returns {Array} Items array.
  */
 function getNeedsAnnouncingItems() {
   console.error("Using deprecated getNeedsAnnouncingItems - check file structure");
@@ -595,9 +572,9 @@ function getVisibleNeedsAnnouncingItems() {
 // ============================================
 
 /**
- * Format absolute time (e.g., "1:45 PM")
- * @param {Date} date - Date object
- * @returns {string} Formatted time
+ * Format absolute time (e.g., "1:45 PM").
+ * @param {Date} date - Date object.
+ * @returns {string} Formatted time.
  */
 function formatAbsoluteTime(date) {
   const hours = date.getHours();
@@ -623,8 +600,8 @@ function formatRelativeTime(minutes) {
 }
 
 /**
- * Get pre-orders grouped by pickup time for planning section
- * Only includes orders beyond the 45-minute activation threshold
+ * Get pre-orders grouped by pickup time for planning section.
+ * Only includes orders beyond the activation threshold.
  * 
  * @returns {Array<{ pickupTime: Date, pickupTimeISO: string, pickupTimeFormatted: string, items: Array, orderCount: number }>}
  */
@@ -685,11 +662,10 @@ function toggleToldFilter() {
 // ============================================
 
 /**
- * Get aggregated item summary from pending orders with time-bucket splitting.
- * Items are split into separate rows when order age gap exceeds 10 minutes.
- * This prevents new orders from being hidden inside very old backlog.
+ * Get aggregated item summary from pending orders.
+ * Splits items into buckets when order age gap exceeds threshold.
  * 
- * @returns {Object} Map of bucket key to { name, quantity, orderCount, oldestOrderTime, newestOrderTime }
+ * @returns {Object} Map of bucket key to summary data.
  */
 function getItemSummary() {
   // First, collect all item instances with their order times
@@ -850,9 +826,7 @@ function getSortedItems() {
 }
 
 /**
- * Get items split into "needs announcing" and "already told" sections
- * TO ANNOUNCE: sorted by oldest order age (primary), quantity (secondary)
- * ALREADY TOLD: stable sort by quantity (no re-sorting)
+ * Get items split into "needs announcing" and "already told" sections.
  * @returns {{ needsAnnouncing: Array, alreadyTold: Array }}
  */
 function getItemSections() {
@@ -892,9 +866,8 @@ function renderAll() {
 }
 
 /**
- * Render Items to Prepare view with pre-order separation
- * Three sections: "Needs Announcing", "Already Told", "Pre-orders"
- * Always shows all sections if they have content (Items Tab 3-Section Layout)
+ * Render Items to Prepare view.
+ * Displays "Needs Announcing", "Already Told", and "Pre-orders" sections.
  */
 function renderItems() {
   if (!DOM.itemsList) return;
@@ -951,11 +924,10 @@ function renderItems() {
 }
 
 /**
- * Render a single item row
- * Layout: Order count top-right, qty× name on main line, wait time below
- * @param {Object} item - Item data { name, quantity, orderCount, delta, waitMinutes }
- * @param {boolean} showDelta - Whether to show delta and told button
- * @returns {string} HTML string
+ * Render a single item row.
+ * @param {Object} item - Item data.
+ * @param {boolean} showDelta - Whether to show delta and told button.
+ * @returns {string} HTML string.
  */
 function renderItemRow(item, showDelta) {
   const isPendingTold = AdminState.pendingToldActions.has(item.name);
@@ -997,11 +969,10 @@ function renderItemRow(item, showDelta) {
 // ============================================
 
 /**
- * Render a needs-announcing item row
- * Shows qty× name, PRE-ORDER badge if applicable, time hint, delta and TOLD button
- * Time hint: "~Xm ago" for live orders, "in Xm" for pre-orders
- * @param {Object} item - Item data from getNeedsAnnouncingItems()
- * @returns {string} HTML string
+ * Render a needs-announcing item row.
+ * Shows qty, name, time hint, and TOLD button.
+ * @param {Object} item - Item data.
+ * @returns {string} HTML string.
  */
 function renderNeedsAnnouncingRow(item) {
   // Use the aggregation key for told state tracking
@@ -1079,10 +1050,9 @@ function renderToldFilterToggle(hiddenCount) {
 }
 
 /**
- * Render a told item row (muted style, no TOLD button)
- * Shows "Told Xm ago" based on the actual told timestamp
- * @param {Object} item - Item data from getNeedsAnnouncingItems()
- * @returns {string} HTML string
+ * Render a told item row (muted style).
+ * @param {Object} item - Item data.
+ * @returns {string} HTML string.
  */
 function renderToldRow(item) {
   let timeHint = '';
@@ -1222,16 +1192,13 @@ function clearItemFilter() {
 }
 
 /**
- * Handle TOLD button click - mark item quantity as communicated to kitchen
+ * Handle TOLD button click.
+ * Marks item quantity as communicated to kitchen using optimistic rollback.
  * 
- * LIVE ORDERS: Stores { toldTimestamp, toldQuantity } for announce-cycle model
- * PRE-ORDERS: Stores just the quantity (pre-orders don't return from told)
- * 
- * Uses optimistic update with rollback on failure
- * @param {string} aggregationKey - The full aggregation key for the item
- * @param {number} currentQuantity - Current total quantity
- * @param {boolean} isPreOrder - Whether this is a pre-order item
- * @param {number|null} customTimestamp - Optional specific timestamp to use (defaults to Date.now())
+ * @param {string} aggregationKey - The full aggregation key for the item.
+ * @param {number} currentQuantity - Current total quantity.
+ * @param {boolean} isPreOrder - Whether this is a pre-order item.
+ * @param {number|null} customTimestamp - Optional specific timestamp.
  */
 async function handleTold() {
   console.error("Using deprecated handleTold - check file structure");
@@ -1371,16 +1338,13 @@ function migrateToldCountsIfNeeded() {
 }
 
 /**
- * Get items for Needs Announcing section with STRICT BATCHING
+ * Get items for Needs Announcing section with Strict Batching.
  * 
  * Strategy:
  * 1. Get all orders for an item, sorted by time.
  * 2. Get told history (array of timestamps).
  * 3. Match orders to timestamps to create "Already Told" batches.
- *    - Orders <= timestamp match that batch.
- *    - Grace Period: Orders > timestamp but <= timestamp + 3min ALSO match (reopen batch).
  * 4. Remaining orders form "New Batches".
- *    - Grouped by 3-minute gaps.
  */
 function getNeedsAnnouncingItems() {
   const { needsAnnouncingOrders } = partitionOrders(AdminState.orders);
@@ -1647,7 +1611,7 @@ function getNeedsAnnouncingItems() {
 }
 
 /**
- * Handle TOLD button click with Strict Batching
+ * Handle TOLD button click.
  */
 async function handleTold(aggregationKey, currentQuantity, isPreOrder = false, customTimestamp = null) {
   if (AdminState.pendingToldActions.has(aggregationKey)) return;
@@ -1921,9 +1885,8 @@ function initSortDropdown() {
 
 
 /**
- * Render Completed Orders view (Requirements: 5.1, 5.2, 5.6)
- * OTP-first design: fast type → read → tap handover
- * Strict filtering: only show matching orders when searching
+ * Render Completed Orders view.
+ * OTP-first design: fast type → read → tap handover.
  */
 function renderCompletedOrders() {
   if (!DOM.completedOrdersList) return;
@@ -2019,7 +1982,7 @@ function renderCompletedOrders() {
 // ============================================
 
 /**
- * Handle search input with debounce
+ * Handle search input with debounce.
  */
 function handleSearchInput() {
   const query = DOM.searchInput?.value || '';
@@ -2048,9 +2011,9 @@ function clearSearch() {
 // ============================================
 
 /**
- * Show confirmation dialog
- * @param {string} orderId - The order ID
- * @param {string} action - The action ('complete' | 'pickup')
+ * Show confirmation dialog.
+ * @param {string} orderId - The order ID.
+ * @param {string} action - The action ('complete' | 'pickup').
  */
 function showConfirmDialog(orderId, action) {
   const order = AdminState.orders.find(o => o.id === orderId);
@@ -2189,8 +2152,8 @@ async function executeConfirmedAction() {
 // ============================================
 
 /**
- * Mark order as complete with optimistic update
- * @param {string} orderId - The order ID
+ * Mark order as complete with optimistic update.
+ * @param {string} orderId - The order ID.
  */
 async function markComplete(orderId) {
   console.log("🔄 Marking order as COMPLETE:", orderId);
@@ -2250,8 +2213,8 @@ async function markComplete(orderId) {
 }
 
 /**
- * Mark order as picked up with optimistic update
- * @param {string} orderId - The order ID
+ * Mark order as picked up with optimistic update.
+ * @param {string} orderId - The order ID.
  */
 async function markPickedUp(orderId) {
   console.log("📦 Marking as PICKED_UP:", orderId);
@@ -2417,8 +2380,7 @@ function renderStockFilters() {
 }
 
 /**
- * Render stock items as flat list with toggle switches
- * Modern, clean UI optimized for rush hour scanning
+ * Render stock items as flat list with toggle switches.
  */
 function renderStockItems() {
   if (!DOM.stockItemsList) return;
@@ -2677,13 +2639,10 @@ async function fetchMenuItems() {
 // ============================================
 
 /**
- * Handle realtime order changes with surgical state updates.
+ * Handle realtime order changes.
  * Avoids full refetch by updating local state directly from payload.
  * 
- * @param {Object} payload - Realtime event payload
- * @param {string} payload.eventType - 'INSERT' | 'UPDATE' | 'DELETE'
- * @param {Object} payload.new - The new/updated order record
- * @param {Object} payload.old - Previous order state (UPDATE/DELETE)
+ * @param {Object} payload - Realtime event payload.
  */
 function handleOrderChange(payload) {
   // Fallback to full refetch if payload is malformed
@@ -2795,7 +2754,8 @@ function updateConnectionStatus(status) {
 // ============================================
 
 /**
- * Check session and verify admin access
+ * Check session and verify admin access.
+ * @returns {Promise<boolean>}
  */
 async function checkSession() {
   showLoading();
@@ -2814,8 +2774,9 @@ async function checkSession() {
 }
 
 /**
- * Verify admin access via backend API
- * @param {string} accessToken - The access token
+ * Verify admin access via backend API.
+ * @param {string} accessToken - The access token.
+ * @returns {Promise<boolean>}
  */
 async function verifyAdminAccess(accessToken) {
   try {
@@ -3047,8 +3008,8 @@ function handleReauth() {
 }
 
 /**
- * Handle 401 response during API calls (Requirements: 13.1)
- * Shows non-blocking prompt instead of immediate redirect
+ * Handle 401 response during API calls.
+ * Shows non-blocking prompt instead of immediate redirect.
  */
 function handleSessionExpiry() {
   // Show non-blocking prompt (Requirements: 13.2)
@@ -3134,7 +3095,7 @@ function formatTime(timestamp) {
 // ============================================
 
 /**
- * Initialize the admin dashboard
+ * Initialize the admin dashboard.
  */
 async function initAdmin() {
   // Wait for config to load
