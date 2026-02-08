@@ -1,20 +1,11 @@
 /**
- * ========================================
- * PAYMENT FLOW VALIDATOR
- * ========================================
+ * Payment Flow Validator
  * 
- * PURPOSE:
  * Ensures payment integrity and prevents revenue loss through:
  * - Idempotency guarantees (no duplicate orders)
  * - Webhook signature verification
  * - Atomic order creation with stock deduction
  * - Payment as single source of truth
- * 
- * REQUIREMENTS:
- * - 3.5, 3.6, 3.7: Cart checkout and payment flow
- * - 9.1, 9.2, 9.3, 9.5, 9.9: Payment validation and idempotency
- * 
- * TASK: 2. Implement payment flow validation and idempotency (P0)
  */
 
 const crypto = require('crypto');
@@ -42,11 +33,7 @@ function getSupabase() {
 class PaymentFlowValidator {
 
   /**
-   * ========================================
-   * PAYMENT INITIALIZATION VALIDATION
-   * ========================================
-   * 
-   * Validates payment initialization request before creating Razorpay order
+   * Validate payment initialization request before creating Razorpay order.
    * 
    * @param {Object} orderData - Order data from frontend
    * @param {number} orderData.amount - Amount in rupees
@@ -80,7 +67,7 @@ class PaymentFlowValidator {
     }
 
     // ========================================
-    // SERVER-SIDE PRICE VALIDATION (SECURITY FIX)
+    // SERVER-SIDE PRICE VALIDATION
     // ========================================
     // Fetch actual prices from database to prevent price manipulation
     const itemIds = items.map(item => item.id);
@@ -155,13 +142,7 @@ class PaymentFlowValidator {
   }
 
   /**
-   * ========================================
-   * WEBHOOK SIGNATURE VERIFICATION
-   * ========================================
-   * 
-   * Verifies Razorpay webhook signature to prevent replay attacks
-   * 
-   * Requirements: 9.2 - Verify payment signature using Razorpay webhook verification
+   * Verify Razorpay webhook signature to prevent replay attacks.
    * 
    * @param {Object} payload - Webhook payload from Razorpay
    * @param {string} signature - Razorpay signature from webhook header
@@ -203,13 +184,7 @@ class PaymentFlowValidator {
   }
 
   /**
-   * ========================================
-   * IDEMPOTENCY VALIDATION
-   * ========================================
-   * 
-   * Checks if payment has already been processed to prevent duplicates
-   * 
-   * Requirements: 3.7, 9.3, 9.5 - Process webhooks idempotently using payment ID
+   * Check if payment has already been processed to prevent duplicates (Idempotency).
    * 
    * @param {string} paymentId - Razorpay payment ID
    * @returns {Promise<Object>} Idempotency check result
@@ -249,13 +224,7 @@ class PaymentFlowValidator {
   }
 
   /**
-   * ========================================
-   * HANDLE PAYMENT SUCCESS
-   * ========================================
-   * 
-   * Processes successful payment with atomic order creation
-   * 
-   * Requirements: 3.6 - Create order, deduct stock, send email, clear cart atomically
+   * Process successful payment with atomic order creation.
    * 
    * @param {Object} paymentData - Payment data from webhook
    * @returns {Promise<Object>} Order creation result
@@ -405,13 +374,7 @@ class PaymentFlowValidator {
   }
 
   /**
-   * ========================================
-   * HANDLE PAYMENT FAILURE
-   * ========================================
-   * 
-   * Processes failed payment and preserves cart state
-   * 
-   * Requirements: 3.7 - Preserve cart state on payment failure
+   * Process failed payment and preserve cart state.
    * 
    * @param {Object} paymentData - Payment data from webhook
    * @returns {Promise<Object>} Failure handling result
@@ -464,13 +427,7 @@ class PaymentFlowValidator {
   }
 
   /**
-   * ========================================
-   * RECONCILE PAYMENT AND ORDER
-   * ========================================
-   * 
-   * Reconciles payment record with order for manual verification
-   * 
-   * Requirements: 9.6 - Log inconsistency and trigger manual reconciliation
+   * Reconcile payment record with order for manual verification.
    * 
    * @param {string} paymentId - Razorpay payment ID
    * @returns {Promise<Object>} Reconciliation result
@@ -505,8 +462,6 @@ class PaymentFlowValidator {
         console.error(`❌ INCONSISTENCY DETECTED: Payment ${paymentId}`);
         console.error('Payment record:', payment);
         console.error('Order record:', order);
-
-        // TODO: Send alert to operations team
       }
 
       return {

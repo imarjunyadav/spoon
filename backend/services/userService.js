@@ -1,19 +1,10 @@
 /**
- * ========================================
- * USER SERVICE
- * ========================================
+ * User Service
  * 
- * PURPOSE:
- * Manages user records in Supabase database.
+ * Manages user records in the Supabase database.
  * Handles user creation, lookup, and existence checks.
  * 
- * REQUIREMENTS COVERED:
- * - 3.1: Create user record in Supabase users table on signup
- * - 3.2: Return user record from Supabase when verifying OTP for existing email
- * - 3.3: Use email as unique identifier for user records
- * - 3.4: Return appropriate error response on database operation failure
- * 
- * SCHEMA (from migration 001_create_users_table.sql):
+ * Schema:
  * - email: TEXT PRIMARY KEY
  * - name: TEXT NOT NULL
  * - created_at: TIMESTAMPTZ DEFAULT NOW()
@@ -27,8 +18,11 @@ const { createClient } = require('@supabase/supabase-js');
 // ========================================
 
 /**
- * Initialize Supabase client with service role key
- * Service role key bypasses RLS for backend operations
+ * Initialize Supabase client with service role key.
+ * Service role key is required to bypass RLS for backend operations.
+ * 
+ * @returns {Object} Supabase client instance
+ * @throws {Error} If configuration is missing
  */
 let supabase = null;
 
@@ -36,11 +30,11 @@ function getClient() {
   if (!supabase) {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
+
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing Supabase configuration: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required');
     }
-    
+
     supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
@@ -48,7 +42,7 @@ function getClient() {
       }
     });
   }
-  
+
   return supabase;
 }
 
@@ -57,7 +51,8 @@ function getClient() {
 // ========================================
 
 /**
- * Normalize email for consistent storage and lookup
+ * Normalize email for consistent storage and lookup.
+ * 
  * @param {string} email - User's email address
  * @returns {string} Normalized email (lowercase, trimmed)
  */
@@ -66,9 +61,10 @@ function normalizeEmail(email) {
 }
 
 /**
- * Validate email format
+ * Validate email format.
+ * 
  * @param {string} email - Email to validate
- * @returns {boolean} True if valid email format
+ * @returns {boolean} True if email format is valid
  */
 function isValidEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -80,10 +76,11 @@ function isValidEmail(email) {
 // ========================================
 
 /**
- * Create a new user in Supabase
+ * Create a new user in Supabase.
+ * 
  * @param {string} email - User's email address (unique identifier)
  * @param {string} name - User's display name
- * @returns {Promise<{ user: object|null, error?: string }>} Created user or error
+ * @returns {Promise<{ user: object|null, error?: string }>} Created user object or error code
  */
 async function createUser(email, name) {
   try {
@@ -91,19 +88,19 @@ async function createUser(email, name) {
     if (!email || typeof email !== 'string') {
       return { user: null, error: 'INVALID_EMAIL' };
     }
-    
+
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return { user: null, error: 'INVALID_NAME' };
     }
-    
+
     const normalizedEmail = normalizeEmail(email);
-    
+
     if (!isValidEmail(normalizedEmail)) {
       return { user: null, error: 'INVALID_EMAIL' };
     }
-    
+
     const client = getClient();
-    
+
     const { data, error } = await client
       .from('users')
       .insert({
@@ -112,18 +109,18 @@ async function createUser(email, name) {
       })
       .select()
       .single();
-    
+
     if (error) {
       // Handle duplicate email (unique constraint violation)
       if (error.code === '23505') {
         return { user: null, error: 'USER_EXISTS' };
       }
-      
+
       // Log error for debugging
       console.error('Supabase createUser error:', error);
       return { user: null, error: 'DATABASE_ERROR' };
     }
-    
+
     return { user: data };
   } catch (err) {
     console.error('UserService createUser exception:', err);
@@ -132,9 +129,10 @@ async function createUser(email, name) {
 }
 
 /**
- * Get user by email from Supabase
+ * Get user by email from Supabase.
+ * 
  * @param {string} email - User's email address
- * @returns {Promise<{ user: object|null, error?: string }>} User record or null if not found
+ * @returns {Promise<{ user: object|null, error?: string }>} User object or null if not found
  */
 async function getUserByEmail(email) {
   try {
@@ -142,31 +140,31 @@ async function getUserByEmail(email) {
     if (!email || typeof email !== 'string') {
       return { user: null, error: 'INVALID_EMAIL' };
     }
-    
+
     const normalizedEmail = normalizeEmail(email);
-    
+
     if (!isValidEmail(normalizedEmail)) {
       return { user: null, error: 'INVALID_EMAIL' };
     }
-    
+
     const client = getClient();
-    
+
     const { data, error } = await client
       .from('users')
       .select('*')
       .eq('email', normalizedEmail)
       .single();
-    
+
     if (error) {
       // PGRST116 = no rows returned (not found)
       if (error.code === 'PGRST116') {
         return { user: null };
       }
-      
+
       console.error('Supabase getUserByEmail error:', error);
       return { user: null, error: 'DATABASE_ERROR' };
     }
-    
+
     return { user: data };
   } catch (err) {
     console.error('UserService getUserByEmail exception:', err);
@@ -175,7 +173,8 @@ async function getUserByEmail(email) {
 }
 
 /**
- * Check if a user exists by email
+ * Check if a user exists by email.
+ * 
  * @param {string} email - User's email address
  * @returns {Promise<boolean>} True if user exists, false otherwise
  */
@@ -184,25 +183,25 @@ async function userExists(email) {
     if (!email || typeof email !== 'string') {
       return false;
     }
-    
+
     const normalizedEmail = normalizeEmail(email);
-    
+
     if (!isValidEmail(normalizedEmail)) {
       return false;
     }
-    
+
     const client = getClient();
-    
+
     const { count, error } = await client
       .from('users')
       .select('*', { count: 'exact', head: true })
       .eq('email', normalizedEmail);
-    
+
     if (error) {
       console.error('Supabase userExists error:', error);
       return false;
     }
-    
+
     return count > 0;
   } catch (err) {
     console.error('UserService userExists exception:', err);
@@ -215,29 +214,30 @@ async function userExists(email) {
 // ========================================
 
 /**
- * Delete a user by email (for testing purposes)
+ * Delete a user by email (for testing purposes).
+ * 
  * @param {string} email - User's email address
- * @returns {Promise<{ success: boolean, error?: string }>}
+ * @returns {Promise<{ success: boolean, error?: string }>} Success status or error
  */
 async function deleteUser(email) {
   try {
     if (!email || typeof email !== 'string') {
       return { success: false, error: 'INVALID_EMAIL' };
     }
-    
+
     const normalizedEmail = normalizeEmail(email);
     const client = getClient();
-    
+
     const { error } = await client
       .from('users')
       .delete()
       .eq('email', normalizedEmail);
-    
+
     if (error) {
       console.error('Supabase deleteUser error:', error);
       return { success: false, error: 'DATABASE_ERROR' };
     }
-    
+
     return { success: true };
   } catch (err) {
     console.error('UserService deleteUser exception:', err);
@@ -246,8 +246,7 @@ async function deleteUser(email) {
 }
 
 /**
- * Reset Supabase client (for testing purposes)
- * Allows re-initialization with different credentials
+ * Reset Supabase client (for testing purposes).
  */
 function resetClient() {
   supabase = null;

@@ -1,21 +1,9 @@
 /**
- * ========================================
- * OTP STORE SERVICE
- * ========================================
+ * OTP Store Service
  * 
- * PURPOSE:
  * In-memory store for OTP sessions with automatic cleanup.
  * Handles OTP generation, storage, verification, and rate limiting.
- * 
- * REQUIREMENTS COVERED:
- * - 1.1: Generate random 4-digit OTP
- * - 1.2: Cryptographically random OTP
- * - 1.3: Store OTP with 5-minute expiration
- * - 1.4: Invalidate previous OTP on new request
- * - 3.1: Validate OTP against stored value
- * - 3.5: Invalidate OTP after successful verification
- * - 4.1: Rate limit 5 requests per 15 minutes
- * - 4.3: Limit verification attempts to 5 per session
+ * Intended for development or fallback use when Redis is unavailable.
  */
 
 const crypto = require('crypto');
@@ -53,7 +41,8 @@ const rateLimits = new Map();
 // ========================================
 
 /**
- * Generate a cryptographically random 4-digit OTP
+ * Generate a cryptographically random 4-digit OTP.
+ * 
  * @param {string} email - User's email address
  * @returns {string} 4-digit OTP string
  */
@@ -64,7 +53,7 @@ function generateOTP(email) {
   const randomNum = randomBytes.readUInt16BE(0) % 10000;
   // Pad with leading zeros to ensure 4 digits
   const otp = randomNum.toString().padStart(4, '0');
-  
+
   return otp;
 }
 
@@ -73,16 +62,17 @@ function generateOTP(email) {
 // ========================================
 
 /**
- * Store OTP with expiration for an email
- * Invalidates any existing OTP for the same email
+ * Store OTP with expiration for an email.
+ * Invalidates any existing OTP for the same email.
+ * 
  * @param {string} email - User's email address
  * @param {string} otp - 4-digit OTP to store
  */
 function storeOTP(email, otp) {
   const normalizedEmail = email.toLowerCase().trim();
   const now = Date.now();
-  
-  // Store new OTP session (replaces any existing one - Requirement 1.4)
+
+  // Store new OTP session (replaces any existing one)
   otpSessions.set(normalizedEmail, {
     otp: otp,
     email: normalizedEmail,
@@ -97,7 +87,8 @@ function storeOTP(email, otp) {
 // ========================================
 
 /**
- * Verify OTP for an email
+ * Verify OTP for an email.
+ * 
  * @param {string} email - User's email address
  * @param {string} otp - OTP to verify
  * @returns {{ valid: boolean, error?: string }} Verification result
@@ -106,34 +97,34 @@ function verifyOTP(email, otp) {
   const normalizedEmail = email.toLowerCase().trim();
   const session = otpSessions.get(normalizedEmail);
   const now = Date.now();
-  
+
   // Check if OTP exists
   if (!session) {
     return { valid: false, error: 'OTP_NOT_FOUND' };
   }
-  
+
   // Check if OTP has expired
   if (now > session.expiresAt) {
     otpSessions.delete(normalizedEmail);
     return { valid: false, error: 'OTP_EXPIRED' };
   }
-  
-  // Check if max attempts exceeded (Requirement 4.3)
+
+  // Check if max attempts exceeded
   if (session.attempts >= MAX_VERIFICATION_ATTEMPTS) {
     return { valid: false, error: 'MAX_ATTEMPTS' };
   }
-  
+
   // Increment attempts before checking
   session.attempts += 1;
-  
+
   // Verify OTP
   if (session.otp !== otp) {
     return { valid: false, error: 'INVALID_OTP' };
   }
-  
-  // OTP is valid - invalidate it (single-use, Requirement 3.5)
+
+  // OTP is valid - invalidate it (single-use)
   otpSessions.delete(normalizedEmail);
-  
+
   return { valid: true };
 }
 
@@ -142,7 +133,8 @@ function verifyOTP(email, otp) {
 // ========================================
 
 /**
- * Check if email is rate limited
+ * Check if email is rate limited.
+ * 
  * @param {string} email - User's email address
  * @returns {{ allowed: boolean, retryAfter?: number }} Rate limit status
  */
@@ -150,7 +142,7 @@ function checkRateLimit(email) {
   const normalizedEmail = email.toLowerCase().trim();
   const now = Date.now();
   const entry = rateLimits.get(normalizedEmail);
-  
+
   // No existing rate limit entry
   if (!entry) {
     rateLimits.set(normalizedEmail, {
@@ -159,7 +151,7 @@ function checkRateLimit(email) {
     });
     return { allowed: true };
   }
-  
+
   // Check if window has expired
   if (now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
     // Reset window
@@ -169,38 +161,39 @@ function checkRateLimit(email) {
     });
     return { allowed: true };
   }
-  
+
   // Check if limit exceeded
   if (entry.count >= MAX_OTP_REQUESTS) {
     const retryAfter = entry.windowStart + RATE_LIMIT_WINDOW_MS - now;
-    return { 
-      allowed: false, 
+    return {
+      allowed: false,
       retryAfter: Math.ceil(retryAfter / 1000) // Return seconds
     };
   }
-  
+
   // Increment count
   entry.count += 1;
   return { allowed: true };
 }
 
 /**
- * Increment verification attempts for an email
+ * Increment verification attempts for an email.
+ * 
  * @param {string} email - User's email address
  * @returns {{ allowed: boolean }} Whether more attempts are allowed
  */
 function incrementAttempts(email) {
   const normalizedEmail = email.toLowerCase().trim();
   const session = otpSessions.get(normalizedEmail);
-  
+
   if (!session) {
     return { allowed: false };
   }
-  
+
   session.attempts += 1;
-  
-  return { 
-    allowed: session.attempts < MAX_VERIFICATION_ATTEMPTS 
+
+  return {
+    allowed: session.attempts < MAX_VERIFICATION_ATTEMPTS
   };
 }
 
@@ -209,18 +202,18 @@ function incrementAttempts(email) {
 // ========================================
 
 /**
- * Clean up expired OTP sessions and rate limit entries
+ * Clean up expired OTP sessions and rate limit entries.
  */
 function cleanupExpired() {
   const now = Date.now();
-  
+
   // Clean expired OTP sessions
   for (const [email, session] of otpSessions.entries()) {
     if (now > session.expiresAt) {
       otpSessions.delete(email);
     }
   }
-  
+
   // Clean expired rate limit windows
   for (const [email, entry] of rateLimits.entries()) {
     if (now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
@@ -242,7 +235,8 @@ if (cleanupInterval.unref) {
 // ========================================
 
 /**
- * Get OTP session for an email (for testing purposes)
+ * Get OTP session for an email (for testing purposes).
+ * 
  * @param {string} email - User's email address
  * @returns {object|undefined} OTP session or undefined
  */
@@ -252,7 +246,7 @@ function getSession(email) {
 }
 
 /**
- * Clear all sessions and rate limits (for testing purposes)
+ * Clear all sessions and rate limits (for testing purposes).
  */
 function clearAll() {
   otpSessions.clear();
@@ -260,7 +254,8 @@ function clearAll() {
 }
 
 /**
- * Get rate limit entry for an email (for testing purposes)
+ * Get rate limit entry for an email (for testing purposes).
+ * 
  * @param {string} email - User's email address
  * @returns {object|undefined} Rate limit entry or undefined
  */

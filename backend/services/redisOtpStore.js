@@ -1,21 +1,11 @@
 /**
- * ========================================
- * REDIS OTP STORE SERVICE
- * ========================================
+ * Redis OTP Store Service
  * 
- * PURPOSE:
  * Redis-based store for OTP sessions with automatic TTL expiration.
  * Handles OTP generation, storage, verification, and rate limiting.
  * Production-ready replacement for in-memory otpStore.js.
  * 
- * REQUIREMENTS COVERED:
- * - 1.1: Store OTP with 5-minute TTL in Redis
- * - 1.2: Automatic TTL expiration
- * - 2.1: Track OTP request counts per email using sliding window
- * - 2.2: Reject requests exceeding 5 per 15 minutes
- * - 2.4: Return retry-after time in seconds
- * 
- * KEY PATTERNS:
+ * Key Patterns:
  * - OTP Session: otp:{email} -> JSON { otp, attempts, createdAt }
  * - Rate Limit:  rate:{email} -> count (integer)
  */
@@ -42,7 +32,8 @@ const RATE_KEY_PREFIX = 'rate:';
 const memoryStore = new Map();
 
 /**
- * Cleanup expired memory store items
+ * Cleanup expired memory store items.
+ * Runs every minute to prevent memory leaks in fallback mode.
  */
 function cleanupMemoryStore() {
   const now = Date.now();
@@ -61,7 +52,8 @@ setInterval(cleanupMemoryStore, 60 * 1000);
 // ========================================
 
 /**
- * Normalize email for consistent key generation
+ * Normalize email for consistent key generation.
+ * 
  * @param {string} email - User's email address
  * @returns {string} Normalized email
  */
@@ -70,7 +62,8 @@ function normalizeEmail(email) {
 }
 
 /**
- * Generate Redis key for OTP session
+ * Generate Redis key for OTP session.
+ * 
  * @param {string} email - User's email address
  * @returns {string} Redis key
  */
@@ -79,7 +72,8 @@ function getOtpKey(email) {
 }
 
 /**
- * Generate Redis key for rate limit
+ * Generate Redis key for rate limit.
+ * 
  * @param {string} email - User's email address
  * @returns {string} Redis key
  */
@@ -92,8 +86,9 @@ function getRateKey(email) {
 // ========================================
 
 /**
- * Generate a cryptographically random 4-digit OTP
- * @param {string} email - User's email address (unused, kept for interface compatibility)
+ * Generate a cryptographically random 4-digit OTP.
+ * 
+ * @param {string} email - User's email address (kept for interface compatibility)
  * @returns {string} 4-digit OTP string
  */
 function generateOTP(email) {
@@ -103,7 +98,7 @@ function generateOTP(email) {
   const randomNum = randomBytes.readUInt16BE(0) % 10000;
   // Pad with leading zeros to ensure 4 digits
   const otp = randomNum.toString().padStart(4, '0');
-  
+
   return otp;
 }
 
@@ -112,8 +107,9 @@ function generateOTP(email) {
 // ========================================
 
 /**
- * Store OTP with expiration for an email in Redis
- * Invalidates any existing OTP for the same email
+ * Store OTP with expiration for an email in Redis.
+ * Invalidates any existing OTP for the same email.
+ * 
  * @param {string} email - User's email address
  * @param {string} otp - 4-digit OTP to store
  * @returns {Promise<void>}
@@ -121,7 +117,7 @@ function generateOTP(email) {
 async function storeOTP(email, otp) {
   const key = getOtpKey(email);
   const now = Date.now();
-  
+
   const session = {
     otp: otp,
     attempts: 0,
@@ -142,8 +138,8 @@ async function storeOTP(email, otp) {
   } catch (err) {
     console.warn('[Redis] Error in storeOTP, falling back to memory:', err);
     memoryStore.set(key, {
-        value: JSON.stringify(session),
-        expiry: now + (OTP_EXPIRY_SECONDS * 1000)
+      value: JSON.stringify(session),
+      expiry: now + (OTP_EXPIRY_SECONDS * 1000)
     });
   }
 }
@@ -153,7 +149,8 @@ async function storeOTP(email, otp) {
 // ========================================
 
 /**
- * Verify OTP for an email
+ * Verify OTP for an email.
+ * 
  * @param {string} email - User's email address
  * @param {string} otp - OTP to verify
  * @returns {Promise<{ valid: boolean, error?: string }>} Verification result
@@ -180,54 +177,54 @@ async function verifyOTP(email, otp) {
       sessionData = item.value;
     }
   }
-  
+
   // Check if OTP exists
   if (!sessionData) {
     return { valid: false, error: 'OTP_NOT_FOUND' };
   }
-  
+
   const session = JSON.parse(sessionData);
-  
+
   // Check if max attempts exceeded
   if (session.attempts >= MAX_VERIFICATION_ATTEMPTS) {
     return { valid: false, error: 'MAX_ATTEMPTS' };
   }
-  
+
   // Increment attempts before checking
   session.attempts += 1;
-  
+
   // Verify OTP
   if (session.otp !== otp) {
     // Update attempts count (preserve remaining TTL)
     try {
-        if (redisClient.isConnected()) {
-            const client = redisClient.getClient();
-            const ttl = await client.ttl(key);
-            if (ttl > 0) {
-            await client.setex(key, ttl, JSON.stringify(session));
-            }
-        } else {
-            const item = memoryStore.get(key);
-            if (item) {
-                item.value = JSON.stringify(session); // Update val, keep expiry
-                memoryStore.set(key, item);
-            }
+      if (redisClient.isConnected()) {
+        const client = redisClient.getClient();
+        const ttl = await client.ttl(key);
+        if (ttl > 0) {
+          await client.setex(key, ttl, JSON.stringify(session));
         }
+      } else {
+        const item = memoryStore.get(key);
+        if (item) {
+          item.value = JSON.stringify(session); // Update val, keep expiry
+          memoryStore.set(key, item);
+        }
+      }
     } catch (err) { console.warn('Error updating attempts:', err); }
-    
+
     return { valid: false, error: 'INVALID_OTP' };
   }
-  
+
   // OTP is valid - delete it (single-use)
   try {
     if (redisClient.isConnected()) {
-        const client = redisClient.getClient();
-        await client.del(key);
+      const client = redisClient.getClient();
+      await client.del(key);
     } else {
-        memoryStore.delete(key);
+      memoryStore.delete(key);
     }
   } catch (err) { memoryStore.delete(key); }
-  
+
   return { valid: true };
 }
 
@@ -236,7 +233,8 @@ async function verifyOTP(email, otp) {
 // ========================================
 
 /**
- * Check if email is rate limited using sliding window
+ * Check if email is rate limited using sliding window.
+ * 
  * @param {string} email - User's email address
  * @returns {Promise<{ allowed: boolean, retryAfter?: number }>} Rate limit status
  */
@@ -249,77 +247,79 @@ async function checkRateLimit(email) {
     if (redisClient.isConnected()) {
       client = redisClient.getClient();
       currentCount = await client.get(key);
-      
+
       if (!currentCount) {
         await client.setex(key, RATE_LIMIT_WINDOW_SECONDS, '1');
         return { allowed: true };
       }
-      
+
       const count = parseInt(currentCount, 10);
       if (count >= MAX_OTP_REQUESTS) {
         const ttl = await client.ttl(key);
-        return { 
-          allowed: false, 
+        return {
+          allowed: false,
           retryAfter: ttl > 0 ? ttl : RATE_LIMIT_WINDOW_SECONDS
         };
       }
-      
+
       await client.incr(key);
       return { allowed: true };
 
     } else {
-        // Fallback Logic
-        console.log('[Redis] Using in-memory fallback for checkRateLimit');
-        const item = memoryStore.get(key);
-        const now = Date.now();
-        
-        if (!item || item.expiry < now) {
-             memoryStore.set(key, {
-                 value: '1',
-                 expiry: now + (RATE_LIMIT_WINDOW_SECONDS * 1000)
-             });
-             return { allowed: true };
-        }
-        
-        let count = parseInt(item.value, 10);
-        if (count >= MAX_OTP_REQUESTS) {
-            const ttl = Math.ceil((item.expiry - now) / 1000);
-            return {
-                allowed: false,
-                retryAfter: ttl > 0 ? ttl : RATE_LIMIT_WINDOW_SECONDS
-            };
-        }
-        
-        count++;
-        item.value = count.toString();
-        memoryStore.set(key, item);
+      // Fallback Logic
+      console.log('[Redis] Using in-memory fallback for checkRateLimit');
+      const item = memoryStore.get(key);
+      const now = Date.now();
+
+      if (!item || item.expiry < now) {
+        memoryStore.set(key, {
+          value: '1',
+          expiry: now + (RATE_LIMIT_WINDOW_SECONDS * 1000)
+        });
         return { allowed: true };
+      }
+
+      let count = parseInt(item.value, 10);
+      if (count >= MAX_OTP_REQUESTS) {
+        const ttl = Math.ceil((item.expiry - now) / 1000);
+        return {
+          allowed: false,
+          retryAfter: ttl > 0 ? ttl : RATE_LIMIT_WINDOW_SECONDS
+        };
+      }
+
+      count++;
+      item.value = count.toString();
+      memoryStore.set(key, item);
+      return { allowed: true };
     }
   } catch (err) {
-      console.warn('[Redis] Error in checkRateLimit, allowing request:', err);
-      return { allowed: true };
+    console.warn('[Redis] Error in checkRateLimit, allowing request:', err);
+    return { allowed: true };
   }
 }
 
 /**
- * Increment verification attempts for an email
+ * Increment verification attempts for an email.
+ * 
  * @param {string} email - User's email address
  * @returns {Promise<{ allowed: boolean }>} Whether more attempts are allowed
  */
 async function incrementAttempts(email) {
-    // Reuses verifyOTP logic mostly, but exposed separately. 
-    // Implementation simplified for brevity as verifyOTP handles this logic internally.
-    return { allowed: true }; 
+  // Reuses verifyOTP logic mostly, but exposed separately. 
+  // Implementation simplified for brevity as verifyOTP handles this logic internally.
+  return { allowed: true };
 }
 
 /**
- * Check if Redis is connected OR if we can support fallback
+ * Check if Redis is connected OR if we can support fallback.
+ * 
  * @returns {boolean} True if connected OR fallback enabled
  */
 function isConnected() {
   // Always return true because we have a memory fallback!
   // This allows auth.js to proceed past the 503 check.
-  return true; 
+  return true;
 }
 
 // ========================================
@@ -327,30 +327,33 @@ function isConnected() {
 // ========================================
 
 /**
- * Get OTP session for an email (for testing purposes)
+ * Get OTP session for an email (for testing purposes).
+ * 
  * @param {string} email - User's email address
  * @returns {Promise<object|null>} OTP session or null
  */
 async function getSession(email) {
-    // Testing only
-    return null;
+  // Testing only
+  return null;
 }
 
 /**
- * Clear all OTP sessions and rate limits (for testing purposes)
+ * Clear all OTP sessions and rate limits (for testing purposes).
+ * 
  * @returns {Promise<void>}
  */
 async function clearAll() {
-    memoryStore.clear();
+  memoryStore.clear();
 }
 
 /**
- * Get rate limit entry for an email (for testing purposes)
+ * Get rate limit entry for an email (for testing purposes).
+ * 
  * @param {string} email - User's email address
  * @returns {Promise<{ count: number, ttl: number }|null>} Rate limit entry or null
  */
 async function getRateLimitEntry(email) {
-    return null;
+  return null;
 }
 
 // ========================================
