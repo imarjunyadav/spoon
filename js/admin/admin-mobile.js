@@ -2844,10 +2844,110 @@ async function retryVerification() {
 
   if (isAdmin) {
     hideLoading();
+
+    // Start Session Enforcement (Background)
+    syncSession().then(() => {
+      initSessionEnforcement();
+    });
+
     fetchOrders();
     fetchMenuItems();
     initRealtimeSubscriptions();
   }
+}
+
+// ============================================
+// SESSION ENFORCEMENT
+// ============================================
+
+/**
+ * Sync Supabase session with backend to get a session token.
+ * This bridges the Supabase Auth with our Single Device Enforcement system.
+ */
+async function syncSession() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const response = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/auth/sync-session`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.sessionToken) {
+        localStorage.setItem('spoon-session-token', data.sessionToken);
+        console.log('✅ Session synced with backend');
+      }
+    } else {
+      console.warn('⚠️ Session sync failed', response.status);
+    }
+  } catch (error) {
+    console.warn('⚠️ Session sync error', error);
+  }
+}
+
+/**
+ * Initialize Single Device Enforcement (Realtime)
+ */
+async function initSessionEnforcement() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || !user.email) return;
+
+  const email = user.email;
+  const filter = `email=eq.${email}`;
+
+  // Store email for session-guard.js (backup enforcement)
+  localStorage.setItem('spoon-user-email', email);
+
+  console.log(`🛡️ Initializing session enforcement for ${email}`);
+
+  // Listen for SessionGuard invalidation (Heartbeat/Visibility)
+  window.addEventListener('session:invalidated', () => {
+    console.warn('⚡ SessionGuard triggered invalidation');
+    handleSessionInvalidated();
+  });
+
+  RealtimeSubscriptionManager.subscribeToTable(
+    'users',
+    (payload) => {
+      // Check if active_session_token changed
+      // Note: payload.new contains the new state of the row
+      if (payload.new && payload.new.active_session_token) {
+        const currentToken = localStorage.getItem('spoon-session-token');
+        // If we have a token, and the DB has a DIFFERENT token, we are invalid.
+        if (currentToken && payload.new.active_session_token !== currentToken) {
+          console.warn('🚫 Session token changed remotely. Logging out.');
+          handleSessionInvalidated();
+        }
+      }
+    },
+    null, // No polling backup for this specific check (heartbeat handles that separately if needed)
+    filter
+  );
+}
+
+/**
+ * Handle session invalidation (Logout)
+ */
+function handleSessionInvalidated() {
+  // Prevent loops
+  if (AdminState.isLoggingOut) return;
+  AdminState.isLoggingOut = true;
+
+  alert('Your session has been terminated because you logged in on another device.');
+
+  supabase.auth.signOut().then(() => {
+    localStorage.removeItem('spoon-session-token');
+    localStorage.removeItem('spoon-user-email');
+    // Clear legacy/potential other email keys
+    localStorage.removeItem('spoon-email');
+    window.location.href = 'login.html';
+  });
 }
 
 // ============================================
@@ -3127,6 +3227,12 @@ async function initAdmin() {
 
   if (isAdmin) {
     hideLoading();
+
+    // Start Session Enforcement (Background)
+    syncSession().then(() => {
+      initSessionEnforcement();
+    });
+
     fetchOrders();
     fetchMenuItems();
     initRealtimeSubscriptions();

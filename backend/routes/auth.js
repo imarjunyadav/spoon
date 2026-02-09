@@ -11,9 +11,11 @@
 
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const redisOtpStore = require('../services/redisOtpStore');
 const emailService = require('../services/emailService');
 const userService = require('../services/userService');
+const adminService = require('../services/adminService');
 
 // ========================================
 // EMAIL VALIDATION
@@ -214,11 +216,18 @@ router.post('/verify-otp', async (req, res) => {
 
     const isNewUser = !userResult.user;
 
+    // Generate session token
+    const sessionToken = crypto.randomUUID();
+
+    // Update active session in database
+    await userService.updateSession(normalizedEmail, sessionToken);
+
     res.json({
       success: true,
       isNewUser: isNewUser,
       email: normalizedEmail,
-      user: userResult.user || null
+      user: userResult.user || null,
+      sessionToken: sessionToken
     });
 
   } catch (error) {
@@ -272,8 +281,11 @@ router.post('/signup', async (req, res) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Create user in Supabase
-    const result = await userService.createUser(normalizedEmail, name.trim());
+    // Generate session token
+    const sessionToken = crypto.randomUUID();
+
+    // Create user in Supabase with session token
+    const result = await userService.createUser(normalizedEmail, name.trim(), sessionToken);
 
     if (result.error) {
       const errorResponses = {
@@ -299,7 +311,8 @@ router.post('/signup', async (req, res) => {
 
     res.status(201).json({
       success: true,
-      user: result.user
+      user: result.user,
+      sessionToken: sessionToken
     });
 
   } catch (error) {
@@ -311,6 +324,95 @@ router.post('/signup', async (req, res) => {
         message: 'An unexpected error occurred. Please try again.'
       }
     });
+  }
+});
+
+// ========================================
+// ENDPOINT: Validate Session (Heartbeat)
+// ========================================
+
+/**
+ * Validate session token.
+ * 
+ * Method: POST
+ * Path: /api/auth/validate-session
+ * Body: { "email": "user@example.com", "sessionToken": "uuid" }
+ * 
+ * @returns {object} { valid: boolean }
+ */
+router.post('/validate-session', async (req, res) => {
+  try {
+    const { email, sessionToken } = req.body;
+
+    if (!email || !sessionToken) {
+      return res.status(400).json({ valid: false, error: 'MISSING_FIELDS' });
+    }
+
+    const { valid, error } = await userService.validateSession(email, sessionToken);
+
+    if (error) {
+      console.error('Validate session error:', error);
+      // Fail closed for security (if DB error, assume invalid or retry)
+      // Actually, for heartbeat, if service unavailable, maybe return 500 and client retries?
+      return res.status(500).json({ valid: false, error });
+    }
+
+    res.json({ valid });
+
+  } catch (error) {
+    console.error('Validate session exception:', error);
+    res.status(500).json({ valid: false, error: 'SERVER_ERROR' });
+  }
+});
+
+// ========================================
+// ENDPOINT: Sync Session (Admin Bridge)
+// ========================================
+
+/**
+ * Sync Supabase Auth with App Session.
+ * Called by Admin App after Supabase Login.
+ * 
+ * Method: POST
+ * Path: /api/auth/sync-session
+ * Headers: Authorization: Bearer <supabase_jwt>
+ * 
+ * @returns {object} { sessionToken: "uuid" }
+ */
+router.post('/sync-session', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'UNAUTHORIZED' });
+    }
+
+    const token = authHeader.slice(7);
+    const tokenResult = await adminService.validateToken(token);
+
+    if (tokenResult.error) {
+      return res.status(401).json({ error: tokenResult.error });
+    }
+
+    const email = tokenResult.user.email;
+
+    // Generate new session token
+    const sessionToken = crypto.randomUUID();
+
+    // Update active session in database
+    await userService.updateSession(email, sessionToken);
+
+    console.log(`✅ Admin session synced for ${email}`);
+
+    res.json({
+      success: true,
+      email,
+      sessionToken
+    });
+
+  } catch (error) {
+    console.error('Sync session exception:', error);
+    res.status(500).json({ error: 'SERVER_ERROR' });
   }
 });
 

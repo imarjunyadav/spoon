@@ -70,21 +70,25 @@ const RealtimeSubscriptionManager = {
    * @param {string} tableName - Table to subscribe to ('orders' | 'menu_items')
    * @param {Function} onChangeCallback - Function to call when data changes
    * @param {Function} [pollCallback] - Optional function to call for fallback polling (defaults to onChangeCallback)
+   * @param {string} [filter] - Optional filter string (e.g., 'email=eq.user@example.com')
    * @returns {RealtimeChannel|null} - The created channel or null if failed
    */
-  subscribeToTable(tableName, onChangeCallback, pollCallback) {
+  subscribeToTable(tableName, onChangeCallback, pollCallback, filter = null) {
     if (!this._supabase) {
       console.error('RealtimeSubscriptionManager: Supabase client not initialized');
       return null;
     }
 
     // Check for existing subscription to prevent duplicates
-    if (this.channels[tableName]) {
-      console.warn(`RealtimeSubscriptionManager: Already subscribed to ${tableName}`);
-      return this.channels[tableName];
+    // Include filter in key if present to allow multiple subs to same table with different filters
+    const channelKey = filter ? `${tableName}:${filter}` : tableName;
+
+    if (this.channels[channelKey]) {
+      console.warn(`RealtimeSubscriptionManager: Already subscribed to ${channelKey}`);
+      return this.channels[channelKey];
     }
 
-    const channelName = `realtime-${tableName}-${Date.now()}`;
+    const channelName = `realtime-${channelKey}-${Date.now()}`;
 
     try {
       const channel = this._supabase
@@ -94,10 +98,11 @@ const RealtimeSubscriptionManager = {
           {
             event: 'INSERT',
             schema: 'public',
-            table: tableName
+            table: tableName,
+            filter: filter || undefined
           },
           (payload) => {
-            console.log(`📥 INSERT on ${tableName}:`, payload);
+            console.log(`📥 INSERT on ${tableName} (${filter || 'all'}):`, payload);
             if (typeof onChangeCallback === 'function') {
               onChangeCallback(payload);
             }
@@ -108,10 +113,11 @@ const RealtimeSubscriptionManager = {
           {
             event: 'UPDATE',
             schema: 'public',
-            table: tableName
+            table: tableName,
+            filter: filter || undefined
           },
           (payload) => {
-            console.log(`📝 UPDATE on ${tableName}:`, payload);
+            console.log(`📝 UPDATE on ${tableName} (${filter || 'all'}):`, payload);
             if (typeof onChangeCallback === 'function') {
               onChangeCallback(payload);
             }
@@ -123,7 +129,7 @@ const RealtimeSubscriptionManager = {
           if (status === 'SUBSCRIBED') {
             this.isConnected = true;
             // Stop fallback polling if it was running
-            this.stopFallbackPolling(tableName);
+            this.stopFallbackPolling(channelKey);
             // Notify state change
             this._notifyStateChange('realtime');
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
@@ -131,14 +137,14 @@ const RealtimeSubscriptionManager = {
             console.error(`❌ Realtime subscription error for ${tableName}:`, err);
             this.isConnected = false;
             // Start fallback polling
-            this.startFallbackPolling(tableName, pollCallback || onChangeCallback);
+            this.startFallbackPolling(channelKey, pollCallback || onChangeCallback);
             // Notify state change
             this._notifyStateChange('polling');
           } else if (status === 'CLOSED') {
-            console.log(`🔌 Channel ${tableName} closed`);
+            console.log(`🔌 Channel ${channelKey} closed`);
             // Check if all channels are closed
             const activeChannels = Object.keys(this.channels).filter(
-              name => name !== tableName
+              name => name !== channelKey
             );
             if (activeChannels.length === 0) {
               this.isConnected = false;
@@ -148,7 +154,7 @@ const RealtimeSubscriptionManager = {
         });
 
       // Track the channel
-      this.channels[tableName] = channel;
+      this.channels[channelKey] = channel;
 
       return channel;
     } catch (error) {
@@ -160,21 +166,24 @@ const RealtimeSubscriptionManager = {
   /**
    * Unsubscribe from a specific channel
    * @param {string} tableName - Name of table/channel to unsubscribe
+   * @param {string} [filter] - Optional filter string
    */
-  unsubscribe(tableName) {
-    const channel = this.channels[tableName];
+  unsubscribe(tableName, filter = null) {
+    const channelKey = filter ? `${tableName}:${filter}` : tableName;
+    const channel = this.channels[channelKey];
+
     if (channel) {
       try {
         this._supabase.removeChannel(channel);
-        delete this.channels[tableName];
-        console.log(`🔌 Unsubscribed from ${tableName}`);
+        delete this.channels[channelKey];
+        console.log(`🔌 Unsubscribed from ${channelKey}`);
       } catch (error) {
-        console.error(`❌ Error unsubscribing from ${tableName}:`, error);
+        console.error(`❌ Error unsubscribing from ${channelKey}:`, error);
       }
     }
 
     // Also stop any fallback polling
-    this.stopFallbackPolling(tableName);
+    this.stopFallbackPolling(channelKey);
   },
 
   /**
@@ -184,20 +193,20 @@ const RealtimeSubscriptionManager = {
     console.log('🧹 Cleaning up all Realtime subscriptions...');
 
     // Unsubscribe from all channels
-    Object.keys(this.channels).forEach(tableName => {
-      const channel = this.channels[tableName];
+    Object.keys(this.channels).forEach(channelKey => {
+      const channel = this.channels[channelKey];
       if (channel && this._supabase) {
         try {
           this._supabase.removeChannel(channel);
         } catch (error) {
-          console.error(`❌ Error removing channel ${tableName}:`, error);
+          console.error(`❌ Error removing channel ${channelKey}:`, error);
         }
       }
     });
 
     // Clear all fallback polling intervals
-    Object.keys(this.fallbackIntervals).forEach(tableName => {
-      this.stopFallbackPolling(tableName);
+    Object.keys(this.fallbackIntervals).forEach(key => {
+      this.stopFallbackPolling(key);
     });
 
     // Reset state
@@ -214,16 +223,16 @@ const RealtimeSubscriptionManager = {
   /**
    * Start fallback polling when realtime fails
    * 
-   * @param {string} tableName - Table to poll
+   * @param {string} key - Table name or Channel key to poll
    * @param {Function} callback - Function to call on poll
    */
-  startFallbackPolling(tableName, callback) {
+  startFallbackPolling(key, callback) {
     // Prevent duplicate polling intervals
-    if (this.fallbackIntervals[tableName]) {
+    if (this.fallbackIntervals[key]) {
       return;
     }
 
-    console.log(`🔄 Starting fallback polling for ${tableName} (30s interval)`);
+    console.log(`🔄 Starting fallback polling for ${key} (30s interval)`);
     this.isConnected = false;
     this._notifyStateChange('polling');
 
@@ -233,8 +242,8 @@ const RealtimeSubscriptionManager = {
     }
 
     // Start polling every 30 seconds
-    this.fallbackIntervals[tableName] = setInterval(() => {
-      console.log(`🔄 Fallback poll for ${tableName}`);
+    this.fallbackIntervals[key] = setInterval(() => {
+      console.log(`🔄 Fallback poll for ${key}`);
       if (typeof callback === 'function') {
         callback();
       }
@@ -242,15 +251,15 @@ const RealtimeSubscriptionManager = {
   },
 
   /**
-   * Stop fallback polling for a table
+   * Stop fallback polling for a table/key
    * 
-   * @param {string} tableName - Table to stop polling
+   * @param {string} key - Table name or Channel key to stop polling
    */
-  stopFallbackPolling(tableName) {
-    if (this.fallbackIntervals[tableName]) {
-      clearInterval(this.fallbackIntervals[tableName]);
-      delete this.fallbackIntervals[tableName];
-      console.log(`⏹️ Stopped fallback polling for ${tableName}`);
+  stopFallbackPolling(key) {
+    if (this.fallbackIntervals[key]) {
+      clearInterval(this.fallbackIntervals[key]);
+      delete this.fallbackIntervals[key];
+      console.log(`⏹️ Stopped fallback polling for ${key}`);
     }
   },
 

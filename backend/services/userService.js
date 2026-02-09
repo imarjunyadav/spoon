@@ -105,7 +105,9 @@ async function createUser(email, name) {
       .from('users')
       .insert({
         email: normalizedEmail,
-        name: name.trim()
+        name: name.trim(),
+        active_session_token: arguments[2] || null, // Optional 3rd arg: sessionToken
+        session_created_at: arguments[2] ? new Date().toISOString() : null
       })
       .select()
       .single();
@@ -260,6 +262,98 @@ module.exports = {
   createUser,
   getUserByEmail,
   userExists,
+  // Testing utilities
+  deleteUser,
+  resetClient,
+  // Helper functions (exported for testing)
+  normalizeEmail,
+  isValidEmail
+};
+
+// ========================================
+// SESSION MANAGEMENT
+// ========================================
+
+/**
+ * Update user's active session token.
+ * 
+ * @param {string} email - User's email
+ * @param {string} sessionToken - New session UUID
+ * @returns {Promise<{ success: boolean, error?: string }>}
+ */
+async function updateSession(email, sessionToken) {
+  try {
+    if (!email || !sessionToken) {
+      return { success: false, error: 'INVALID_INPUT' };
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+    const client = getClient();
+
+    const { error } = await client
+      .from('users')
+      .update({
+        active_session_token: sessionToken,
+        session_created_at: new Date().toISOString()
+      })
+      .eq('email', normalizedEmail);
+
+    if (error) {
+      console.error('Supabase updateSession error:', error);
+      return { success: false, error: 'DATABASE_ERROR' };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('UserService updateSession exception:', err);
+    return { success: false, error: 'SERVICE_UNAVAILABLE' };
+  }
+}
+
+/**
+ * Validate a session token against the database.
+ * 
+ * @param {string} email - User's email
+ * @param {string} sessionToken - Token to validate
+ * @returns {Promise<{ valid: boolean, error?: string }>}
+ */
+async function validateSession(email, sessionToken) {
+  try {
+    if (!email || !sessionToken) {
+      return { valid: false };
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+    const client = getClient();
+
+    const { data, error } = await client
+      .from('users')
+      .select('active_session_token')
+      .eq('email', normalizedEmail)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return { valid: false }; // User not found
+      console.error('Supabase validateSession error:', error);
+      return { valid: false, error: 'DATABASE_ERROR' };
+    }
+
+    // Check if tokens match
+    const isValid = data.active_session_token === sessionToken;
+    return { valid: isValid };
+
+  } catch (err) {
+    console.error('UserService validateSession exception:', err);
+    return { valid: false, error: 'SERVICE_UNAVAILABLE' };
+  }
+}
+
+module.exports = {
+  createUser,
+  getUserByEmail,
+  userExists,
+  updateSession,
+  validateSession,
   // Testing utilities
   deleteUser,
   resetClient,

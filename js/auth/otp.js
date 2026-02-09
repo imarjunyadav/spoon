@@ -248,6 +248,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Also store with email key for consistency
                         localStorage.setItem(`user-${userEmail}`, JSON.stringify(result.user));
                     }
+                    if (result.sessionToken) {
+                        localStorage.setItem('spoon-session-token', result.sessionToken);
+                    }
+                    // Fix: Store email for session-guard.js
+                    localStorage.setItem('spoon-user-email', userEmail);
+
                     window.location.replace('index.html');
                 }
             } else {

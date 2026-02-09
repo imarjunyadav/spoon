@@ -179,6 +179,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Set the master login flag
                 localStorage.setItem('spoon-is-logged-in', 'true');
 
+                if (result.sessionToken) {
+                    localStorage.setItem('spoon-session-token', result.sessionToken);
+                }
+                // Fix: Store email for session-guard.js
+                localStorage.setItem('spoon-user-email', verifiedEmail);
+
                 console.log('✅ User created successfully:', userData);
 
                 // Redirect to the main page after successful signup.
