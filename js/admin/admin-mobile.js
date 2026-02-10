@@ -2881,6 +2881,7 @@ async function syncSession() {
       const data = await response.json();
       if (data.sessionToken) {
         localStorage.setItem('spoon-session-token', data.sessionToken);
+        localStorage.setItem('spoon-is-logged-in', 'true');
         console.log('✅ Session synced with backend');
       }
     } else {
@@ -2944,6 +2945,7 @@ function handleSessionInvalidated() {
   supabase.auth.signOut().then(() => {
     localStorage.removeItem('spoon-session-token');
     localStorage.removeItem('spoon-user-email');
+    localStorage.removeItem('spoon-is-logged-in');
     // Clear legacy/potential other email keys
     localStorage.removeItem('spoon-email');
     window.location.href = 'login.html';

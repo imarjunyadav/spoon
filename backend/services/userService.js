@@ -290,17 +290,23 @@ async function updateSession(email, sessionToken) {
     const normalizedEmail = normalizeEmail(email);
     const client = getClient();
 
-    const { error } = await client
+    const { data, error } = await client
       .from('users')
       .update({
         active_session_token: sessionToken,
         session_created_at: new Date().toISOString()
       })
-      .eq('email', normalizedEmail);
+      .eq('email', normalizedEmail)
+      .select();
 
     if (error) {
       console.error('Supabase updateSession error:', error);
       return { success: false, error: 'DATABASE_ERROR' };
+    }
+
+    if (!data || data.length === 0) {
+      console.warn(`updateSession: User not found for ${normalizedEmail}`);
+      return { success: false, error: 'USER_NOT_FOUND' };
     }
 
     return { success: true };

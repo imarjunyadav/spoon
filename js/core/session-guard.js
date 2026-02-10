@@ -153,9 +153,14 @@ class SessionGuard {
 
 // Export singleton
 const sessionGuard = new SessionGuard();
-// Auto-start if not a module (for simple script tags)
+// Auto-start if user is logged in (for simple script tag inclusion)
 if (typeof window !== 'undefined') {
     window.sessionGuard = sessionGuard;
-    // Optional: Auto-start on load?
-    // Let's explicitly start it in the page scripts or inline.
+    // Auto-start on DOMContentLoaded if user appears to be logged in
+    document.addEventListener('DOMContentLoaded', () => {
+        if (localStorage.getItem('spoon-is-logged-in')) {
+            console.log('🛡️ SessionGuard auto-starting (user is logged in)');
+            sessionGuard.start();
+        }
+    });
 }

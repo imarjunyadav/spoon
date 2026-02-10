@@ -220,7 +220,16 @@ router.post('/verify-otp', async (req, res) => {
     const sessionToken = crypto.randomUUID();
 
     // Update active session in database
-    await userService.updateSession(normalizedEmail, sessionToken);
+    const updateResult = await userService.updateSession(normalizedEmail, sessionToken);
+
+    if (!updateResult.success && updateResult.error === 'USER_NOT_FOUND') {
+      // For new users, updateSession fails because they're not in DB yet.
+      // This is expected — /signup will set the session token.
+      // For existing users, this is an error.
+      if (!isNewUser) {
+        console.error(`❌ Failed to update session for existing user ${normalizedEmail}`);
+      }
+    }
 
     res.json({
       success: true,
@@ -400,7 +409,18 @@ router.post('/sync-session', async (req, res) => {
     const sessionToken = crypto.randomUUID();
 
     // Update active session in database
-    await userService.updateSession(email, sessionToken);
+    const updateResult = await userService.updateSession(email, sessionToken);
+
+    if (!updateResult.success) {
+      if (updateResult.error === 'USER_NOT_FOUND') {
+        // Auto-create user record if missing (Safety net for Admins)
+        // This ensures Realtime works even if they weren't in public.users
+        console.warn(`⚠️ User record missing for ${email}. Auto-creating...`);
+        await userService.createUser(email, 'Admin User', sessionToken);
+      } else {
+        throw new Error(`Failed to update session: ${updateResult.error}`);
+      }
+    }
 
     console.log(`✅ Admin session synced for ${email}`);
 
