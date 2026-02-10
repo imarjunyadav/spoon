@@ -49,3 +49,7 @@ build/
 # Temporary files
 tmp/
 temp/
+
+# Database dumps (auto-generated, don't commit)
+backend/schema_dump*.sql
+*.dump.sql
