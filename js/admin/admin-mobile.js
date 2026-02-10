@@ -2893,7 +2893,7 @@ async function syncSession() {
 }
 
 /**
- * Initialize Single Device Enforcement (Realtime)
+ * Initialize Single Device Enforcement (Realtime + Heartbeat)
  */
 async function initSessionEnforcement() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -2913,21 +2913,27 @@ async function initSessionEnforcement() {
     handleSessionInvalidated();
   });
 
+  // Start SessionGuard explicitly (backup heartbeat for admin)
+  // DOMContentLoaded may have already fired before spoon-is-logged-in was set
+  if (window.sessionGuard) {
+    window.sessionGuard.start();
+  }
+
+  // Primary: Realtime subscription for instant detection
   RealtimeSubscriptionManager.subscribeToTable(
     'users',
     (payload) => {
+      console.log('📡 Realtime event on users table:', payload);
       // Check if active_session_token changed
-      // Note: payload.new contains the new state of the row
       if (payload.new && payload.new.active_session_token) {
         const currentToken = localStorage.getItem('spoon-session-token');
-        // If we have a token, and the DB has a DIFFERENT token, we are invalid.
         if (currentToken && payload.new.active_session_token !== currentToken) {
           console.warn('🚫 Session token changed remotely. Logging out.');
           handleSessionInvalidated();
         }
       }
     },
-    null, // No polling backup for this specific check (heartbeat handles that separately if needed)
+    null,
     filter
   );
 }
@@ -2940,14 +2946,22 @@ function handleSessionInvalidated() {
   if (AdminState.isLoggingOut) return;
   AdminState.isLoggingOut = true;
 
+  // Stop SessionGuard immediately
+  if (window.sessionGuard) {
+    window.sessionGuard.stop();
+  }
+
+  // Clear ALL auth state SYNCHRONOUSLY (before async signOut)
+  // This prevents race conditions with SessionGuard's performDefaultLogout
+  localStorage.removeItem('spoon-session-token');
+  localStorage.removeItem('spoon-user-email');
+  localStorage.removeItem('spoon-is-logged-in');
+  localStorage.removeItem('spoon-email');
+  localStorage.removeItem('spoon-user');
+
   alert('Your session has been terminated because you logged in on another device.');
 
   supabase.auth.signOut().then(() => {
-    localStorage.removeItem('spoon-session-token');
-    localStorage.removeItem('spoon-user-email');
-    localStorage.removeItem('spoon-is-logged-in');
-    // Clear legacy/potential other email keys
-    localStorage.removeItem('spoon-email');
     window.location.href = 'login.html';
   });
 }
