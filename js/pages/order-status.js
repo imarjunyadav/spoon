@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
      * Matches the pattern used in cart.js and other pages.
      */
     function getUserEmail() {
-        const userStr = localStorage.getItem('spoon_user');
+        const userStr = localStorage.getItem('spoon-user');
         if (!userStr) return null;
         try {
             const user = JSON.parse(userStr);
