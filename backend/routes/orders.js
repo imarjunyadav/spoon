@@ -1,10 +1,12 @@
 /**
  * Spoon - Orders API Routes
  * 
- * Handles order status updates with email notifications.
+ * Handles order status updates with email notifications
+ * and pre-order cancellation with eWallet coin refund.
  * 
  * Endpoints:
- * - PATCH /api/orders/:orderId/status - Update order status and send email
+ * - PATCH /api/orders/:orderId/status  - Update order status and send email
+ * - POST  /api/orders/:orderId/cancel  - Cancel pre-order and refund coins
  */
 
 const express = require('express');
@@ -12,6 +14,7 @@ const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const nodemailer = require('nodemailer');
 const adminService = require('../services/adminService');
+const walletService = require('../services/walletService');
 
 // Initialize Supabase client with SERVICE_ROLE_KEY
 // This bypasses RLS policies and allows admin operations
@@ -298,6 +301,184 @@ router.patch('/:orderId/status', async (req, res) => {
       success: false,
       error: 'Internal server error'
     });
+  }
+});
+
+const requireAuth = require('../middleware/userAuth');
+
+// ========================================
+// ENDPOINT: Cancel Pre-Order
+// ========================================
+
+/**
+ * Cancel a pre-order and refund coins to wallet.
+ *
+ * Rules:
+ * - Only PLACED orders can be cancelled
+ * - Only pre-orders (with preorder_time) are eligible
+ * - Must be >= 45 minutes before preorder_time
+ * - Refund amount = order.total (what they paid)
+ * - Max 3 cancellations per user per 24 hours
+ *
+ * Security:
+ * - Uses requireAuth middleware
+ * - Enforces order ownership (order.customer_email MUST match session email)
+ *
+ * Method: POST
+ * Path: /api/orders/:orderId/cancel
+ */
+router.post('/:orderId/cancel', requireAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason } = req.body;
+    const email = req.user.email; // Guaranteed by requireAuth
+
+    // --- Input validation ---
+    if (!orderId || typeof orderId !== 'string') {
+      return res.status(400).json({ success: false, error: 'Valid orderId is required' });
+    }
+
+    // Sanitize optional reason (max 200 chars, no HTML)
+    const safeReason = reason
+      ? String(reason).replace(/<[^>]*>/g, '').substring(0, 200)
+      : 'User cancelled';
+
+    // STEP 1: Fetch the order
+    const { data: order, error: fetchError } = await supabase
+      .from('orders')
+      .select('id, status, total, preorder_time, customer_email, payment_method')
+      .eq('id', orderId)
+      .single();
+
+    if (fetchError || !order) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    // STEP 2: Ownership check
+    // Vital security check: Session email must match Order email
+    if (order.customer_email.toLowerCase() !== email) {
+      console.warn(`⚠️ Cancel ownership mismatch: ${email} tried to cancel ${orderId} owned by ${order.customer_email}`);
+      return res.status(403).json({ success: false, error: 'Not your order' });
+    }
+
+    // STEP 3: Status check
+    if (order.status !== 'PLACED') {
+      return res.status(400).json({
+        success: false,
+        error: `Cannot cancel order with status: ${order.status}`
+      });
+    }
+
+    // STEP 4: Pre-order check
+    if (!order.preorder_time) {
+      return res.status(400).json({
+        success: false,
+        error: 'Only pre-orders can be cancelled'
+      });
+    }
+
+    // STEP 5: 45-minute window check (server-side time only)
+    const now = new Date();
+    const preorderTime = new Date(order.preorder_time);
+    const minutesUntilPickup = (preorderTime - now) / (1000 * 60);
+
+    if (minutesUntilPickup < 45) {
+      return res.status(400).json({
+        success: false,
+        error: 'Too late to cancel. Must cancel at least 45 minutes before pickup time.',
+        minutesRemaining: Math.max(0, Math.floor(minutesUntilPickup)),
+        serverTime: now.toISOString()  // Let frontend sync to server clock
+      });
+    }
+
+    // STEP 6: Rate limit check (max 3 cancellations per 24h)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: recentCancels } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('customer_email', email)
+      .eq('status', 'CANCELLED')
+      .gte('cancelled_at', twentyFourHoursAgo);
+
+    if (recentCancels && recentCancels.length >= 3) {
+      return res.status(429).json({
+        success: false,
+        error: 'Maximum 3 cancellations per day. Please try again tomorrow.'
+      });
+    }
+
+    // STEP 7: Atomic cancel — only cancel if still PLACED
+    // order.total is numeric in DB, convert to integer coins
+    const refundAmount = Math.round(Number(order.total));
+    if (!Number.isInteger(refundAmount) || refundAmount <= 0) {
+      console.error(`❌ Invalid refund amount for order ${orderId}: total=${order.total}`);
+      return res.status(500).json({ success: false, error: 'Invalid order total for refund' });
+    }
+
+    const { data: cancelled, error: cancelError } = await supabase
+      .from('orders')
+      .update({
+        status: 'CANCELLED',
+        cancelled_at: new Date().toISOString(),
+        cancellation_reason: safeReason,
+        refund_amount: refundAmount
+      })
+      .eq('id', orderId)
+      .eq('status', 'PLACED')  // Optimistic lock
+      .select();
+
+    if (cancelError) {
+      console.error('❌ Cancel update failed:', cancelError);
+      return res.status(500).json({ success: false, error: 'Failed to cancel order' });
+    }
+
+    if (!cancelled || cancelled.length === 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'Order status changed. Please refresh and try again.'
+      });
+    }
+
+    // STEP 8: Credit coins to wallet
+    const creditResult = await walletService.creditCoins(
+      email,
+      refundAmount,
+      'REFUND',
+      orderId,
+      `Refund for cancelled order`
+    );
+
+    if (!creditResult.success) {
+      // Rollback: revert order to PLACED
+      await supabase
+        .from('orders')
+        .update({
+          status: 'PLACED',
+          cancelled_at: null,
+          cancellation_reason: null,
+          refund_amount: null
+        })
+        .eq('id', orderId);
+
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to credit wallet. Order not cancelled.'
+      });
+    }
+
+    console.log(`✅ Order ${orderId} cancelled. ${refundAmount} coins credited to ${email}`);
+
+    return res.json({
+      success: true,
+      refundAmount: refundAmount,
+      walletBalance: creditResult.balance,
+      message: `Order cancelled. ${refundAmount} coins credited to your wallet.`
+    });
+
+  } catch (error) {
+    console.error('💥 Cancel order error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

@@ -698,6 +698,90 @@
     transform: scale(0.98);
 }
 
+/* --- 6d. Payment Method Selection --- */
+.payment-method-section {
+    padding: var(--spacing-sm) 0;
+    border-top: 1px solid #f0f0f0;
+    margin-top: var(--spacing-sm);
+}
+
+.payment-method-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.payment-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 2px solid #f0f0f0;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.payment-option.selected {
+    border-color: var(--brand-primary);
+    background-color: #fff5f5;
+}
+
+.payment-option input[type="radio"] {
+    display: none;
+}
+
+.payment-option__content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.payment-option__name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.payment-option__sub {
+    font-size: 12px;
+    color: #888;
+}
+
+.payment-option__icon {
+    font-size: 20px;
+    color: #ddd;
+    transition: color 0.2s ease;
+}
+
+.payment-option.selected .payment-option__icon {
+    color: var(--brand-primary);
+}
+
+/* Disabled state for wallet */
+.payment-option.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #fafafa;
+    border-color: #f0f0f0;
+}
+
+.wallet-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #d32f2f;
+    margin-top: -4px;
+    margin-bottom: 8px;
+    padding-left: 4px;
+    font-weight: 500;
+}
+
 /* Modal-specific button layout */
 .modal__actions button {
     flex: 1;
@@ -742,18 +826,23 @@
     overflow-x: auto;
     overflow-y: hidden;
     padding: var(--spacing-sm) var(--spacing-md);
-    margin: 0 calc(-1 * var(--spacing-md)); /* Extend to edges */
+    margin: 0 calc(-1 * var(--spacing-md));
+    /* Extend to edges */
     margin-bottom: var(--spacing-sm);
     scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-    
+    -webkit-overflow-scrolling: touch;
+    /* Smooth scrolling on iOS */
+
     /* Hide scrollbar but keep functionality */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/Edge */
 }
 
 .time-chips-container::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
+    display: none;
+    /* Chrome/Safari */
 }
 
 /**

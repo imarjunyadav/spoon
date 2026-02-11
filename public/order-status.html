@@ -58,6 +58,32 @@
                 </div>
             </section>
 
+            <!-- --- Cancel Order Section (shown for eligible pre-orders) --- -->
+            <section class="cancel-order-section hidden" id="cancel-order-section">
+                <div class="cancel-order-info">
+                    <div class="cancel-order-timer" id="cancel-timer">
+                        <i class="fa-regular fa-clock"></i>
+                        <span id="cancel-timer-text">Cancel available for --:--</span>
+                    </div>
+                    <p class="cancel-order-note">
+                        Refund will be credited as <strong>eWallet coins</strong> (1 coin = ₹1)
+                    </p>
+                </div>
+                <button class="btn--cancel-order" id="btn-cancel-order" type="button">
+                    <i class="fa-solid fa-xmark"></i>
+                    Cancel Order
+                </button>
+            </section>
+
+            <!-- --- Cancelled Order Badge (shown after cancellation) --- -->
+            <section class="cancel-order-done hidden" id="cancel-order-done">
+                <div class="cancel-done-icon">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <p class="cancel-done-text">Order cancelled</p>
+                <p class="cancel-done-refund" id="cancel-done-refund">₹0 refunded as coins</p>
+            </section>
+
             <!-- --- Vertical Timeline --- -->
             <!-- The main container ID matches the original JS -->
             <section class="timeline-section">
@@ -67,6 +93,38 @@
                     <!-- Pickup code will be injected inline within the "Ready for Pickup" step -->
                 </div>
             </section>
+
+            <!-- --- Cancel Confirmation Modal --- -->
+            <div class="cancel-modal-overlay hidden" id="cancel-modal-overlay">
+                <div class="cancel-modal">
+                    <div class="cancel-modal__header">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <h3>Cancel this order?</h3>
+                    </div>
+                    <div class="cancel-modal__body">
+                        <p class="cancel-modal__refund">
+                            <span class="cancel-modal__refund-amount" id="cancel-refund-amount">₹0</span>
+                            will be refunded as eWallet coins
+                        </p>
+                        <div class="cancel-modal__reason">
+                            <label for="cancel-reason">Reason (optional)</label>
+                            <select id="cancel-reason">
+                                <option value="">Select a reason</option>
+                                <option value="Changed my mind">Changed my mind</option>
+                                <option value="Ordered wrong items">Ordered wrong items</option>
+                                <option value="Won't make it in time">Won't make it in time</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="cancel-modal__actions">
+                        <button class="btn--modal-back" id="btn-cancel-back" type="button">Go Back</button>
+                        <button class="btn--modal-confirm" id="btn-cancel-confirm" type="button">
+                            Yes, Cancel Order
+                        </button>
+                    </div>
+                </div>
+            </div>
 
         </main>
 

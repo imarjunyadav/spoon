@@ -41,6 +41,31 @@
                 </div>
             </section>
 
+            <!-- --- Wallet Section --- -->
+            <section class="wallet-section">
+                <div class="wallet-card">
+                    <div class="wallet-card__header">
+                        <span class="wallet-card__label">Spoon Wallet</span>
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                    <div class="wallet-card__balance">
+                        <span class="currency-symbol">₹</span>
+                        <span id="wallet-balance-amount">--</span>
+                    </div>
+                    <p class="wallet-card__note">Use coins for instant refunds & payments</p>
+                </div>
+            </section>
+
+            <!-- --- Transaction History --- -->
+            <section class="transactions-section">
+                <h3 class="section-title">Recent Transactions</h3>
+                <div class="transactions-list" id="transactions-list">
+                    <!-- Transactions will be injected here by JS -->
+                    <div class="transaction-item loading-skeleton"></div>
+                    <div class="transaction-item loading-skeleton"></div>
+                </div>
+            </section>
+
             <!-- --- Action Menu --- -->
             <section class="action-menu">
                 <a href="help.html" class="action-menu__item">

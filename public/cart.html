@@ -123,6 +123,36 @@
             <i class="fa-solid fa-chevron-right"></i>
         </button>
 
+        <!-- Payment Method Selection -->
+        <div class="payment-method-section">
+            <h3 class="payment-method-title">Payment Method</h3>
+            
+            <!-- Razorpay Option -->
+            <label class="payment-option selected" id="opt-razorpay-label">
+                <input type="radio" name="payment-method" value="razorpay" checked>
+                <div class="payment-option__content">
+                    <span class="payment-option__name">Pay Online</span>
+                    <span class="payment-option__sub">UPI, Cards, Netbanking</span>
+                </div>
+                <i class="fa-solid fa-circle-check payment-option__icon"></i>
+            </label>
+
+            <!-- Wallet Option -->
+            <label class="payment-option" id="opt-wallet-label">
+                <input type="radio" name="payment-method" value="wallet">
+                <div class="payment-option__content">
+                    <span class="payment-option__name">Spoon Wallet</span>
+                    <span class="payment-option__sub" id="wallet-balance-display">Balance: Loading...</span>
+                </div>
+                <i class="fa-solid fa-circle-check payment-option__icon"></i>
+            </label>
+            
+            <div class="wallet-error hidden" id="wallet-error-msg">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span>Insufficient wallet balance</span>
+            </div>
+        </div>
+
         <!-- Final total and action buttons -->
         <div class="modal__total">
             <span class="modal__total-label">Total to Pay</span>

@@ -5,7 +5,7 @@
  * - Displays items and quantities.
  * - Handles quantity updates.
  * - Manages pre-order time selection.
- * - Processes payments via Razorpay.
+ * - Processes payments via Razorpay OR Spoon Wallet.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -40,8 +40,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const confirmPreorderBtn = document.getElementById('confirm-preorder-btn');
   const closePreorderBtn = document.getElementById('close-preorder-modal-btn');
 
+  // Payment Method Elements
+  const paymentOptions = document.querySelectorAll('input[name="payment-method"]');
+  const optRazorpayLabel = document.getElementById('opt-razorpay-label');
+  const optWalletLabel = document.getElementById('opt-wallet-label');
+  const walletBalanceDisplay = document.getElementById('wallet-balance-display');
+  const walletErrorMsg = document.getElementById('wallet-error-msg');
+
+
   // --- State Variables ---
   let selectedPreOrderTime = null;
+  let walletBalance = 0;
+  let selectedPaymentMethod = 'razorpay'; // 'razorpay' or 'wallet'
 
   // --- Cart Helper Functions ---
 
@@ -75,6 +85,14 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       cartBadge.classList.remove('visible');
     }
+  }
+
+  /**
+   * Calculate cart total.
+   */
+  function getCartTotal() {
+    const cart = getCart();
+    return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }
 
   // --- UI Rendering Functions ---
@@ -121,6 +139,78 @@ document.addEventListener('DOMContentLoaded', () => {
     subtotalValueEl.textContent = `₹${subtotal}`;
     updateCartBadge();
   }
+
+  // --- Wallet Logic ---
+
+  /**
+   * Fetch current user's wallet balance.
+   */
+  async function fetchWalletBalance() {
+    const userEmail = getUserEmail();
+    if (!userEmail) return;
+
+    try {
+      const sessionToken = localStorage.getItem('spoon-session-token');
+
+      const res = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/wallet/balance?email=${encodeURIComponent(userEmail)}`, {
+        headers: {
+          'x-user-email': userEmail,
+          'x-session-token': sessionToken
+        }
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        walletBalance = data.balance;
+
+        // Update UI if element exists
+        if (walletBalanceDisplay) {
+          walletBalanceDisplay.textContent = `Balance: ₹${walletBalance}`;
+        }
+      } else {
+        console.error('Failed to fetch wallet balance:', data.error);
+        if (walletBalanceDisplay) walletBalanceDisplay.textContent = 'Balance: Error';
+      }
+    } catch (err) {
+      console.error('Network error fetching wallet balance:', err);
+      if (walletBalanceDisplay) walletBalanceDisplay.textContent = 'Balance: Offline';
+    }
+  }
+
+  /**
+   * Update payment method UI state based on balance and cart total.
+   */
+  function updatePaymentUI() {
+    const cartTotal = getCartTotal();
+
+    // Check if wallet has enough balance
+    const hasEnoughBalance = walletBalance >= cartTotal;
+
+    // Razorpay is always available
+    optRazorpayLabel.classList.remove('disabled');
+
+    // Wallet option state
+    if (hasEnoughBalance) {
+      optWalletLabel.classList.remove('disabled');
+      walletErrorMsg.classList.add('hidden');
+      optWalletLabel.querySelector('input').disabled = false;
+    } else {
+      optWalletLabel.classList.add('disabled');
+      walletErrorMsg.classList.remove('hidden');
+      optWalletLabel.querySelector('input').disabled = true;
+
+      // If wallet was selected but now disabled, switch to Razorpay
+      if (selectedPaymentMethod === 'wallet') {
+        document.querySelector('input[value="razorpay"]').click();
+      }
+    }
+  }
+
+  function getUserEmail() {
+    const userData = JSON.parse(localStorage.getItem("spoon-user") || "{}");
+    return userData.email || localStorage.getItem("spoon-user-email");
+  }
+
 
   // --- Event Handlers ---
 
@@ -207,6 +297,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     modalTotalValue.textContent = `₹${subtotal}`;
+
+    // Update payment method UI when opening modal
+    updatePaymentUI();
   }
 
   // --- Pre-order Time Picker ---
@@ -386,20 +479,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Payment & Checkout ---
+  // --- Payment Method Selection Logic ---
 
-  function generateVerificationCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 4; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
-  }
+  paymentOptions.forEach(option => {
+    option.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        selectedPaymentMethod = e.target.value;
+
+        // Visual Update
+        document.querySelectorAll('.payment-option').forEach(el => el.classList.remove('selected'));
+        e.target.closest('.payment-option').classList.add('selected');
+      }
+    });
+  });
+
+  // --- Payment & Checkout ---
 
   /**
    * Final Order Confirmation Handler.
-   * Processes payment using Razorpay and creates order.
+   * Processes payment using Razorpay OR Spoon Wallet.
    */
   finalConfirmBtn.addEventListener("click", async () => {
     if (finalConfirmBtn.disabled) return;
@@ -410,9 +508,17 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const subtotal = getCartTotal();
+
+    // Safety Check
     if (typeof subtotal !== 'number' || subtotal <= 0 || isNaN(subtotal)) {
       alert("Invalid subtotal. Cannot proceed with payment.");
+      return;
+    }
+
+    // Double check wallet balance
+    if (selectedPaymentMethod === 'wallet' && walletBalance < subtotal) {
+      alert('Insufficient wallet balance. Please select Online Payment.');
       return;
     }
 
@@ -420,15 +526,50 @@ document.addEventListener('DOMContentLoaded', () => {
     finalConfirmBtn.disabled = true;
 
     try {
-      const userData = JSON.parse(localStorage.getItem("spoon-user") || "{}");
-      let userEmail = userData.email || localStorage.getItem("spoon-user-email");
-
+      const userEmail = getUserEmail();
       if (!userEmail) {
-        console.error("❌ No user email found in localStorage");
         alert("Please log in again to place your order.");
         window.location.href = "login.html";
         return;
       }
+
+      // --- BRANCH: WALLET PAYMENT ---
+      if (selectedPaymentMethod === 'wallet') {
+        const sessionToken = localStorage.getItem('spoon-session-token');
+        const res = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/wallet/pay`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-email': userEmail,
+            'x-session-token': sessionToken
+          },
+          body: JSON.stringify({
+            amount: subtotal,
+            email: userEmail,
+            items: cart,
+            preorderTime: selectedPreOrderTime,
+            phoneNumber: userPhoneNumber
+          })
+        });
+
+        const result = await res.json();
+
+        if (result.success) {
+          // Success!
+          localStorage.removeItem("spoon-cart");
+          localStorage.removeItem("current_order_id");
+          window.location.href = `order-status.html?id=${result.orderId}&payment_success=true`;
+        } else {
+          // Failure
+          alert(`Wallet payment failed: ${result.error || 'Unknown error'}`);
+          finalConfirmBtn.classList.remove('loading');
+          finalConfirmBtn.disabled = false;
+        }
+        return;
+      }
+
+
+      // --- BRANCH: RAZORPAY PAYMENT ---
 
       // 1. Create Order on Backend
       const res = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/payment/create-order`, {
@@ -493,7 +634,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         },
         prefill: {
-          name: userData.name || "",
+          name: JSON.parse(localStorage.getItem("spoon-user") || "{}").name || "",
           email: userEmail,
           contact: userPhoneNumber || ""
         },
@@ -536,10 +677,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   cartItemsContainer.addEventListener('click', handleQuantityChange);
 
-  // Wait for config then render
+  // Wait for config then render & fetch balance
   window.waitForConfig().then(() => {
     supabase = window.getSupabaseClient();
     renderCart();
+    fetchWalletBalance();
   });
 
   // Cross-tab sync

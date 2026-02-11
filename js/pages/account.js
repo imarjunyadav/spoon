@@ -4,6 +4,7 @@
  * Handles client-side logic for the logged-in user's account page.
  * - Authenticates user.
  * - Populates profile data.
+ * - Fetches and displays Wallet Balance & Transaction History.
  * - Handles secure logout.
  */
 
@@ -22,6 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartBadge = document.getElementById('cart-badge');
     const logoutBtn = document.getElementById('logout-btn');
 
+    // Wallet Elements
+    const walletBalanceEl = document.getElementById('wallet-balance-amount');
+    const transactionsListEl = document.getElementById('transactions-list');
+
     // Logout Modal Elements
     const logoutModalOverlay = document.getElementById('logout-modal-overlay');
     const logoutModal = document.getElementById('logout-modal');
@@ -37,6 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function getCurrentUser() {
         return JSON.parse(localStorage.getItem('spoon-user'));
+    }
+
+    function getUserEmail() {
+        const user = getCurrentUser();
+        return user ? (user.email || localStorage.getItem('spoon-user-email')) : null;
     }
 
     function openModal(modalElement) {
@@ -55,6 +65,20 @@ document.addEventListener('DOMContentLoaded', () => {
             logoutModalOverlay.classList.add('hidden');
             modalElement.classList.add('hidden');
         }, 300);
+    }
+
+    /**
+     * Format date to friendly string (e.g., "12 Feb, 2:30 PM")
+     */
+    function formatTransactionDate(isoString) {
+        const date = new Date(isoString);
+        return date.toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: true
+        });
     }
 
     // --- Core Functions ---
@@ -79,6 +103,91 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("User data not found despite being logged in.");
             handleLogout(); // Force logout if data is inconsistent
         }
+    }
+
+    /**
+     * Fetch and display Wallet Balance and Transactions.
+     */
+    async function fetchWalletData() {
+        const email = getUserEmail();
+        if (!email) return;
+
+        try {
+            // 1. Fetch Balance
+            const sessionToken = localStorage.getItem('spoon-session-token');
+            const balanceRes = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/wallet/balance?email=${encodeURIComponent(email)}`, {
+                headers: {
+                    'x-user-email': email,
+                    'x-session-token': sessionToken
+                }
+            });
+            const balanceData = await balanceRes.json();
+
+            if (balanceData.success) {
+                walletBalanceEl.textContent = balanceData.balance;
+            } else {
+                walletBalanceEl.textContent = 'Error';
+            }
+
+            // 2. Fetch Transactions
+            const txRes = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/wallet/transactions?email=${encodeURIComponent(email)}&limit=10`, {
+                headers: {
+                    'x-user-email': email,
+                    'x-session-token': sessionToken
+                }
+            });
+            const txData = await txRes.json();
+
+            if (txData.success) {
+                renderTransactions(txData.transactions);
+            } else {
+                transactionsListEl.innerHTML = '<div class="no-transactions">Failed to load transactions</div>';
+            }
+
+        } catch (err) {
+            console.error('Error fetching wallet data:', err);
+            walletBalanceEl.textContent = 'Offline';
+            transactionsListEl.innerHTML = '<div class="no-transactions">Network error</div>';
+        }
+    }
+
+    /**
+     * Render list of transactions.
+     * @param {Array} transactions 
+     */
+    function renderTransactions(transactions) {
+        if (!transactions || transactions.length === 0) {
+            transactionsListEl.innerHTML = '<div class="no-transactions">No recent transactions</div>';
+            return;
+        }
+
+        transactionsListEl.innerHTML = transactions.map(tx => {
+            const isCredit = tx.type === 'CREDIT';
+            const iconClass = isCredit ? 'credit' : 'debit';
+            const icon = isCredit ? 'fa-arrow-down' : 'fa-arrow-up'; // Down = In (Credit), Up = Out (Debit)
+            const amountClass = isCredit ? 'credit' : 'debit';
+            const sign = isCredit ? '+' : '-';
+
+            // Format description
+            let desc = tx.description || tx.reason;
+            if (tx.reason === 'REFUND') desc = `Refund for Order #${tx.reference_order_id?.substring(0, 8)}`;
+            if (tx.reason === 'PAYMENT') desc = `Payment for Order #${tx.reference_order_id?.substring(0, 8)}`;
+
+            return `
+                <div class="transaction-item">
+                    <div class="transaction-icon ${iconClass}">
+                        <i class="fa-solid ${icon}"></i>
+                    </div>
+                    <div class="transaction-details">
+                        <div class="transaction-desc">${desc}</div>
+                        <div class="transaction-date">${formatTransactionDate(tx.created_at)}</div>
+                    </div>
+                    <div class="transaction-amount ${amountClass}">
+                        ${sign}₹${tx.amount}
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     /**
@@ -135,6 +244,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function init() {
         populateProfile();
         updateCartBadge();
+
+        // Wait for config then fetch wallet
+        window.waitForConfig().then(() => {
+            fetchWalletData();
+        });
+
         console.log("Account dashboard initialized.");
     }
 

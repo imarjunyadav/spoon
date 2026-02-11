@@ -193,6 +193,14 @@ const adminRoutes = require("./routes/admin");
 app.use("/api/admin", adminRoutes);
 
 /**
+ * WALLET ROUTES
+ * eWallet coin management for pre-order cancellation refunds
+ * Example: GET /api/wallet/balance, POST /api/wallet/pay
+ */
+const walletRoutes = require("./routes/wallet");
+app.use("/api/wallet", walletRoutes);
+
+/**
  * STATIC FILE SERVING
  * Serves files from project root directory
  * 
