@@ -130,17 +130,20 @@ function initDOMReferences() {
   DOM.tabItems = document.getElementById('tab-items');
   DOM.tabActive = document.getElementById('tab-active');
   DOM.tabCompleted = document.getElementById('tab-completed');
+  DOM.tabCancelled = document.getElementById('tab-cancelled');
 
   // Views
   DOM.views = document.querySelectorAll('.admin-view');
   DOM.itemsView = document.getElementById('items-view');
   DOM.activeView = document.getElementById('active-view');
   DOM.completedView = document.getElementById('completed-view');
+  DOM.cancelledView = document.getElementById('cancelled-view');
 
   // Lists
   DOM.itemsList = document.getElementById('items-list');
   DOM.activeOrdersList = document.getElementById('active-orders-list');
   DOM.completedOrdersList = document.getElementById('completed-orders-list');
+  DOM.cancelledOrdersList = document.getElementById('cancelled-orders-list');
   DOM.stockItemsList = document.getElementById('stock-items-list');
 
   // Active orders sort
@@ -150,6 +153,7 @@ function initDOMReferences() {
   DOM.badgeItems = document.getElementById('badge-items');
   DOM.badgeActive = document.getElementById('badge-active');
   DOM.badgeCompleted = document.getElementById('badge-completed');
+  DOM.badgeCancelled = document.getElementById('badge-cancelled');
 
   // Connection status
   DOM.connectionStatus = document.getElementById('connection-status');
@@ -200,6 +204,7 @@ function initDOMReferences() {
   DOM.itemsEmpty = document.getElementById('items-empty');
   DOM.activeEmpty = document.getElementById('active-empty');
   DOM.completedEmpty = document.getElementById('completed-empty');
+  DOM.cancelledEmpty = document.getElementById('cancelled-empty');
   DOM.searchNoResults = document.getElementById('search-no-results');
 }
 
@@ -326,9 +331,9 @@ function handleTabSwitch(viewId) {
     view.classList.toggle('active', isActive);
   });
 
-  // Hide stock FAB on Active and Ready tabs (execution-only)
+  // Hide stock FAB on Active, Ready, and Cancelled tabs (execution-only)
   if (DOM.stockFab) {
-    DOM.stockFab.classList.toggle('hidden', viewId === 'active' || viewId === 'completed');
+    DOM.stockFab.classList.toggle('hidden', viewId === 'active' || viewId === 'completed' || viewId === 'cancelled');
   }
 
   // Auto-focus search on Ready tab for quick verification code entry
@@ -375,6 +380,10 @@ function updateBadgeCounts() {
 
   // Completed badge: count of completed orders
   updateBadge(DOM.badgeCompleted, completedOrders.length);
+
+  // Cancelled badge: count of cancelled orders
+  const cancelledOrders = AdminState.orders.filter(o => o.status === 'CANCELLED');
+  updateBadge(DOM.badgeCancelled, cancelledOrders.length);
 }
 
 /**
@@ -862,6 +871,7 @@ function renderAll() {
   renderItems();
   renderActiveOrders();
   renderCompletedOrders();
+  renderCancelledOrders();
   updateBadgeCounts();
 }
 
@@ -1975,6 +1985,64 @@ function renderCompletedOrders() {
   DOM.completedOrdersList.querySelectorAll('[data-action="pickup"]').forEach(btn => {
     btn.addEventListener('click', () => showConfirmDialog(btn.dataset.orderId, 'pickup'));
   });
+}
+
+/**
+ * Render Cancelled Orders view.
+ */
+function renderCancelledOrders() {
+  if (!DOM.cancelledOrdersList) return;
+
+  // Filter for CANCELLED orders
+  // Sort by updated_at descending (most recent first)
+  const orders = AdminState.orders
+    .filter(o => o.status === 'CANCELLED')
+    .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+
+  // Show/hide empty state
+  DOM.cancelledEmpty?.classList.toggle('hidden', orders.length > 0);
+
+  if (orders.length === 0) {
+    DOM.cancelledOrdersList.innerHTML = '';
+    return;
+  }
+
+  DOM.cancelledOrdersList.innerHTML = orders.map(order => {
+    const totalQty = order.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+    const cancelTime = order.updated_at || order.created_at;
+    const timeDisplay = formatTime(cancelTime); // Assuming formatTime handles ISO string
+
+    // Format refund info
+    const refundAmount = order.refund_amount || order.total || 0;
+
+    return `
+      <article class="order-card order-card--cancelled" data-order-id="${order.id}">
+        <div class="order-card__header">
+          <div class="order-card__info">
+            <span class="order-card__time">Cancelled at ${timeDisplay}</span>
+            <span class="order-card__qty">${totalQty} items</span>
+          </div>
+          <div class="order-card__status-badge order-card__status-badge--cancelled">
+            Cancelled
+          </div>
+        </div>
+        
+        <div class="order-card__refund-info">
+          <i class="fas fa-undo-alt" aria-hidden="true"></i>
+          <span>Refunded: ₹${refundAmount} coins</span>
+        </div>
+
+        <ul class="order-card__items">
+          ${(order.items || []).map(item => `
+            <li class="order-card__item">
+              <span class="order-card__item-qty">${item.quantity}×</span>
+              <span class="order-card__item-name">${escapeHtml(item.title)}</span>
+            </li>
+          `).join('')}
+        </ul>
+      </article>
+    `;
+  }).join('');
 }
 
 // ============================================

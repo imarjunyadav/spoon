@@ -206,6 +206,25 @@
             <p class="admin-empty-state__message">Try a different verification code.</p>
           </div>
         </section>
+
+        <!-- Cancelled Orders View -->
+        <section class="admin-view" 
+                 id="cancelled-view" 
+                 role="tabpanel" 
+                 aria-labelledby="tab-cancelled"
+                 aria-label="Cancelled orders">
+          
+          <div id="cancelled-orders-list"></div>
+          
+          <!-- Empty State -->
+          <div class="admin-empty-state hidden" id="cancelled-empty">
+            <div class="admin-empty-state__icon">
+              <i class="fas fa-ban" aria-hidden="true"></i>
+            </div>
+            <h2 class="admin-empty-state__title">No cancelled orders</h2>
+            <p class="admin-empty-state__message">Cancelled orders will appear here.</p>
+          </div>
+        </section>
         
       </div>
     </main>
@@ -249,6 +268,19 @@
         <span class="admin-tab__badge" id="badge-completed" aria-label="completed orders count">0</span>
         <i class="admin-tab__icon fas fa-check-circle" aria-hidden="true"></i>
         <span class="admin-tab__label">Ready</span>
+      </button>
+
+      <!-- Cancelled Orders Tab -->
+      <button class="admin-tab" 
+              id="tab-cancelled"
+              role="tab"
+              aria-selected="false"
+              aria-controls="cancelled-view"
+              aria-label="Cancelled orders"
+              data-view="cancelled">
+        <span class="admin-tab__badge" id="badge-cancelled" aria-label="cancelled orders count">0</span>
+        <i class="admin-tab__icon fas fa-ban" aria-hidden="true"></i>
+        <span class="admin-tab__label">Cancelled</span>
       </button>
       
       <!-- Stock Tab - Branded treatment (Zomato/Blinkit style) -->
