@@ -9,7 +9,7 @@
 // STATE MANAGEMENT
 // ============================================
 
-console.log("🥄 Admin Mobile v2.14 loaded - UX V3.0 STANDARD");
+console.log("🥄 Admin Mobile v2.15 loaded - UX V3.1 REFINED");
 
 const AdminState = {
   // Current active tab
@@ -1000,6 +1000,7 @@ function renderNeedsAnnouncingRow(item) {
 
   // Pre-order badge
   const preOrderHtml = isPreOrder
+
     ? `<span class="admin-badge-preorder">Pre-order</span>`
     : '';
 
@@ -1009,12 +1010,14 @@ function renderNeedsAnnouncingRow(item) {
         <!-- 1. Name -->
         <span class="admin-text-primary">${escapeHtml(item.name)}</span>
         
-        <!-- 2. Qty -->
-        <span class="admin-text-hero">×${item.quantity}</span>
+        <!-- 2. Qty (Inline Badge) -->
+        <span class="admin-badge-qty">×${item.quantity}</span>
         
-        <!-- 3. Time (Preorder badge + Timestamp) -->
-        ${preOrderHtml}
-        <span class="admin-text-secondary">${timeText}</span>
+        <!-- 3. Time (Pushed Right) -->
+        <span class="admin-text-secondary">
+          ${preOrderHtml}
+          ${timeText}
+        </span>
       </div>
       
       <div class="admin-row__action">
@@ -1059,17 +1062,19 @@ function renderToldRow(item) {
     : '';
 
   return `
-    <div class="admin-row" role="listitem">
+    <div class="admin-row item-row--told" role="listitem">
       <div class="admin-row__content">
         <!-- 1. Name -->
-        <span class="admin-text-primary" style="color:var(--text-secondary);">${escapeHtml(item.name)}</span>
+        <span class="admin-text-primary">${escapeHtml(item.name)}</span>
         
         <!-- 2. Qty -->
-        <span class="admin-text-hero" style="color:var(--text-secondary);">×${item.quantity}</span>
+        <span class="admin-badge-qty">×${item.quantity}</span>
         
         <!-- 3. Time -->
-        ${preOrderHtml}
-        <span class="admin-text-secondary">${timeHint}</span>
+        <span class="admin-text-secondary">
+          ${preOrderHtml}
+          ${timeHint}
+        </span>
       </div>
       
       <div class="admin-row__action">
@@ -1082,7 +1087,6 @@ function renderToldRow(item) {
     </div>
   `;
 }
-
 /**
  * Render the pre-orders planning section (v2 — with countdown)
  * @param {Array} slots - Pre-order time slots from getPreOrdersForPlanning()
