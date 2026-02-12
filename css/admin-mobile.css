@@ -2277,20 +2277,12 @@ body {
     flex: initial;
 }
 
-/* Delta Badge (High Visibility) */
-.item-row--v5 .item-row__delta-badge {
-    background-color: #fff7ed;
-    /* Orange-50 */
-    color: #c2410c;
-    /* Orange-700 */
-    font-size: 13px;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 99px;
-    display: inline-flex;
-    align-items: center;
+/* Quantity Badge (inline after name) */
+.item-row--v5 .item-row__meta-qty {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-muted);
     white-space: nowrap;
-    border: 1px solid rgba(194, 65, 12, 0.1);
 }
 
 /* Meta Row: Time • Qty */
@@ -3107,32 +3099,82 @@ body {
     display: none;
 }
 
-/* Told item row — muted */
+/* Told item row — muted, same flex layout as v5 */
 .item-row--told {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    gap: 12px;
     background-color: var(--background-light);
-    opacity: 0.65;
+    opacity: 0.7;
+    border: none;
+    min-height: auto;
     border-left-color: transparent !important;
     animation: none !important;
 }
 
-.item-row--told .item-row__qty {
-    font-size: 20px;
-    font-weight: var(--font-weight-bold);
-    color: var(--text-muted);
+.item-row--told .item-row__main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.item-row--told .item-row__top {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
 }
 
 .item-row--told .item-row__name {
+    font-size: 15px;
+    font-weight: 600;
     color: var(--text-muted);
+    margin: 0;
 }
 
-.item-row__told-indicator {
-    font-size: var(--font-size-2xs);
-    font-weight: var(--font-weight-medium);
-    color: var(--success-green);
+.item-row--told .item-row__meta-qty {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    opacity: 0.7;
+}
 
+.item-row--told .item-row__meta {
     display: flex;
     align-items: center;
-    gap: 2px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--text-muted);
+    gap: 5px;
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+.item-row--told .item-row__action {
+    flex-shrink: 0;
+}
+
+/* UNTOLD Button */
+.item-row__untold {
+    min-width: 72px;
+    height: 40px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1.5px solid var(--border-default, #d1d5db);
+    border-radius: 10px;
+    padding: 0 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    letter-spacing: 0.3px;
+}
+
+.item-row__untold:active {
+    background-color: rgba(0, 0, 0, 0.04);
+    transform: scale(0.97);
 }
 
 /* Pre-orders section — planning view */

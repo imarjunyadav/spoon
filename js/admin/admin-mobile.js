@@ -32,9 +32,9 @@ const AdminState = {
   confirmDialog: null, // { orderId, action, previousStatus }
 
   // Items tab "told" tracking (Simplified)
-  // Set of strings: `${orderId}_${itemId}`
+  // Map of strings: `${orderId}_${itemTitle}` → timestamp (when told)
   // Tracks individual order items that have been announced.
-  toldItemIds: new Set(),
+  toldItemIds: new Map(),
 
   // Pending actions (for optimistic updates)
   pendingToldActions: new Set(),
@@ -912,43 +912,22 @@ function renderAll() {
 }
 
 /**
- * Render Items to Prepare view (v2 — Announcement Board).
- * Displays "Needs Announcing" (with urgency + surge), "Already Told" (collapsible), and "Pre-orders" sections.
+ * Render Items to Prepare view.
+ * Three sections: Needs Announcing, Already Told, Pre-orders.
  */
 function renderItems() {
   if (!DOM.itemsList) return;
 
-  // Get data (State-based)
   const allItems = getNeedsAnnouncingItems();
-  const visible = allItems.filter(i => !i.isTold && !i.isPreOrder);
-  // Note: Pre-orders are separated below, so exclude them here if they are in the array?
-  // getNeedsAnnouncingItems returns both live and pre-orders.
-  // Pre-orders section handles its own list?
-  // renderPreOrdersSection takes `slots` from `getPreOrdersForPlanning`.
-  // Wait, `getNeedsAnnouncingItems` returns Pre-Orders too if we logic'd it so.
-  // The old logic separated them.
-  // My new logic includes them in `items` array with `isPreOrder` flag.
-  // But `renderPreOrdersSection` uses `getPreOrdersForPlanning`.
-  // I should ensure `visible` doesn't double count Pre-orders that are in the "Planning" phase.
-  // The request: "if 'x' pre orders is still in pre orders section...".
-  // Let's filter `visible` to ONLY be `live` items (or pre-orders that are "active" enough to be announced? but pre-orders go to pre-order section).
-  // I will filter out `isPreOrder` from `visible` and `hidden` lists here, assuming Pre-orders are handled by `renderPreOrdersSection`.
-  // Wait, if I click Told on a Pre-order in the Pre-order section, where does it go?
-  // "once counter staff clicked told button then move in 'already told' section".
-  // So TOLD Pre-orders SHOULD appear in `hidden` (Already Told).
-  // But UNTOLD Pre-orders stay in Pre-orders section.
-
   const needsAnnouncing = allItems.filter(i => !i.isTold && !i.isPreOrder);
-  const alreadyTold = allItems.filter(i => i.isTold); // Includes told pre-orders
-
-  const preOrderSlots = getPreOrdersForPlanning(); // This needs to check `!isTold` internally!
+  const alreadyTold = allItems.filter(i => i.isTold);
+  const preOrderSlots = getPreOrdersForPlanning();
 
   const hasNeedsAnnouncing = needsAnnouncing.length > 0;
   const hasToldItems = alreadyTold.length > 0;
   const hasPreOrders = preOrderSlots.length > 0;
   const hasAnyContent = hasNeedsAnnouncing || hasToldItems || hasPreOrders;
 
-  // Show/hide empty state
   DOM.itemsEmpty?.classList.toggle('hidden', hasAnyContent);
 
   if (!hasAnyContent) {
@@ -958,7 +937,7 @@ function renderItems() {
 
   let html = '';
 
-  // Section 1: Needs Announcing (Live Orders)
+  // Section 1: Needs Announcing
   if (hasNeedsAnnouncing) {
     html += `<div class="item-section-header">
       <div style="display:flex;align-items:center;gap:4px;">
@@ -970,7 +949,7 @@ function renderItems() {
     html += needsAnnouncing.map(item => renderNeedsAnnouncingRow(item)).join('');
   }
 
-  // Section 2: Already Told (collapsible history) with UNTOLD option
+  // Section 2: Already Told (collapsible)
   if (hasToldItems) {
     const chevronClass = AdminState.toldSectionOpen ? 'item-section-header__chevron--open' : '';
     const chevronSvg = `<svg class="item-section-header__chevron ${chevronClass}" viewBox="0 0 16 16" fill="currentColor"><path d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>`;
@@ -989,111 +968,56 @@ function renderItems() {
     html += '</div>';
   }
 
-  // Section 3: Pre-orders (Planning)
+  // Section 3: Pre-orders
   if (hasPreOrders) {
     html += renderPreOrdersSection(preOrderSlots);
   }
 
   DOM.itemsList.innerHTML = html;
 
-  // Add click handlers for TOLD buttons
+  // TOLD button handlers
   DOM.itemsList.querySelectorAll('.item-row__told').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const idString = btn.dataset.itemIds; // "id1,id2"
-      if (idString) {
-        handleTold(idString.split(','));
-      }
+      const idString = btn.dataset.itemIds;
+      if (idString) handleTold(idString.split(','));
     });
   });
 
-  // Add click handlers for UNTOLD buttons
+  // UNTOLD button handlers
   DOM.itemsList.querySelectorAll('.item-row__untold').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const idString = btn.dataset.itemIds;
-      if (idString) {
-        handleUntold(idString.split(','));
-      }
+      if (idString) handleUntold(idString.split(','));
     });
   });
 
-  // Add toggle handler for told section
+  // Toggle handler for told section
   const toldToggle = document.getElementById('told-section-toggle');
   if (toldToggle) {
     toldToggle.addEventListener('click', toggleToldSection);
   }
 }
 
-/**
- * Render a single item row.
- * @param {Object} item - Item data.
- * @param {boolean} showDelta - Whether to show delta and told button.
- * @returns {string} HTML string.
- */
-function renderItemRow(item, showDelta) {
-  const isPendingTold = AdminState.pendingToldActions.has(item.name);
-  const showWaitHint = item.waitMinutes >= 5;
-  const waitTimeFormatted = formatWaitTime(item.waitMinutes);
-
-  return `
-    <div class="item-row ${showDelta ? 'item-row--has-delta' : ''}"
-         role="listitem"
-         aria-label="${item.quantity} ${item.name}${showDelta ? `, ${item.delta} new` : ''}">
-      <div class="item-row__content">
-        <div class="item-row__primary">
-          <span class="item-row__qty">${item.quantity}</span><span class="item-row__sep">×</span>
-          <span class="item-row__name">${escapeHtml(item.name)}</span>
-        </div>
-        ${showWaitHint ? `<div class="item-row__wait">${waitTimeFormatted}</div>` : ''}
-      </div>
-      <div class="item-row__right">
-        <span class="item-row__orders"><svg class="item-row__icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>${item.orderCount}</span>
-        ${showDelta ? `
-          <div class="item-row__action">
-            <span class="item-row__delta">+${item.delta}</span>
-            <button class="item-row__told ${isPendingTold ? 'item-row__told--pending' : ''}"
-                    ${isPendingTold ? 'disabled' : ''}
-                    aria-label="Mark ${item.name} as told"
-                    data-item-name="${escapeHtml(item.name)}"
-                    data-item-quantity="${item.totalItemQuantity || item.quantity}">
-              ${isPendingTold ? '·' : '✓'}
-            </button>
-          </div>
-        ` : ''}
-      </div>
-    </div>
-  `;
-}
+// (renderItemRow removed — replaced by renderNeedsAnnouncingRow)
 
 // ============================================
 // PRE-ORDER SEPARATION RENDERING
 // ============================================
 
 /**
- * Render a needs-announcing item row (v2 — Announcement Board).
- * Shows hero qty, name, urgency border, time hint, and text TOLD button.
- * @param {Object} item - Item data.
- * @returns {string} HTML string.
- */
-/**
- * Render a needs-announcing item row (V5 — Name & Delta First).
- * Priority: Name > Delta > Time > Told > Quantity.
+ * Render a needs-announcing item row.
+ * Shows: Name + Qty, Time or Pre-order label, TOLD button.
  * @param {Object} item - Item data.
  * @returns {string} HTML string.
  */
 function renderNeedsAnnouncingRow(item) {
-  const toldKey = item.aggregationKey;
-  const isPendingTold = AdminState.pendingToldActions.has(toldKey);
-  const commitQuantity = item.totalItemQuantity || item.quantity;
-
-  // 1. Time & Pre-order Context
+  // Time info
   let timeText = '';
-  let isPreOrder = false;
+  const isPreOrder = item.hasPreOrderSource && item.earliestPickupTime !== null;
 
-  if (item.hasPreOrderSource && item.earliestPickupTime !== null) {
-    isPreOrder = true;
-    // Calculate minutes until
+  if (isPreOrder) {
     const pickupTime = new Date(item.earliestPickupTime).getTime();
     const minutesUntil = Math.round((pickupTime - Date.now()) / 60000);
     timeText = formatPreOrderTime(minutesUntil, item.earliestPickupTime);
@@ -1101,47 +1025,33 @@ function renderNeedsAnnouncingRow(item) {
     timeText = formatWaitTime(item.waitMinutes);
   }
 
-  // 2. Delta Badge (High Priority)
-  const deltaHtml = item.delta > 0
-    ? `<span class="item-row__delta-badge">+${item.delta}</span>`
-    : '';
-
-  // 3. Pre-order Badge
+  // Pre-order badge
   const preOrderHtml = isPreOrder
     ? `<span class="item-row__tag--preorder">Pre-order</span>`
     : '';
 
-  // 4. Quantity (Low Priority)
-  const quantityHtml = `<span class="item-row__meta-qty">Qty: ${item.quantity}</span>`;
-
-  // 5. Meta Row Construction
-  const metaParts = [preOrderHtml, timeText, quantityHtml].filter(Boolean);
-  const metaHtml = metaParts.join('<span class="item-row__dot">•</span>');
+  // Meta row: pre-order label + time
+  const metaParts = [preOrderHtml, timeText].filter(Boolean);
+  const metaHtml = metaParts.length > 0
+    ? metaParts.join('<span class="item-row__dot">•</span>')
+    : '';
 
   return `
     <div class="item-row item-row--v5"
          role="listitem"
-         aria-label="${item.name}, ${item.delta} new">
-      
-      <!-- LEFT: Name & Details -->
+         aria-label="${item.quantity} ${item.name}">
       <div class="item-row__main">
         <div class="item-row__top">
           <span class="item-row__name">${escapeHtml(item.name)}</span>
-          ${deltaHtml}
+          <span class="item-row__meta-qty">×${item.quantity}</span>
         </div>
-        <div class="item-row__meta">
-          ${metaHtml}
-        </div>
+        ${metaHtml ? `<div class="item-row__meta">${metaHtml}</div>` : ''}
       </div>
-
-      <!-- RIGHT: Action -->
       <div class="item-row__action">
-        <button class="item-row__told ${isPendingTold ? 'item-row__told--pending' : ''}"
-                ${isPendingTold ? 'disabled' : ''}
+        <button class="item-row__told"
                 aria-label="Mark ${item.name} as told"
-                data-item-ids="${(item.contributingItemIds || []).join(',')}"
-                data-is-preorder="${item.hasPreOrderSource}">
-          ${isPendingTold ? '...' : 'TOLD'}
+                data-item-ids="${(item.contributingItemIds || []).join(',')}">
+          TOLD
         </button>
       </div>
     </div>
@@ -1156,43 +1066,49 @@ function renderToldFilterToggle(hiddenCount) {
 }
 
 /**
- * Render a told item row (muted style).
+ * Render a told item row.
+ * Shows: Name + Qty, Told time ("Xm ago") or Pre-order countdown, UNTOLD button.
  * @param {Object} item - Item data.
  * @returns {string} HTML string.
  */
 function renderToldRow(item) {
   let timeHint = '';
-  if (item.hasPreOrderSource && item.earliestPickupTime) {
-    timeHint = formatAbsoluteTime(new Date(item.earliestPickupTime));
+  const isPreOrder = item.hasPreOrderSource && item.earliestPickupTime;
+
+  if (isPreOrder) {
+    // Pre-orders: show countdown (in Xm / Due now / Due Xm ago)
+    const pickupTime = new Date(item.earliestPickupTime).getTime();
+    const minutesUntil = Math.round((pickupTime - Date.now()) / 60000);
+    timeHint = formatPreOrderTime(minutesUntil, item.earliestPickupTime);
+  } else if (item.toldTimestamp) {
+    // Live: show "told Xm ago"
+    const minutesSinceTold = Math.floor((Date.now() - item.toldTimestamp) / 60000);
+    timeHint = formatWaitTime(minutesSinceTold);
   }
 
-  // PRE-ORDER badge sits inline
-  const timeRow = timeHint || item.hasPreOrderSource ? `
-    <div class="item-row__time-row">
-      ${timeHint ? `<span class="item-row__time-hint">${timeHint}</span>` : ''}
-      ${item.hasPreOrderSource ? '<span class="item-row__preorder-badge">PRE-ORDER</span>' : ''}
-    </div>
-  ` : '';
+  const preOrderBadge = isPreOrder ? '<span class="item-row__tag--preorder">Pre-order</span>' : '';
+  const metaParts = [preOrderBadge, timeHint].filter(Boolean);
+  const metaHtml = metaParts.length > 0
+    ? metaParts.join('<span class="item-row__dot">•</span>')
+    : '';
 
   return `
     <div class="item-row item-row--told"
          role="listitem"
          aria-label="${item.quantity} ${item.name} told">
-      <div class="item-row__content">
-        <div class="item-row__primary">
-          <span class="item-row__qty">${item.quantity}</span><span class="item-row__sep">×</span>
+      <div class="item-row__main">
+        <div class="item-row__top">
           <span class="item-row__name">${escapeHtml(item.name)}</span>
+          <span class="item-row__meta-qty">×${item.quantity}</span>
         </div>
-        ${timeRow}
+        ${metaHtml ? `<div class="item-row__meta">${metaHtml}</div>` : ''}
       </div>
-      <div class="item-row__right">
-         <!-- Untold Button -->
-         <button class="item-row__untold" 
-                 aria-label="Undo tell for ${item.name}"
-                 data-item-ids="${(item.contributingItemIds || []).join(',')}"
-                 style="background:none;border:none;color:var(--text-muted);font-size:12px;font-weight:500;cursor:pointer;padding:4px 8px;">
-           Untold
-         </button>
+      <div class="item-row__action">
+        <button class="item-row__untold"
+                aria-label="Undo tell for ${item.name}"
+                data-item-ids="${(item.contributingItemIds || []).join(',')}">
+          UNTOLD
+        </button>
       </div>
     </div>
   `;
@@ -1316,24 +1232,12 @@ function clearItemFilter() {
 }
 
 /**
- * Handle TOLD button click.
- * Marks item quantity as communicated to kitchen using optimistic rollback.
- * 
- * @param {string} aggregationKey - The full aggregation key for the item.
- * @param {number} currentQuantity - Current total quantity.
- * @param {boolean} isPreOrder - Whether this is a pre-order item.
- * @param {number|null} customTimestamp - Optional specific timestamp.
- */
-async function handleTold() {
-  console.error("Using deprecated handleTold - check file structure");
-} // DEPRECATED - See bottom of file
-
-/**
  * Save told state to localStorage
  */
 function saveToldState() {
   try {
-    const data = Array.from(AdminState.toldItemIds);
+    // Save Map as array of [key, timestamp] pairs
+    const data = Array.from(AdminState.toldItemIds.entries());
     localStorage.setItem('adminToldItemIds', JSON.stringify(data));
   } catch (e) {
     console.warn('Could not save told state:', e);
@@ -1349,14 +1253,20 @@ function loadToldState() {
     if (data) {
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed)) {
-        AdminState.toldItemIds = new Set(parsed);
+        // Support both old Set format (["key"]) and new Map format ([["key", ts]])
+        if (parsed.length > 0 && Array.isArray(parsed[0])) {
+          // New Map format: [[key, timestamp], ...]
+          AdminState.toldItemIds = new Map(parsed);
+        } else {
+          // Old Set format: ["key", ...] — migrate to Map with current time
+          AdminState.toldItemIds = new Map(parsed.map(k => [k, Date.now()]));
+        }
         console.log(`📋 Loaded ${AdminState.toldItemIds.size} told items`);
       }
     }
   } catch (e) {
     console.warn('Could not load told state:', e);
-    // Fallback or clear
-    AdminState.toldItemIds = new Set();
+    AdminState.toldItemIds = new Map();
   }
 }
 
@@ -1368,10 +1278,7 @@ function cleanupToldState() {
   const currentOrderIds = new Set(AdminState.orders.map(o => o.id));
   let changed = false;
 
-  AdminState.toldItemIds.forEach(key => {
-    // Key format: orderId_itemId (or just orderId for simple cases?)
-    // The plan said: `${order.id}_${item.name}`.
-    // If order is gone, remove key.
+  AdminState.toldItemIds.forEach((timestamp, key) => {
     const [orderId] = key.split('_');
     if (!currentOrderIds.has(orderId)) {
       AdminState.toldItemIds.delete(key);
@@ -1387,57 +1294,26 @@ function cleanupToldState() {
 
 
 /**
- * Get items for Needs Announcing section with Strict Batching.
- * 
- * Strategy:
- * 1. Get all orders for an item, sorted by time.
- * 2. Get told history (array of timestamps).
- * 3. Match orders to timestamps to create "Already Told" batches.
- * 4. Remaining orders form "New Batches".
- */
-/**
- * Get items for Needs Announcing section (State-Based).
- * 
- * Strategy:
- * 1. Iterate all pending orders.
- * 2. Check if order-item is in AdminState.toldItemIds.
- * 3. Group filtered items by Name/Variant.
+ * Get all items grouped by state (Open vs Told).
+ * Groups live orders by item name, pre-orders by name + time.
+ * @returns {Array} Items with isTold, quantity, contributingItemIds etc.
  */
 function getNeedsAnnouncingItems() {
   const { needsAnnouncingOrders } = partitionOrders(AdminState.orders);
 
-  // Grouping maps
   const needsAnnouncingGroups = {};
   const alreadyToldGroups = {};
 
   needsAnnouncingOrders.forEach(order => {
-    // Skip if status is not valid for kitchen (though partitionOrders handles this?)
-    // Double check status just in case
     if (!['PENDING', 'PAID', 'PLACED', 'PREPARING'].includes(order.status)) return;
 
     (order.items || []).forEach(item => {
-      // Create unique ID for this order item instance
-      // Using order.id + item.title (or variant info if available)
-      // Note: If multiple of same item in one order, we treat them as a block?
-      // Yes, usually "Burger x2". If we tell, we tell both.
-      // So key is `${order.id}_${item.title}`.
-
-      // Handle Pre-orders: logic is same! "Pre-order Burger" is just an item.
       const isPreOrder = !!order.preorder_time;
-      let scheduleKey = null;
-      if (isPreOrder && order.preorder_time) {
-        scheduleKey = order.preorder_time;
-      }
-
-      // Aggregation Key (for grouping in UI)
-      // We group by Name. 
-      // For Pre-orders, we MIGHT group by Time too?
-      // User said: "if 'x' pre orders is still in pre orders section... add it on the same pre order time card list."
-      // So Pre-orders group by Name + Time.
-      // Live orders group by Name.
+      const scheduleKey = isPreOrder ? order.preorder_time : null;
 
       const distinctKey = `${order.id}_${item.title}`;
       const isTold = AdminState.toldItemIds.has(distinctKey);
+      const toldTs = isTold ? AdminState.toldItemIds.get(distinctKey) : null;
 
       const groupKey = isPreOrder
         ? `preorder:${item.title}:${scheduleKey}`
@@ -1455,13 +1331,10 @@ function getNeedsAnnouncingItems() {
           newestOrderTime: 0,
           isPreOrder: isPreOrder,
           earliestPickupTime: isPreOrder ? new Date(scheduleKey).getTime() : null,
-          earliestPickupMinutes: null, // Calc later
-
-          // Helper for "Told" action
-          contributingItemIds: [], // List of "orderId_title" to mark as told
-
-          // Display helpers
-          isTold: isTold
+          earliestPickupMinutes: null,
+          contributingItemIds: [],
+          isTold: isTold,
+          toldTimestamp: null // Most recent told time for display
         };
       }
 
@@ -1471,78 +1344,58 @@ function getNeedsAnnouncingItems() {
       const orderTime = new Date(order.created_at).getTime();
       group.oldestOrderTime = Math.min(group.oldestOrderTime, orderTime);
       group.newestOrderTime = Math.max(group.newestOrderTime, orderTime);
-
-      // Track IDs for the "Told" button action
       group.contributingItemIds.push(distinctKey);
+
+      // Track most recent told timestamp for the group
+      if (toldTs && (!group.toldTimestamp || toldTs > group.toldTimestamp)) {
+        group.toldTimestamp = toldTs;
+      }
     });
   });
 
-  // Convert to array
+  // Build final array
   const items = [
     ...Object.values(needsAnnouncingGroups),
     ...Object.values(alreadyToldGroups)
   ];
 
-  // Final processing (calc times, etc)
   const now = Date.now();
   return items.map(item => {
     if (item.isPreOrder && item.earliestPickupTime) {
-      const minutesUntil = Math.round((item.earliestPickupTime - now) / 60000);
-      item.earliestPickupMinutes = minutesUntil;
-      // Logic for formatting is in render
+      item.earliestPickupMinutes = Math.round((item.earliestPickupTime - now) / 60000);
     } else {
       item.waitMinutes = Math.floor((now - item.oldestOrderTime) / 60000);
     }
-
-    // Add Delta property for compatibility (Delta = Qty if not told, 0 if told)
-    item.delta = item.isTold ? 0 : item.quantity;
-
-    // hasPreOrderSource flag
     item.hasPreOrderSource = item.isPreOrder;
-
     return item;
   });
 }
 
 /**
  * Handle TOLD button click.
- */
-/**
- * Handle TOLD button click.
- * Adds items to toldItemIds set.
+ * Adds items to toldItemIds Map with current timestamp.
  * @param {Array<string>} itemIds - List of "orderId_title" to mark as told.
  */
-async function handleTold(itemIds) {
+function handleTold(itemIds) {
   if (!itemIds || itemIds.length === 0) return;
-
-  // Optimistic update
-  itemIds.forEach(id => {
-    AdminState.toldItemIds.add(id);
-    // Track pending if we want to show spinner, but local is instant
-  });
-
+  const now = Date.now();
+  itemIds.forEach(id => AdminState.toldItemIds.set(id, now));
   saveToldState();
   renderAll();
-
-  console.log(`✅ Marked ${itemIds.length} items as told`);
+  console.log(`✅ Told ${itemIds.length} items`);
 }
 
 /**
  * Handle UNTOLD action.
- * Removes items from toldItemIds set.
+ * Removes items from toldItemIds Map.
  * @param {Array<string>} itemIds - List of IDs to un-tell.
  */
-async function handleUntold(itemIds) {
+function handleUntold(itemIds) {
   if (!itemIds || itemIds.length === 0) return;
-
-  itemIds.forEach(id => {
-    AdminState.toldItemIds.delete(id);
-  });
-
+  itemIds.forEach(id => AdminState.toldItemIds.delete(id));
   saveToldState();
   renderAll();
-
-  console.log(`↩️ Un-told ${itemIds.length} items`);
+  console.log(`↩️ Untold ${itemIds.length} items`);
 }
 
 
@@ -3255,30 +3108,19 @@ function formatPreOrderTime(minutesUntil, timestamp) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     AdminState,
-    TIME_BUCKET_THRESHOLD_MS,
     formatPreOrderTime,
-    ACTIVATION_THRESHOLD_MS,
-    getItemSummary,
-    getSortedItems,
-    getItemSections,
     updateBadgeCounts,
     handleTabSwitch,
     handleTold,
+    handleUntold,
     saveToldState,
     loadToldState,
     cleanupToldState,
-    // Pre-order separation exports
-    needsAnnouncing,
     isTransitionedPreOrder,
     partitionOrders,
     getNeedsAnnouncingItems,
-    getVisibleNeedsAnnouncingItems,
     getPreOrdersForPlanning,
     formatAbsoluteTime,
-    formatRelativeTime,
-    toggleToldFilter,
-    // Aggregation key exports
-    getAggregationKey,
-    parseAggregationKey
+    formatRelativeTime
   };
 }
