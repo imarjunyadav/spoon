@@ -9,7 +9,7 @@
 // STATE MANAGEMENT
 // ============================================
 
-console.log("🥄 Admin Mobile v2.8 loaded - Debugging Active");
+console.log("🥄 Admin Mobile v2.9 loaded - AGGRESSIVE DEBUGGING");
 
 const AdminState = {
   // Current active tab
@@ -952,6 +952,7 @@ function renderItems() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const idString = btn.dataset.itemIds;
+      console.log('🐛 TOLD Clicked. IDs:', idString);
       if (idString) handleTold(idString.split(';;'));
     });
   });
@@ -1263,6 +1264,7 @@ function cleanupToldState() {
 
     const orderId = key.substring(0, separatorIdx);
     if (!currentOrderIds.has(orderId)) {
+      console.log('🐛 Cleaning up stale told item:', key);
       AdminState.toldItemIds.delete(key);
       changed = true;
     }
@@ -1360,6 +1362,7 @@ function getNeedsAnnouncingItems() {
  * @param {Array<string>} itemIds - List of "orderId_title" to mark as told.
  */
 async function handleTold(itemIds) {
+  console.log('🐛 handleTold called with:', itemIds);
   if (!itemIds || itemIds.length === 0) return;
 
   const now = Date.now();
@@ -2544,6 +2547,7 @@ function initRealtimeSubscriptions() {
 
   // Subscribe to kitchen_told_items for cross-device sync
   RealtimeSubscriptionManager.subscribeToTable('kitchen_told_items', async (payload) => {
+    console.log('🐛 Realtime Callback. Payload keys:', Object.keys(payload || {}));
     console.log('📡 Told-items realtime event:', payload?.eventType, payload);
 
     // Only reload on genuine DB change events (INSERT, UPDATE, DELETE)
