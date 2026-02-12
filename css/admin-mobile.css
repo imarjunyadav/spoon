@@ -3329,3 +3329,109 @@ body {
     color: var(--text-secondary);
     flex-shrink: 0;
 }
+
+/* ================================================================
+   V3.0 STANDARD DESIGN SYSTEM (Admin UX Standardization)
+   ================================================================ */
+
+/* --- Layout Container --- */
+.admin-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background-color: var(--background-white);
+    border-bottom: 1px solid var(--border-color);
+    gap: 12px;
+    height: 68px;
+    /* Fixed height for consistency */
+}
+
+/* Content Area: Name > Qty > Time */
+.admin-row__content {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    /* Critical for truncation */
+    gap: 10px;
+}
+
+/* 1. Name (Truncates) */
+.admin-text-primary {
+    color: var(--text-primary);
+    /* #1a1a1a */
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    /* Takes all available space */
+}
+
+/* 2. Quantity (Hero visual) */
+.admin-text-hero {
+    color: var(--brand-primary);
+    /* #eb1700 */
+    font-size: 18px;
+    font-weight: 700;
+    flex: 0 0 auto;
+    /* Never shrink */
+    min-width: 24px;
+    text-align: center;
+}
+
+/* 3. Time (Secondary meta) */
+.admin-text-secondary {
+    color: var(--text-secondary);
+    /* #6b7280 */
+    font-size: 14px;
+    font-weight: 500;
+    flex: 0 0 auto;
+}
+
+/* --- Buttons --- */
+.admin-btn {
+    height: 44px;
+    padding: 0 20px;
+    border-radius: 6px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s active;
+}
+
+.admin-btn:active {
+    transform: scale(0.96);
+}
+
+/* TOLD Button (Primary Action) */
+.admin-btn--primary {
+    background-color: var(--brand-primary);
+    color: white;
+    box-shadow: 0 2px 4px rgba(235, 23, 0, 0.2);
+}
+
+/* UNTOLD Button (Secondary/Ghost) */
+.admin-btn--ghost {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+/* Pre-order Badge (if needed in line) */
+.admin-badge-preorder {
+    background-color: #EEF2FF;
+    color: #4F46E5;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex: 0 0 auto;
+}

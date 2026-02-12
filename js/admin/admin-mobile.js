@@ -9,7 +9,7 @@
 // STATE MANAGEMENT
 // ============================================
 
-console.log("🥄 Admin Mobile v2.13 loaded - REALTIME MANAGER FIXED");
+console.log("🥄 Admin Mobile v2.14 loaded - UX V3.0 STANDARD");
 
 const AdminState = {
   // Current active tab
@@ -1000,28 +1000,25 @@ function renderNeedsAnnouncingRow(item) {
 
   // Pre-order badge
   const preOrderHtml = isPreOrder
-    ? `<span class="item-row__tag--preorder">Pre-order</span>`
-    : '';
-
-  // Meta row: pre-order label + time
-  const metaParts = [preOrderHtml, timeText].filter(Boolean);
-  const metaHtml = metaParts.length > 0
-    ? metaParts.join('<span class="item-row__dot">•</span>')
+    ? `<span class="admin-badge-preorder">Pre-order</span>`
     : '';
 
   return `
-    <div class="item-row item-row--v5"
-         role="listitem"
-         aria-label="${item.quantity} ${item.name}">
-      <div class="item-row__main">
-        <div class="item-row__top">
-          <span class="item-row__name">${escapeHtml(item.name)}</span>
-          <span class="item-row__meta-qty">×${item.quantity}</span>
-        </div>
-        ${metaHtml ? `<div class="item-row__meta">${metaHtml}</div>` : ''}
+    <div class="admin-row" role="listitem">
+      <div class="admin-row__content">
+        <!-- 1. Name -->
+        <span class="admin-text-primary">${escapeHtml(item.name)}</span>
+        
+        <!-- 2. Qty -->
+        <span class="admin-text-hero">×${item.quantity}</span>
+        
+        <!-- 3. Time (Preorder badge + Timestamp) -->
+        ${preOrderHtml}
+        <span class="admin-text-secondary">${timeText}</span>
       </div>
-      <div class="item-row__action">
-        <button class="item-row__told"
+      
+      <div class="admin-row__action">
+        <button class="admin-btn admin-btn--primary item-row__told"
                 aria-label="Mark ${item.name} as told"
                 data-item-ids="${(item.contributingItemIds || []).join(';;')}">
           TOLD
@@ -1049,35 +1046,34 @@ function renderToldRow(item) {
   const isPreOrder = item.hasPreOrderSource && item.earliestPickupTime;
 
   if (isPreOrder) {
-    // Pre-orders: show countdown (in Xm / Due now / Due Xm ago)
     const pickupTime = new Date(item.earliestPickupTime).getTime();
     const minutesUntil = Math.round((pickupTime - Date.now()) / 60000);
     timeHint = formatPreOrderTime(minutesUntil, item.earliestPickupTime);
   } else if (item.toldTimestamp) {
-    // Live: show "told Xm ago"
     const minutesSinceTold = Math.floor((Date.now() - item.toldTimestamp) / 60000);
     timeHint = formatWaitTime(minutesSinceTold);
   }
 
-  const preOrderBadge = isPreOrder ? '<span class="item-row__tag--preorder">Pre-order</span>' : '';
-  const metaParts = [preOrderBadge, timeHint].filter(Boolean);
-  const metaHtml = metaParts.length > 0
-    ? metaParts.join('<span class="item-row__dot">•</span>')
+  const preOrderHtml = isPreOrder
+    ? `<span class="admin-badge-preorder">Pre-order</span>`
     : '';
 
   return `
-    <div class="item-row item-row--told"
-         role="listitem"
-         aria-label="${item.quantity} ${item.name} told">
-      <div class="item-row__main">
-        <div class="item-row__top">
-          <span class="item-row__name">${escapeHtml(item.name)}</span>
-          <span class="item-row__meta-qty">×${item.quantity}</span>
-        </div>
-        ${metaHtml ? `<div class="item-row__meta">${metaHtml}</div>` : ''}
+    <div class="admin-row" role="listitem">
+      <div class="admin-row__content">
+        <!-- 1. Name -->
+        <span class="admin-text-primary" style="color:var(--text-secondary);">${escapeHtml(item.name)}</span>
+        
+        <!-- 2. Qty -->
+        <span class="admin-text-hero" style="color:var(--text-secondary);">×${item.quantity}</span>
+        
+        <!-- 3. Time -->
+        ${preOrderHtml}
+        <span class="admin-text-secondary">${timeHint}</span>
       </div>
-      <div class="item-row__action">
-        <button class="item-row__untold"
+      
+      <div class="admin-row__action">
+        <button class="admin-btn admin-btn--ghost item-row__untold"
                 aria-label="Undo tell for ${item.name}"
                 data-item-ids="${(item.contributingItemIds || []).join(';;')}">
           UNTOLD
