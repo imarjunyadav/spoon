@@ -9,7 +9,7 @@
 // STATE MANAGEMENT
 // ============================================
 
-console.log("🥄 Admin Mobile v2.12 loaded - UNTOLD FIXED");
+console.log("🥄 Admin Mobile v2.13 loaded - REALTIME MANAGER FIXED");
 
 const AdminState = {
   // Current active tab

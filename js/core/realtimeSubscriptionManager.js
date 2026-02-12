@@ -123,6 +123,21 @@ const RealtimeSubscriptionManager = {
             }
           }
         )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: tableName,
+            filter: filter || undefined
+          },
+          (payload) => {
+            console.log(`🗑️ DELETE on ${tableName} (${filter || 'all'}):`, payload);
+            if (typeof onChangeCallback === 'function') {
+              onChangeCallback(payload);
+            }
+          }
+        )
         .subscribe((status, err) => {
           console.log(`📡 Channel ${tableName} status:`, status);
 
