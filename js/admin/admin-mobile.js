@@ -861,6 +861,45 @@ function getItemSections() {
 
 
 // ============================================
+// URGENCY TIER SYSTEM (Items Tab v2)
+// ============================================
+
+/**
+ * Get urgency level based on wait time in minutes.
+ * @param {number} waitMinutes - Minutes since oldest order in batch
+ * @returns {'low'|'med'|'high'} Urgency tier
+ */
+function getUrgencyLevel(waitMinutes) {
+  if (waitMinutes >= 15) return 'high';
+  if (waitMinutes >= 5) return 'med';
+  return 'low';
+}
+
+/**
+ * Get CSS class for time hint based on wait time.
+ * @param {number} waitMinutes
+ * @returns {string} CSS modifier class or empty string
+ */
+function getTimeHintClass(waitMinutes) {
+  if (waitMinutes >= 15) return 'item-row__time-hint--critical';
+  if (waitMinutes >= 5) return 'item-row__time-hint--urgent';
+  return '';
+}
+
+// Collapse state for "Already Told" section (default: collapsed)
+if (typeof AdminState.toldSectionOpen === 'undefined') {
+  AdminState.toldSectionOpen = false;
+}
+
+/**
+ * Toggle the told section collapse state
+ */
+function toggleToldSection() {
+  AdminState.toldSectionOpen = !AdminState.toldSectionOpen;
+  renderItems();
+}
+
+// ============================================
 // RENDERING FUNCTIONS
 // ============================================
 
@@ -876,8 +915,8 @@ function renderAll() {
 }
 
 /**
- * Render Items to Prepare view.
- * Displays "Needs Announcing", "Already Told", and "Pre-orders" sections.
+ * Render Items to Prepare view (v2 — Announcement Board).
+ * Displays "Needs Announcing" (with urgency + surge), "Already Told" (collapsible), and "Pre-orders" sections.
  */
 function renderItems() {
   if (!DOM.itemsList) return;
@@ -903,14 +942,38 @@ function renderItems() {
 
   // Section 1: Needs Announcing (action items with TOLD button)
   if (hasNeedsAnnouncing) {
-    html += `<div class="item-section-header">Needs announcing</div>`;
+    const surgeHtml = visible.length >= 5
+      ? `<span class="item-section-header__surge">🔥 RUSH</span>`
+      : '';
+
+    html += `<div class="item-section-header">
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span class="item-section-header__dot"></span>
+        <span>Needs announcing</span>
+        <span class="item-section-header__count">${visible.length}</span>
+      </div>
+      ${surgeHtml}
+    </div>`;
     html += visible.map(item => renderNeedsAnnouncingRow(item)).join('');
   }
 
-  // Section 2: Already Told (history)
+  // Section 2: Already Told (collapsible history)
   if (hasToldItems) {
-    html += `<div class="item-section-header item-section-header--muted">Already told</div>`;
+    const chevronClass = AdminState.toldSectionOpen ? 'item-section-header__chevron--open' : '';
+    const chevronSvg = `<svg class="item-section-header__chevron ${chevronClass}" viewBox="0 0 16 16" fill="currentColor"><path d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>`;
+
+    html += `<div class="item-section-header item-section-header--muted" id="told-section-toggle">
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span>Already told</span>
+        <span class="item-section-header__count" style="color:var(--text-muted);">${hidden.length}</span>
+      </div>
+      ${chevronSvg}
+    </div>`;
+
+    const collapsibleClass = AdminState.toldSectionOpen ? 'told-section-collapsible--open' : '';
+    html += `<div class="told-section-collapsible ${collapsibleClass}">`;
     html += hidden.map(item => renderToldRow(item)).join('');
+    html += '</div>';
   }
 
   // Section 3: Pre-orders (planning only, no action buttons)
@@ -930,7 +993,11 @@ function renderItems() {
     });
   });
 
-  // No toggle listener needed anymore
+  // Add toggle handler for told section
+  const toldToggle = document.getElementById('told-section-toggle');
+  if (toldToggle) {
+    toldToggle.addEventListener('click', toggleToldSection);
+  }
 }
 
 /**
@@ -979,8 +1046,8 @@ function renderItemRow(item, showDelta) {
 // ============================================
 
 /**
- * Render a needs-announcing item row.
- * Shows qty, name, time hint, and TOLD button.
+ * Render a needs-announcing item row (v2 — Announcement Board).
+ * Shows hero qty, name, urgency border, time hint, and text TOLD button.
  * @param {Object} item - Item data.
  * @returns {string} HTML string.
  */
@@ -989,42 +1056,42 @@ function renderNeedsAnnouncingRow(item) {
   const toldKey = item.aggregationKey;
   const isPendingTold = AdminState.pendingToldActions.has(toldKey);
 
-  // Always show time hint:
-  // - Pre-orders: "in Xm" while future, absolute time (e.g., "1:05") when passed
-  // - Live orders: "Just now" for <1m, "Xm" for others
+  // Urgency tier based on wait time
+  const urgency = item.hasPreOrderSource ? 'low' : getUrgencyLevel(item.waitMinutes || 0);
+  const urgencyClass = `item-row--urgent-${urgency}`;
+
+  // Time hint with urgency coloring
   let timeHint = '';
+  let timeHintClass = '';
   if (item.hasPreOrderSource && item.earliestPickupTime !== null) {
-    // Pre-order: show relative time if future, absolute time if passed
     if (item.earliestPickupMinutes !== null && item.earliestPickupMinutes > 0) {
       timeHint = formatRelativeTime(item.earliestPickupMinutes);
     } else {
-      // Pickup time has passed - show absolute time
       timeHint = formatAbsoluteTime(new Date(item.earliestPickupTime));
+      timeHintClass = 'item-row__time-hint--critical';
     }
   } else if (item.waitMinutes !== undefined) {
-    // Live order: show time since oldest order
-    timeHint = item.waitMinutes < 1 ? 'Just now' : `${item.waitMinutes}m`;
+    timeHint = item.waitMinutes < 1 ? 'Just now' : `${item.waitMinutes}m ago`;
+    timeHintClass = getTimeHintClass(item.waitMinutes);
   }
 
-  // PRE-ORDER badge sits inline with time, not near item name
+  // Time row with PRE-ORDER badge
   const timeRow = timeHint || item.hasPreOrderSource ? `
     <div class="item-row__time-row">
-      ${timeHint ? `<span class="item-row__time-hint">${timeHint}</span>` : ''}
+      ${timeHint ? `<span class="item-row__time-hint ${timeHintClass}">${timeHint}</span>` : ''}
       ${item.hasPreOrderSource ? '<span class="item-row__preorder-badge">PRE-ORDER</span>' : ''}
     </div>
   ` : '';
 
-  // SVG check icon for TOLD button (filled, confident, clearly tappable)
+  // SVG check icon for TOLD button
   const checkIcon = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg>`;
   const pendingIcon = `<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="2"/></svg>`;
 
   // Determine correct quantity to commit when told
-  // For New Batch items, we must commit the TOTAL quantity (old + new)
-  // For standard items, item.quantity is sufficient
   const commitQuantity = item.totalItemQuantity || item.quantity;
 
   return `
-    <div class="item-row item-row--announcing"
+    <div class="item-row item-row--announcing ${urgencyClass}"
          role="listitem"
          aria-label="${item.quantity} ${item.name}, ${item.delta} new${timeHint ? `, ${timeHint}` : ''}">
       <div class="item-row__content">
@@ -1045,6 +1112,7 @@ function renderNeedsAnnouncingRow(item) {
                   data-told-timestamp="${item.newestOrderTime}"
                   data-is-preorder="${item.hasPreOrderSource}">
             ${isPendingTold ? pendingIcon : checkIcon}
+            <span>${isPendingTold ? '...' : 'TOLD'}</span>
           </button>
         </div>
       </div>
@@ -1110,12 +1178,14 @@ function renderToldRow(item) {
 }
 
 /**
- * Render the pre-orders planning section
+ * Render the pre-orders planning section (v2 — with countdown)
  * @param {Array} slots - Pre-order time slots from getPreOrdersForPlanning()
  * @returns {string} HTML string
  */
 function renderPreOrdersSection(slots) {
   if (!slots || slots.length === 0) return '';
+
+  const now = Date.now();
 
   let html = `
     <div class="preorders-section">
@@ -1125,18 +1195,31 @@ function renderPreOrdersSection(slots) {
           <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
         </svg>
         <span>Pre-orders</span>
+        <span class="item-section-header__count" style="color:var(--text-muted);margin-left:4px;">${slots.length}</span>
       </div>
   `;
 
   slots.forEach(slot => {
+    const minutesUntil = Math.round((slot.pickupTime.getTime() - now) / 60000);
+    const isApproaching = minutesUntil <= 60 && minutesUntil > 0;
+    const slotClass = isApproaching ? 'preorder-slot--approaching' : '';
+
+    // Countdown badge for slots within 60 minutes
+    const countdownHtml = minutesUntil > 0 && minutesUntil <= 60
+      ? `<span class="preorder-slot__countdown">${formatRelativeTime(minutesUntil)}</span>`
+      : '';
+
     const itemsList = slot.items.map(item =>
       `<span class="preorder-slot__item">${item.quantity}× ${escapeHtml(item.name)}</span>`
     ).join('');
 
     html += `
-      <div class="preorder-slot">
+      <div class="preorder-slot ${slotClass}">
         <div class="preorder-slot__header">
-          <span class="preorder-slot__time">${slot.pickupTimeFormatted}</span>
+          <div style="display:flex;align-items:center;">
+            <span class="preorder-slot__time">${slot.pickupTimeFormatted}</span>
+            ${countdownHtml}
+          </div>
           <span class="preorder-slot__count">${slot.orderCount} order${slot.orderCount !== 1 ? 's' : ''}</span>
         </div>
         <div class="preorder-slot__items">${itemsList}</div>
