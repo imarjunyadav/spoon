@@ -49,53 +49,52 @@ const agent = new https.Agent({ rejectUnauthorized: false });
  * @returns {object} Razorpay order details
  */
 router.post("/create-order", async (req, res) => {
-
-  // Step 1: Extract and Validate Request
-  console.log('🔍 Debug: /create-order request body:', JSON.stringify(req.body, null, 2));
-
-  const { amount, userEmail, items } = req.body;
-
-  // Validate using PaymentFlowValidator
-  const validation = await paymentFlowValidator.validatePaymentInitiation({
-    amount,
-    userEmail,
-    items
-  });
-
-  if (!validation.valid) {
-    console.error(`❌ Payment validation failed: ${validation.error}`);
-    return res.status(400).json({ error: validation.error });
-  }
-
-  console.log(`✅ Payment validation passed for ${userEmail}`);
-
-  // Step 2: Prepare Order Data
-  const orderPayload = {
-    amount: amount * 100,  // Convert rupees to paise
-    currency: "INR",
-    receipt: `receipt_${Date.now()}`,
-    notes: {
-      email: userEmail,
-      cart_items: JSON.stringify(items),
-      preorder_time: req.body.preorderTime || null,
-      phone_number: req.body.phoneNumber || null
-    }
-  };
-
-  console.log("🔧 Creating Razorpay order:", {
-    amount: orderPayload.amount,
-    currency: orderPayload.currency,
-    userEmail: userEmail
-  });
-
-  // Step 3: Authentication Credentials
-  const auth = {
-    username: process.env.RAZORPAY_KEY_ID,
-    password: process.env.RAZORPAY_SECRET
-  };
-
-  // Step 4: Call Razorpay API
   try {
+    // Step 1: Extract and Validate Request
+    console.log('🔍 Debug: /create-order request body:', JSON.stringify(req.body, null, 2));
+
+    const { amount, userEmail, items } = req.body;
+
+    // Validate using PaymentFlowValidator
+    const validation = await paymentFlowValidator.validatePaymentInitiation({
+      amount,
+      userEmail,
+      items
+    });
+
+    if (!validation.valid) {
+      console.error(`❌ Payment validation failed: ${validation.error}`);
+      return res.status(400).json({ error: validation.error });
+    }
+
+    console.log(`✅ Payment validation passed for ${userEmail}`);
+
+    // Step 2: Prepare Order Data
+    const orderPayload = {
+      amount: amount * 100,  // Convert rupees to paise
+      currency: "INR",
+      receipt: `receipt_${Date.now()}`,
+      notes: {
+        email: userEmail,
+        cart_items: JSON.stringify(items),
+        preorder_time: req.body.preorderTime || null,
+        phone_number: req.body.phoneNumber || null
+      }
+    };
+
+    console.log("🔧 Creating Razorpay order:", {
+      amount: orderPayload.amount,
+      currency: orderPayload.currency,
+      userEmail: userEmail
+    });
+
+    // Step 3: Authentication Credentials
+    const auth = {
+      username: process.env.RAZORPAY_KEY_ID,
+      password: process.env.RAZORPAY_SECRET
+    };
+
+    // Step 4: Call Razorpay API
     const response = await axios.post(
       "https://api.razorpay.com/v1/orders",
       orderPayload,
@@ -113,12 +112,17 @@ router.post("/create-order", async (req, res) => {
     return res.status(200).json(response.data);
 
   } catch (error) {
-    console.error("❌ Razorpay Order Creation Failed");
-    console.error("🧨 Error:", error.message || error);
+    console.error("❌ Order Creation Process Failed");
 
-    return res.status(500).json({
+    // Extract detailed error from Axios response if available
+    const errorDetails = error.response ? error.response.data : error.message;
+    const statusCode = error.response ? error.response.status : 500;
+
+    console.error("🧨 Error Details:", JSON.stringify(errorDetails, null, 2));
+
+    return res.status(statusCode).json({
       error: "Order creation failed",
-      details: error.message
+      details: errorDetails
     });
   }
 });

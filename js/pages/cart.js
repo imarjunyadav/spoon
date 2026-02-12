@@ -585,7 +585,9 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to create order");
+        const errorData = await res.json().catch(() => ({}));
+        const errorMessage = errorData.details?.error?.description || errorData.error || "Failed to create order";
+        throw new Error(errorMessage);
       }
 
       const orderData = await res.json();
@@ -659,7 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (error) {
       console.error("Error creating order:", error);
-      alert("Failed to initiate payment. Please try again.");
+      alert(error.message || "Failed to initiate payment. Please try again.");
       finalConfirmBtn.classList.remove('loading');
       finalConfirmBtn.disabled = false;
     }
