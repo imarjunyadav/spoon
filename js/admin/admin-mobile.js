@@ -9,7 +9,7 @@
 // STATE MANAGEMENT
 // ============================================
 
-console.log("🥄 Admin Mobile v2.9 loaded - AGGRESSIVE DEBUGGING");
+console.log("🥄 Admin Mobile v2.10 loaded - REFACTORED HANDLETOLD");
 
 const AdminState = {
   // Current active tab
@@ -1362,49 +1362,50 @@ function getNeedsAnnouncingItems() {
  * @param {Array<string>} itemIds - List of "orderId_title" to mark as told.
  */
 async function handleTold(itemIds) {
-  console.log('🐛 handleTold called with:', itemIds);
-  if (!itemIds || itemIds.length === 0) return;
-
-  const now = Date.now();
-  const nowISO = new Date(now).toISOString();
-
-  // Optimistic local update first (instant UI feedback)
-  itemIds.forEach(id => AdminState.toldItemIds.set(id, now));
-  renderAll();
-
-  // Build rows for upsert
-  const rows = itemIds.map(id => {
-    // Handle separator :: safely
-    const separatorIdx = id.indexOf('::');
-    if (separatorIdx === -1) {
-      console.error('❌ Invalid ID format in handleTold:', id);
-      return null; // Skip invalid
-    }
-    const orderId = id.substring(0, separatorIdx);
-    const itemTitle = id.substring(separatorIdx + 2); // +2 for length of ::
-    return { order_id: orderId, item_title: itemTitle, told_at: nowISO };
-  }).filter(Boolean); // Remove nulls
-
-  console.log(`🔌 handleTold sending ${rows.length} rows to DB:`, rows);
-
   try {
+    console.log('🐛 handleTold called with:', itemIds);
+    if (!itemIds || itemIds.length === 0) return;
+
+    const now = Date.now();
+    const nowISO = new Date(now).toISOString();
+
+    // 1. Calculate rows FIRST (Debug step)
+    const rows = itemIds.map(id => {
+      const separatorIdx = id.indexOf('::');
+      if (separatorIdx === -1) {
+        console.error('❌ Invalid ID format in handleTold:', id);
+        return null;
+      }
+      return {
+        order_id: id.substring(0, separatorIdx),
+        item_title: id.substring(separatorIdx + 2),
+        told_at: nowISO
+      };
+    }).filter(Boolean);
+
+    console.log(`🔌 handleTold PREPARED ${rows.length} rows used for DB:`, rows);
+
+    // 2. Optimistic Update (UI)
+    itemIds.forEach(id => AdminState.toldItemIds.set(id, now));
+    console.log('🐛 Optimistic update applied. Rendering...');
+    renderAll();
+    console.log('🐛 Render complete. Now sending to DB...');
+
+    // 3. DB Write
+    if (!window.supabase) throw new Error('Supabase client missing');
+
     const { data: upsertData, error } = await supabase
       .from('kitchen_told_items')
       .upsert(rows, { onConflict: 'order_id,item_title' })
-      .select(); // Select to confirm return
+      .select();
 
-    if (error) {
-      console.error('❌ Error saving told state:', error);
-      // Rollback optimistic update
-      itemIds.forEach(id => AdminState.toldItemIds.delete(id));
-      renderAll();
-      return;
-    }
+    if (error) throw error;
 
-    console.log(`✅ Told ${itemIds.length} items (saved to DB). Upsert result:`, upsertData);
+    console.log(`✅ Told ${itemIds.length} items (saved to DB). Result:`, upsertData);
   } catch (e) {
-    console.error('❌ handleTold failed:', e);
-    itemIds.forEach(id => AdminState.toldItemIds.delete(id));
+    console.error('❌ handleTold CRASHED:', e);
+    // Rollback
+    if (itemIds) itemIds.forEach(id => AdminState.toldItemIds.delete(id));
     renderAll();
   }
 }
