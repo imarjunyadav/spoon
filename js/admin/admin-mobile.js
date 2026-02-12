@@ -540,38 +540,8 @@ const NORMAL_ORDER_MERGE_THRESHOLD_MS = 3 * 60 * 1000;
 // Live order delta window: new orders within 3 minutes of told action show as delta
 const LIVE_ORDER_DELTA_WINDOW_MS = 3 * 60 * 1000;
 
-/**
- * Get items for Needs Announcing section.
- * @deprecated Use the strict batching implementation below.
- * @returns {Array} Items array.
- */
-function getNeedsAnnouncingItems() {
-  console.error("Using deprecated getNeedsAnnouncingItems - check file structure");
-  return [];
-} // DEPRECATED - See bottom of file
-
-/**
- * Get visible items for Needs Announcing (respecting told filter)
- * Items with delta > 0 are always visible
- * Items with delta === 0 (fully told) are hidden by default
- * 
- * @returns {{ visible: Array, hidden: Array }}
- */
-function getVisibleNeedsAnnouncingItems() {
-  const allItems = getNeedsAnnouncingItems();
-
-  // Split by told state - items with delta > 0 are visible, fully told items are hidden
-  const visible = allItems.filter(item => item.delta > 0);
-  const hidden = allItems.filter(item => item.delta === 0);
-
-  // Sort visible: oldest order first (higher wait time), then by quantity
-  visible.sort((a, b) => {
-    if (a.waitMinutes !== b.waitMinutes) return b.waitMinutes - a.waitMinutes;
-    return b.quantity - a.quantity;
-  });
-
-  return { visible, hidden };
-}
+// (Deprecated stubs removed — getNeedsAnnouncingItems and getVisibleNeedsAnnouncingItems
+// are now defined in the state-based section below)
 
 // ============================================
 // PRE-ORDERS AGGREGATION (Planning section)
@@ -1231,48 +1201,54 @@ function clearItemFilter() {
   renderActiveOrders();
 }
 
+// (deprecated handleTold stub removed)
+
 /**
- * Save told state to localStorage
+ * Save told state — no-op in Phase 2 (DB is source of truth).
+ * Kept as a stub for compatibility during transition.
  */
 function saveToldState() {
-  try {
-    // Save Map as array of [key, timestamp] pairs
-    const data = Array.from(AdminState.toldItemIds.entries());
-    localStorage.setItem('adminToldItemIds', JSON.stringify(data));
-  } catch (e) {
-    console.warn('Could not save told state:', e);
-  }
+  // No-op: DB writes happen in handleTold/handleUntold directly
 }
 
 /**
- * Load told state from localStorage
+ * Load told state from Supabase (kitchen_told_items table).
+ * Populates AdminState.toldItemIds Map from DB rows.
  */
-function loadToldState() {
+async function loadToldState() {
+  if (!supabase) {
+    console.warn('⚠️ Supabase not initialized, cannot load told state');
+    return;
+  }
+
   try {
-    const data = localStorage.getItem('adminToldItemIds');
-    if (data) {
-      const parsed = JSON.parse(data);
-      if (Array.isArray(parsed)) {
-        // Support both old Set format (["key"]) and new Map format ([["key", ts]])
-        if (parsed.length > 0 && Array.isArray(parsed[0])) {
-          // New Map format: [[key, timestamp], ...]
-          AdminState.toldItemIds = new Map(parsed);
-        } else {
-          // Old Set format: ["key", ...] — migrate to Map with current time
-          AdminState.toldItemIds = new Map(parsed.map(k => [k, Date.now()]));
-        }
-        console.log(`📋 Loaded ${AdminState.toldItemIds.size} told items`);
-      }
+    const { data, error } = await supabase
+      .from('kitchen_told_items')
+      .select('order_id, item_title, told_at');
+
+    if (error) {
+      console.error('❌ Error loading told state:', error);
+      return;
     }
+
+    AdminState.toldItemIds = new Map(
+      (data || []).map(row => [
+        `${row.order_id}_${row.item_title}`,
+        new Date(row.told_at).getTime()
+      ])
+    );
+
+    console.log(`📋 Loaded ${AdminState.toldItemIds.size} told items from DB`);
   } catch (e) {
-    console.warn('Could not load told state:', e);
+    console.error('❌ Failed to load told state:', e);
     AdminState.toldItemIds = new Map();
   }
 }
 
 /**
- * Clean up told state for items no longer in pending orders
- * Called after orders are fetched to remove stale entries.
+ * Clean up told state for completed/cancelled orders.
+ * With CASCADE on the FK, this is mostly automatic.
+ * This handles edge cases where orders are removed from local state.
  */
 function cleanupToldState() {
   const currentOrderIds = new Set(AdminState.orders.map(o => o.id));
@@ -1287,7 +1263,7 @@ function cleanupToldState() {
   });
 
   if (changed) {
-    saveToldState();
+    console.log('🧹 Cleaned up stale told entries from local Map');
   }
 }
 
@@ -1373,29 +1349,92 @@ function getNeedsAnnouncingItems() {
 
 /**
  * Handle TOLD button click.
- * Adds items to toldItemIds Map with current timestamp.
+ * Inserts items into kitchen_told_items table and updates local Map.
  * @param {Array<string>} itemIds - List of "orderId_title" to mark as told.
  */
-function handleTold(itemIds) {
+async function handleTold(itemIds) {
   if (!itemIds || itemIds.length === 0) return;
+
   const now = Date.now();
+  const nowISO = new Date(now).toISOString();
+
+  // Optimistic local update first (instant UI feedback)
   itemIds.forEach(id => AdminState.toldItemIds.set(id, now));
-  saveToldState();
   renderAll();
-  console.log(`✅ Told ${itemIds.length} items`);
+
+  // Build rows for upsert
+  const rows = itemIds.map(id => {
+    const underscoreIdx = id.indexOf('_');
+    const orderId = id.substring(0, underscoreIdx);
+    const itemTitle = id.substring(underscoreIdx + 1);
+    return { order_id: orderId, item_title: itemTitle, told_at: nowISO };
+  });
+
+  try {
+    const { error } = await supabase
+      .from('kitchen_told_items')
+      .upsert(rows, { onConflict: 'order_id,item_title' });
+
+    if (error) {
+      console.error('❌ Error saving told state:', error);
+      // Rollback optimistic update
+      itemIds.forEach(id => AdminState.toldItemIds.delete(id));
+      renderAll();
+      return;
+    }
+
+    console.log(`✅ Told ${itemIds.length} items (saved to DB)`);
+  } catch (e) {
+    console.error('❌ handleTold failed:', e);
+    itemIds.forEach(id => AdminState.toldItemIds.delete(id));
+    renderAll();
+  }
 }
 
 /**
  * Handle UNTOLD action.
- * Removes items from toldItemIds Map.
+ * Deletes items from kitchen_told_items table and updates local Map.
  * @param {Array<string>} itemIds - List of IDs to un-tell.
  */
-function handleUntold(itemIds) {
+async function handleUntold(itemIds) {
   if (!itemIds || itemIds.length === 0) return;
+
+  // Save old values for rollback
+  const backup = new Map();
+  itemIds.forEach(id => {
+    if (AdminState.toldItemIds.has(id)) {
+      backup.set(id, AdminState.toldItemIds.get(id));
+    }
+  });
+
+  // Optimistic local update
   itemIds.forEach(id => AdminState.toldItemIds.delete(id));
-  saveToldState();
   renderAll();
-  console.log(`↩️ Untold ${itemIds.length} items`);
+
+  try {
+    // Delete each item from DB
+    for (const id of itemIds) {
+      const underscoreIdx = id.indexOf('_');
+      const orderId = id.substring(0, underscoreIdx);
+      const itemTitle = id.substring(underscoreIdx + 1);
+
+      const { error } = await supabase
+        .from('kitchen_told_items')
+        .delete()
+        .match({ order_id: orderId, item_title: itemTitle });
+
+      if (error) {
+        console.error('❌ Error deleting told item:', error);
+      }
+    }
+
+    console.log(`↩️ Untold ${itemIds.length} items (deleted from DB)`);
+  } catch (e) {
+    console.error('❌ handleUntold failed:', e);
+    // Rollback
+    backup.forEach((ts, id) => AdminState.toldItemIds.set(id, ts));
+    renderAll();
+  }
 }
 
 
@@ -2486,6 +2525,14 @@ function initRealtimeSubscriptions() {
   // Subscribe to menu items
   RealtimeSubscriptionManager.subscribeToTable('menu_items', fetchMenuItems);
 
+  // Subscribe to kitchen_told_items for cross-device sync
+  RealtimeSubscriptionManager.subscribeToTable('kitchen_told_items', async (payload) => {
+    console.log('📡 Told-items realtime event:', payload?.eventType);
+    // Re-fetch full told state from DB to stay in sync
+    await loadToldState();
+    renderAll();
+  });
+
   console.log('📡 Realtime subscriptions initialized');
   updateConnectionStatus('realtime');
 }
@@ -3001,12 +3048,6 @@ async function initAdmin() {
   // Initialize event listeners
   initEventListeners();
 
-  // Load told state from localStorage
-  loadToldState();
-
-  // Migrate logic removed
-  // migrateToldCountsIfNeeded();
-
   // Start UI timer for wait time updates
   startWaitTimeTimer();
 
@@ -3020,6 +3061,9 @@ async function initAdmin() {
     syncSession().then(() => {
       initSessionEnforcement();
     });
+
+    // Load told state from DB (must happen before fetchOrders triggers render)
+    await loadToldState();
 
     fetchOrders();
     fetchMenuItems();
