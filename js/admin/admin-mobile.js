@@ -9,6 +9,8 @@
 // STATE MANAGEMENT
 // ============================================
 
+console.log("🥄 Admin Mobile v2.7 loaded - DB Integration Active");
+
 const AdminState = {
   // Current active tab
   activeTab: 'items',
