@@ -2032,6 +2032,12 @@ function renderCancelledOrders() {
           <span>Refunded: ₹${refundAmount} coins</span>
         </div>
 
+        ${order.cancellation_reason ? `
+        <div class="order-card__reason">
+          <span class="text-secondary">Reason:</span>
+          <span>${escapeHtml(order.cancellation_reason)}</span>
+        </div>` : ''}
+
         <ul class="order-card__items">
           ${(order.items || []).map(item => `
             <li class="order-card__item">

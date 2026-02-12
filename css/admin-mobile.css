@@ -3064,3 +3064,21 @@ body {
 .order-card__refund-info i {
     font-size: 14px;
 }
+
+.order-card__reason {
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--background-white);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--radius-small);
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.order-card__reason span:first-child {
+    font-weight: var(--font-weight-medium);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
