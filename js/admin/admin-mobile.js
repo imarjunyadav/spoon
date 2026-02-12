@@ -9,7 +9,7 @@
 // STATE MANAGEMENT
 // ============================================
 
-console.log("🥄 Admin Mobile v2.7 loaded - DB Integration Active");
+console.log("🥄 Admin Mobile v2.8 loaded - Debugging Active");
 
 const AdminState = {
   // Current active tab
@@ -1382,10 +1382,13 @@ async function handleTold(itemIds) {
     return { order_id: orderId, item_title: itemTitle, told_at: nowISO };
   }).filter(Boolean); // Remove nulls
 
+  console.log(`🔌 handleTold sending ${rows.length} rows to DB:`, rows);
+
   try {
-    const { error } = await supabase
+    const { data: upsertData, error } = await supabase
       .from('kitchen_told_items')
-      .upsert(rows, { onConflict: 'order_id,item_title' });
+      .upsert(rows, { onConflict: 'order_id,item_title' })
+      .select(); // Select to confirm return
 
     if (error) {
       console.error('❌ Error saving told state:', error);
@@ -1395,7 +1398,7 @@ async function handleTold(itemIds) {
       return;
     }
 
-    console.log(`✅ Told ${itemIds.length} items (saved to DB)`);
+    console.log(`✅ Told ${itemIds.length} items (saved to DB). Upsert result:`, upsertData);
   } catch (e) {
     console.error('❌ handleTold failed:', e);
     itemIds.forEach(id => AdminState.toldItemIds.delete(id));
@@ -2541,10 +2544,15 @@ function initRealtimeSubscriptions() {
 
   // Subscribe to kitchen_told_items for cross-device sync
   RealtimeSubscriptionManager.subscribeToTable('kitchen_told_items', async (payload) => {
-    console.log('📡 Told-items realtime event:', payload?.eventType);
-    // Re-fetch full told state from DB to stay in sync
-    await loadToldState();
-    renderAll();
+    console.log('📡 Told-items realtime event:', payload?.eventType, payload);
+
+    // Only reload on genuine DB change events (INSERT, UPDATE, DELETE)
+    // Ignore undefined eventType (polling ticks)
+    if (payload && ['INSERT', 'UPDATE', 'DELETE'].includes(payload.eventType)) {
+      console.log('🔄 Reloading told state due to DB change...');
+      await loadToldState();
+      renderAll();
+    }
   });
 
   console.log('📡 Realtime subscriptions initialized');
