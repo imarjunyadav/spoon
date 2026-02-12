@@ -9,7 +9,7 @@
 // STATE MANAGEMENT
 // ============================================
 
-console.log("🥄 Admin Mobile v2.11 loaded - DB FIRST STRATEGY");
+console.log("🥄 Admin Mobile v2.12 loaded - UNTOLD FIXED");
 
 const AdminState = {
   // Current active tab
@@ -1428,45 +1428,78 @@ async function handleTold(itemIds) {
  * @param {Array<string>} itemIds - List of IDs to un-tell.
  */
 async function handleUntold(itemIds) {
-  if (!itemIds || itemIds.length === 0) return;
-
-  // Save old values for rollback
-  const backup = new Map();
-  itemIds.forEach(id => {
-    if (AdminState.toldItemIds.has(id)) {
-      backup.set(id, AdminState.toldItemIds.get(id));
-    }
-  });
-
-  // Optimistic local update
-  itemIds.forEach(id => AdminState.toldItemIds.delete(id));
-  renderAll();
-
   try {
-    // Delete each item from DB
-    for (const id of itemIds) {
+    console.log('🐛 handleUntold called with:', itemIds);
+    if (!itemIds || itemIds.length === 0) return;
+
+    // 1. Prepare deletions & Backup
+    const backup = new Map();
+    const deletions = itemIds.map(id => {
+      // Backup state
+      if (AdminState.toldItemIds.has(id)) {
+        backup.set(id, AdminState.toldItemIds.get(id));
+      }
+
       const separatorIdx = id.indexOf('::');
-      if (separatorIdx === -1) continue;
+      if (separatorIdx === -1) {
+        console.error('❌ Invalid ID format in handleUntold:', id);
+        return null;
+      }
+      return {
+        order_id: id.substring(0, separatorIdx),
+        item_title: id.substring(separatorIdx + 2)
+      };
+    }).filter(Boolean);
 
-      const orderId = id.substring(0, separatorIdx);
-      const itemTitle = id.substring(separatorIdx + 2);
+    console.log(`🔌 handleUntold PREPARED ${deletions.length} deletions:`, deletions);
 
-      const { error } = await supabase
+    // 2. Optimistic Update (State Only)
+    itemIds.forEach(id => AdminState.toldItemIds.delete(id));
+
+    // 3. Initiate DB Deletes (Promise.all for speed)
+    if (!window.supabase) throw new Error('Supabase client missing');
+
+    console.log('🔌 Initiating DB Delete Promises...');
+    const dbPromise = Promise.all(deletions.map(del =>
+      supabase
         .from('kitchen_told_items')
         .delete()
-        .match({ order_id: orderId, item_title: itemTitle });
+        .match({ order_id: del.order_id, item_title: del.item_title })
+    ));
 
-      if (error) {
-        console.error('❌ Error deleting told item:', error);
-      }
+    // 4. Render UI (Safe Mode)
+    console.log('🐛 Rendering UI...');
+    try {
+      renderAll();
+      console.log('🐛 Render complete.');
+    } catch (renderError) {
+      console.error('❌ renderAll CRASHED:', renderError);
+      // Do not rethrow - let DB delete complete
     }
 
-    console.log(`↩️ Untold ${itemIds.length} items (deleted from DB)`);
+    // 5. Await DB Results
+    console.log('⏳ Awaiting DB results...');
+    const results = await dbPromise;
+
+    // Check for errors
+    const errors = results.filter(r => r.error).map(r => r.error);
+    if (errors.length > 0) {
+      console.error('❌ Some deletions failed:', errors);
+      throw errors[0];
+    }
+
+    console.log(`✅ Untold ${itemIds.length} items (deleted from DB).`);
+
   } catch (e) {
-    console.error('❌ handleUntold failed:', e);
+    console.error('❌ handleUntold CRASHED:', e);
     // Rollback
-    backup.forEach((ts, id) => AdminState.toldItemIds.set(id, ts));
-    renderAll();
+    // @ts-ignore
+    if (typeof backup !== 'undefined') {
+      backup.forEach((ts, id) => AdminState.toldItemIds.set(id, ts));
+    } else {
+      await loadToldState(); // Fallback reload
+    }
+    try { renderAll(); } catch (_) { }
   }
 }
 
