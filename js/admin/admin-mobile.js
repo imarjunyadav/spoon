@@ -950,7 +950,7 @@ function renderItems() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const idString = btn.dataset.itemIds;
-      if (idString) handleTold(idString.split(','));
+      if (idString) handleTold(idString.split(';;'));
     });
   });
 
@@ -959,7 +959,7 @@ function renderItems() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const idString = btn.dataset.itemIds;
-      if (idString) handleUntold(idString.split(','));
+      if (idString) handleUntold(idString.split(';;'));
     });
   });
 
@@ -1020,7 +1020,7 @@ function renderNeedsAnnouncingRow(item) {
       <div class="item-row__action">
         <button class="item-row__told"
                 aria-label="Mark ${item.name} as told"
-                data-item-ids="${(item.contributingItemIds || []).join(',')}">
+                data-item-ids="${(item.contributingItemIds || []).join(';;')}">
           TOLD
         </button>
       </div>
@@ -1076,7 +1076,7 @@ function renderToldRow(item) {
       <div class="item-row__action">
         <button class="item-row__untold"
                 aria-label="Undo tell for ${item.name}"
-                data-item-ids="${(item.contributingItemIds || []).join(',')}">
+                data-item-ids="${(item.contributingItemIds || []).join(';;')}">
           UNTOLD
         </button>
       </div>
@@ -1233,7 +1233,7 @@ async function loadToldState() {
 
     AdminState.toldItemIds = new Map(
       (data || []).map(row => [
-        `${row.order_id}_${row.item_title}`,
+        `${row.order_id}::${row.item_title}`,
         new Date(row.told_at).getTime()
       ])
     );
@@ -1255,7 +1255,11 @@ function cleanupToldState() {
   let changed = false;
 
   AdminState.toldItemIds.forEach((timestamp, key) => {
-    const [orderId] = key.split('_');
+    // safely split by the first separator occurrence
+    const separatorIdx = key.indexOf('::');
+    if (separatorIdx === -1) return; // Should not happen with valid keys
+
+    const orderId = key.substring(0, separatorIdx);
     if (!currentOrderIds.has(orderId)) {
       AdminState.toldItemIds.delete(key);
       changed = true;
@@ -1287,7 +1291,8 @@ function getNeedsAnnouncingItems() {
       const isPreOrder = !!order.preorder_time;
       const scheduleKey = isPreOrder ? order.preorder_time : null;
 
-      const distinctKey = `${order.id}_${item.title}`;
+      // Use :: as separator because order IDs contain underscores
+      const distinctKey = `${order.id}::${item.title}`;
       const isTold = AdminState.toldItemIds.has(distinctKey);
       const toldTs = isTold ? AdminState.toldItemIds.get(distinctKey) : null;
 
@@ -1364,11 +1369,16 @@ async function handleTold(itemIds) {
 
   // Build rows for upsert
   const rows = itemIds.map(id => {
-    const underscoreIdx = id.indexOf('_');
-    const orderId = id.substring(0, underscoreIdx);
-    const itemTitle = id.substring(underscoreIdx + 1);
+    // Handle separator :: safely
+    const separatorIdx = id.indexOf('::');
+    if (separatorIdx === -1) {
+      console.error('❌ Invalid ID format in handleTold:', id);
+      return null; // Skip invalid
+    }
+    const orderId = id.substring(0, separatorIdx);
+    const itemTitle = id.substring(separatorIdx + 2); // +2 for length of ::
     return { order_id: orderId, item_title: itemTitle, told_at: nowISO };
-  });
+  }).filter(Boolean); // Remove nulls
 
   try {
     const { error } = await supabase
@@ -1414,9 +1424,11 @@ async function handleUntold(itemIds) {
   try {
     // Delete each item from DB
     for (const id of itemIds) {
-      const underscoreIdx = id.indexOf('_');
-      const orderId = id.substring(0, underscoreIdx);
-      const itemTitle = id.substring(underscoreIdx + 1);
+      const separatorIdx = id.indexOf('::');
+      if (separatorIdx === -1) continue;
+
+      const orderId = id.substring(0, separatorIdx);
+      const itemTitle = id.substring(separatorIdx + 2);
 
       const { error } = await supabase
         .from('kitchen_told_items')
