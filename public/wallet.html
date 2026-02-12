@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>My Wallet - Spoon</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <link rel="stylesheet" href="../css/wallet.css">
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- HEADER -->
+        <header class="wallet-header">
+            <a href="account.html" class="wallet-header__back-btn" aria-label="Back to account">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h1 class="wallet-header__title">Spoon Wallet</h1>
+            <!-- Optional: Refresh button for web users -->
+            <button class="wallet-header__refresh-btn" id="refresh-btn" aria-label="Refresh wallet">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main class="wallet-content">
+            
+            <!-- HERO: Balance Card -->
+            <section class="wallet-hero">
+                <div class="wallet-card">
+                    <div class="wallet-card__bg-circle-1"></div>
+                    <div class="wallet-card__bg-circle-2"></div>
+                    
+                    <div class="wallet-card__content">
+                        <span class="wallet-card__label">Available Balance</span>
+                        <div class="wallet-card__balance">
+                            <span class="currency-symbol">₹</span>
+                            <span id="wallet-balance-amount">--</span>
+                        </div>
+                        <p class="wallet-card__context">
+                            Use coins for instant refunds & payments
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TRANSACTIONS LIST -->
+            <section class="transactions-section">
+                <div class="section-header">
+                    <h2 class="section-title">History</h2>
+                    
+                    <!-- Filters -->
+                    <div class="transaction-filters">
+                        <button class="filter-chip active" data-filter="all">All</button>
+                        <button class="filter-chip" data-filter="credit">Money In</button>
+                        <button class="filter-chip" data-filter="debit">Money Out</button>
+                    </div>
+                </div>
+
+                <div class="transactions-list" id="transactions-list">
+                    <!-- Loading State -->
+                    <div class="transaction-loading">
+                        <div class="skeleton-item"></div>
+                        <div class="skeleton-item"></div>
+                        <div class="skeleton-item"></div>
+                    </div>
+                </div>
+                
+                <!-- Infinite Scroll / Load More Sentinel -->
+                <div id="load-more-sentinel" class="load-more-sentinel"></div>
+            </section>
+
+        </main>
+
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="../js/core/config.js"></script>
+    <script src="../js/core/session-guard.js"></script>
+    <script src="../js/pages/wallet.js" defer></script>
+
+</body>
+</html>

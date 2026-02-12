@@ -24,8 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logout-btn');
 
     // Wallet Elements
-    const walletBalanceEl = document.getElementById('wallet-balance-amount');
-    const transactionsListEl = document.getElementById('transactions-list');
+    const walletBalanceBadge = document.getElementById('wallet-balance-badge');
 
     // Logout Modal Elements
     const logoutModalOverlay = document.getElementById('logout-modal-overlay');
@@ -106,14 +105,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Fetch and display Wallet Balance and Transactions.
+     * Fetch and display Wallet Balance only (for badge).
      */
-    async function fetchWalletData() {
+    async function fetchWalletBalance() {
         const email = getUserEmail();
         if (!email) return;
 
         try {
-            // 1. Fetch Balance
             const sessionToken = localStorage.getItem('spoon-session-token');
             const balanceRes = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/wallet/balance?email=${encodeURIComponent(email)}`, {
                 headers: {
@@ -124,71 +122,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const balanceData = await balanceRes.json();
 
             if (balanceData.success) {
-                walletBalanceEl.textContent = balanceData.balance;
+                walletBalanceBadge.textContent = `₹${balanceData.balance}`;
             } else {
-                walletBalanceEl.textContent = 'Error';
-            }
-
-            // 2. Fetch Transactions
-            const txRes = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/wallet/transactions?email=${encodeURIComponent(email)}&limit=10`, {
-                headers: {
-                    'x-user-email': email,
-                    'x-session-token': sessionToken
-                }
-            });
-            const txData = await txRes.json();
-
-            if (txData.success) {
-                renderTransactions(txData.transactions);
-            } else {
-                transactionsListEl.innerHTML = '<div class="no-transactions">Failed to load transactions</div>';
+                walletBalanceBadge.textContent = 'Error';
             }
 
         } catch (err) {
-            console.error('Error fetching wallet data:', err);
-            walletBalanceEl.textContent = 'Offline';
-            transactionsListEl.innerHTML = '<div class="no-transactions">Network error</div>';
+            console.error('Error fetching wallet balance:', err);
+            walletBalanceBadge.textContent = 'Offline';
         }
     }
 
-    /**
-     * Render list of transactions.
-     * @param {Array} transactions 
-     */
-    function renderTransactions(transactions) {
-        if (!transactions || transactions.length === 0) {
-            transactionsListEl.innerHTML = '<div class="no-transactions">No recent transactions</div>';
-            return;
-        }
 
-        transactionsListEl.innerHTML = transactions.map(tx => {
-            const isCredit = tx.type === 'CREDIT';
-            const iconClass = isCredit ? 'credit' : 'debit';
-            const icon = isCredit ? 'fa-arrow-down' : 'fa-arrow-up'; // Down = In (Credit), Up = Out (Debit)
-            const amountClass = isCredit ? 'credit' : 'debit';
-            const sign = isCredit ? '+' : '-';
-
-            // Format description
-            let desc = tx.description || tx.reason;
-            if (tx.reason === 'REFUND') desc = `Refund for Order #${tx.reference_order_id?.substring(0, 8)}`;
-            if (tx.reason === 'PAYMENT') desc = `Payment for Order #${tx.reference_order_id?.substring(0, 8)}`;
-
-            return `
-                <div class="transaction-item">
-                    <div class="transaction-icon ${iconClass}">
-                        <i class="fa-solid ${icon}"></i>
-                    </div>
-                    <div class="transaction-details">
-                        <div class="transaction-desc">${desc}</div>
-                        <div class="transaction-date">${formatTransactionDate(tx.created_at)}</div>
-                    </div>
-                    <div class="transaction-amount ${amountClass}">
-                        ${sign}₹${tx.amount}
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
 
     /**
      * Clears all user-related data from storage and redirects to login.
@@ -247,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Wait for config then fetch wallet
         window.waitForConfig().then(() => {
-            fetchWalletData();
+            fetchWalletBalance();
         });
 
         console.log("Account dashboard initialized.");

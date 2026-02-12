@@ -1,0 +1,292 @@
+/* ================================================================
+    SPOON - WALLET PAGE STYLESHEET
+   ================================================================ */
+
+/* ====================
+   1. IMPORT DESIGN SYSTEM
+   ==================== */
+@import url('account.css');
+/* Reuse headers and basic layout */
+
+/* ====================
+   2. HEADER
+   ==================== */
+.wallet-header {
+    position: relative;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 52px;
+    background-color: var(--background-white);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+}
+
+.wallet-header__back-btn {
+    position: absolute;
+    left: var(--spacing-md);
+    font-size: 18px;
+    color: var(--text-primary);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.wallet-header__back-btn:hover {
+    background-color: var(--background-light);
+}
+
+.wallet-header__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.wallet-header__refresh-btn {
+    position: absolute;
+    right: var(--spacing-md);
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: var(--text-secondary);
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+.wallet-header__refresh-btn:hover {
+    background-color: var(--background-light);
+    color: var(--brand-primary);
+}
+
+/* ====================
+   3. HERO CARD
+   ==================== */
+.wallet-hero {
+    padding: var(--spacing-md);
+    background-color: var(--background-white);
+}
+
+.wallet-card {
+    background: linear-gradient(135deg, #FF6B6B 0%, #EE5253 100%);
+    border-radius: var(--radius-large);
+    padding: 24px;
+    color: white;
+    box-shadow: 0 10px 20px rgba(238, 82, 83, 0.25);
+    position: relative;
+    overflow: hidden;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Abstract Decorations */
+.wallet-card__bg-circle-1 {
+    position: absolute;
+    top: -30px;
+    right: -30px;
+    width: 140px;
+    height: 140px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+}
+
+.wallet-card__bg-circle-2 {
+    position: absolute;
+    bottom: -40px;
+    left: -20px;
+    width: 100px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+}
+
+.wallet-card__content {
+    position: relative;
+    z-index: 1;
+}
+
+.wallet-card__label {
+    font-size: 13px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.9;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.wallet-card__balance {
+    font-size: 42px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: -1px;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.wallet-card__balance .currency-symbol {
+    font-size: 24px;
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+.wallet-card__context {
+    font-size: 13px;
+    opacity: 0.9;
+    margin: 0;
+    line-height: 1.4;
+    max-width: 80%;
+}
+
+/* ====================
+   4. TRANSACTIONS SECTION
+   ==================== */
+.transactions-section {
+    padding: var(--spacing-lg) var(--spacing-md);
+    background-color: var(--background-light);
+    /* Slight variation */
+    min-height: calc(100vh - 300px);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    flex-wrap: wrap;
+    /* Handle small screens */
+    gap: 12px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+/* Filter Chips */
+.transaction-filters {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    /* Scrollable on very small screens */
+    padding-bottom: 4px;
+    /* Space for scrollbar if active */
+}
+
+/* Hide scrollbar */
+.transaction-filters::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-chip {
+    background: var(--background-white);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.filter-chip.active {
+    background-color: var(--text-primary);
+    /* Use primary text color as bg for contrast */
+    color: white;
+    border-color: var(--text-primary);
+}
+
+.filter-chip:hover:not(.active) {
+    background-color: #f5f5f5;
+}
+
+/* List Items (Overrides/Enhancements on account.css styles) */
+.transactions-list {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    gap: 12px;
+    /* Spacing between cards */
+}
+
+.transaction-item {
+    background: var(--background-white);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    border-radius: var(--radius-medium);
+    padding: 16px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.transaction-item:last-child {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.transaction-meta {
+    display: flex;
+    gap: 8px;
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+}
+
+.transaction-ref {
+    color: #999;
+    font-family: monospace;
+}
+
+/* Loading States */
+.load-more-sentinel {
+    height: 20px;
+    margin-top: 20px;
+}
+
+.transaction-loading {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.skeleton-item {
+    height: 72px;
+    background: #fff;
+    border-radius: var(--radius-medium);
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.6;
+    }
+}
+
+/* Empty State */
+.no-transactions {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+    background: var(--background-white);
+    border-radius: var(--radius-medium);
+    border: 1px dashed var(--border-color);
+}
