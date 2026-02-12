@@ -9,7 +9,7 @@
 // STATE MANAGEMENT
 // ============================================
 
-console.log("🥄 Admin Mobile v2.10 loaded - REFACTORED HANDLETOLD");
+console.log("🥄 Admin Mobile v2.11 loaded - DB FIRST STRATEGY");
 
 const AdminState = {
   // Current active tab
@@ -1369,7 +1369,7 @@ async function handleTold(itemIds) {
     const now = Date.now();
     const nowISO = new Date(now).toISOString();
 
-    // 1. Calculate rows FIRST (Debug step)
+    // 1. Calculate rows FIRST
     const rows = itemIds.map(id => {
       const separatorIdx = id.indexOf('::');
       if (separatorIdx === -1) {
@@ -1387,17 +1387,29 @@ async function handleTold(itemIds) {
 
     // 2. Optimistic Update (UI)
     itemIds.forEach(id => AdminState.toldItemIds.set(id, now));
-    console.log('🐛 Optimistic update applied. Rendering...');
-    renderAll();
-    console.log('🐛 Render complete. Now sending to DB...');
 
-    // 3. DB Write
+    // 3. Start DB Write Promise immediately (Persistence Priority)
     if (!window.supabase) throw new Error('Supabase client missing');
 
-    const { data: upsertData, error } = await supabase
+    console.log('🔌 Initiating DB Upsert Promise...');
+    const dbPromise = supabase
       .from('kitchen_told_items')
       .upsert(rows, { onConflict: 'order_id,item_title' })
       .select();
+
+    // 4. Render UI (Safe Mode)
+    console.log('🐛 Rendering UI...');
+    try {
+      renderAll();
+      console.log('🐛 Render complete.');
+    } catch (renderError) {
+      console.error('❌ renderAll CRASHED:', renderError);
+      // Do not rethrow - let DB write complete
+    }
+
+    // 5. Await DB Result
+    console.log('⏳ Awaiting DB result...');
+    const { data: upsertData, error } = await dbPromise;
 
     if (error) throw error;
 
@@ -1406,7 +1418,7 @@ async function handleTold(itemIds) {
     console.error('❌ handleTold CRASHED:', e);
     // Rollback
     if (itemIds) itemIds.forEach(id => AdminState.toldItemIds.delete(id));
-    renderAll();
+    try { renderAll(); } catch (_) { }
   }
 }
 
