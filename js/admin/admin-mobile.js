@@ -942,17 +942,12 @@ function renderItems() {
 
   // Section 1: Needs Announcing (action items with TOLD button)
   if (hasNeedsAnnouncing) {
-    const surgeHtml = visible.length >= 5
-      ? `<span class="item-section-header__surge">🔥 RUSH</span>`
-      : '';
-
     html += `<div class="item-section-header">
       <div style="display:flex;align-items:center;gap:4px;">
         <span class="item-section-header__dot"></span>
         <span>Needs announcing</span>
         <span class="item-section-header__count">${visible.length}</span>
       </div>
-      ${surgeHtml}
     </div>`;
     html += visible.map(item => renderNeedsAnnouncingRow(item)).join('');
   }
@@ -1091,7 +1086,7 @@ function renderNeedsAnnouncingRow(item) {
   const commitQuantity = item.totalItemQuantity || item.quantity;
 
   return `
-    <div class="item-row item-row--announcing ${urgencyClass}"
+    <div class="item-row item-row--announcing"
          role="listitem"
          aria-label="${item.quantity} ${item.name}, ${item.delta} new${timeHint ? `, ${timeHint}` : ''}">
       <div class="item-row__content">
