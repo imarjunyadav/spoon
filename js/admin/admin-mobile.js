@@ -1063,13 +1063,12 @@ function renderNeedsAnnouncingRow(item) {
 
   if (item.hasPreOrderSource && item.earliestPickupTime !== null) {
     isPreOrder = true;
-    if (item.earliestPickupMinutes !== null && item.earliestPickupMinutes > 0) {
-      timeText = `in ${formatRelativeTime(item.earliestPickupMinutes)}`;
-    } else {
-      timeText = formatAbsoluteTime(new Date(item.earliestPickupTime));
-    }
+    // Calculate minutes until
+    const pickupTime = new Date(item.earliestPickupTime).getTime();
+    const minutesUntil = Math.round((pickupTime - Date.now()) / 60000);
+    timeText = formatPreOrderTime(minutesUntil, item.earliestPickupTime);
   } else if (item.waitMinutes !== undefined) {
-    timeText = item.waitMinutes < 1 ? 'Just now' : `${item.waitMinutes}m ago`;
+    timeText = formatWaitTime(item.waitMinutes);
   }
 
   // 2. Delta Badge (High Priority)
@@ -1146,10 +1145,10 @@ function renderToldRow(item) {
   } else if (item.originalToldTime) {
     // Live Told Batch: Show time since it was marked told
     const minutesSinceTold = Math.floor((Date.now() - item.originalToldTime) / 60000);
-    timeHint = minutesSinceTold < 1 ? 'Told just now' : `Told ${minutesSinceTold}m ago`;
+    timeHint = `Told ${formatWaitTime(minutesSinceTold)}`;
   } else if (item.waitMinutes !== undefined) {
     // Fallback
-    timeHint = item.waitMinutes < 1 ? 'Just now' : `${item.waitMinutes}m`;
+    timeHint = formatWaitTime(item.waitMinutes);
   }
 
   // PRE-ORDER badge sits inline with time
@@ -1207,7 +1206,7 @@ function renderPreOrdersSection(slots) {
 
     // Countdown badge for slots within 60 minutes
     const countdownHtml = minutesUntil > 0 && minutesUntil <= 60
-      ? `<span class="preorder-slot__countdown">${formatRelativeTime(minutesUntil)}</span>`
+      ? `<span class="preorder-slot__countdown">${formatPreOrderTime(minutesUntil, slot.pickupTime)}</span>`
       : '';
 
     const itemsList = slot.items.map(item =>
@@ -1233,22 +1232,32 @@ function renderPreOrdersSection(slots) {
 }
 
 /**
- * Format wait time for display
- * < 60 min → 18m
- * >= 60 min → 1 hr 5 m, 2 hr 10 m
+ * Format wait time for display (Requirements: 5.6)
+ * < 1 min → Just now
+ * < 60 min → 59m ago
+ * < 24 hr → 1h 5m ago
+ * >= 24 hr → 1d 2h ago
  * @param {number} minutes - Wait time in minutes
  * @returns {string} Formatted wait time
  */
 function formatWaitTime(minutes) {
+  if (minutes < 1) return 'Just now';
+
   if (minutes < 60) {
-    return `${minutes}m`;
+    return `${minutes}m ago`;
   }
+
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  if (mins === 0) {
-    return `${hours} hr`;
+
+  if (hours < 24) {
+    return mins > 0 ? `${hours}h ${mins}m ago` : `${hours}h ago`;
   }
-  return `${hours} hr ${mins} m`;
+
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+
+  return remainingHours > 0 ? `${days}d ${remainingHours}h ago` : `${days}d ago`;
 }
 
 /**
@@ -1821,7 +1830,7 @@ function renderActiveOrders() {
     if (isPreOrder) {
       const pickupTime = new Date(order.preorder_time).getTime();
       const minutesUntil = Math.round((pickupTime - now) / 60000);
-      timeDisplay = formatRelativeTime(minutesUntil);
+      timeDisplay = formatPreOrderTime(minutesUntil, pickupTime);
     } else {
       const orderAge = Math.floor((now - new Date(order.created_at).getTime()) / 60000);
       timeDisplay = formatWaitTime(orderAge);
@@ -3463,11 +3472,39 @@ window.addEventListener('beforeunload', () => {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', initAdmin);
 
-// Export for testing
+/**
+ * Format pre-order time for display
+ * > 45 min → 2:05 PM (Absolute)
+ * 1-45 min → in 15m
+ * 0 min → Due now
+ * < 0 min → Due 5m ago
+ * @param {number} minutesUntil - Minutes until pickup (can be negative)
+ * @param {string|number} timestamp - Original timestamp for absolute fallback
+ * @returns {string} Formatted string
+ */
+function formatPreOrderTime(minutesUntil, timestamp) {
+  if (minutesUntil > 45) {
+    return formatAbsoluteTime(new Date(timestamp));
+  }
+
+  if (minutesUntil > 0) {
+    return `in ${minutesUntil}m`;
+  }
+
+  if (minutesUntil === 0) {
+    return 'Due now';
+  }
+
+  // Negative (Overdue)
+  const overdueBy = Math.abs(minutesUntil);
+  return `Due ${overdueBy}m ago`;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     AdminState,
     TIME_BUCKET_THRESHOLD_MS,
+    formatPreOrderTime,
     ACTIVATION_THRESHOLD_MS,
     getItemSummary,
     getSortedItems,
