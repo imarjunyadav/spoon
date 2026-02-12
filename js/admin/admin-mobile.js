@@ -31,15 +31,12 @@ const AdminState = {
   isStockPanelOpen: false,
   confirmDialog: null, // { orderId, action, previousStatus }
 
-  // Items tab "told" tracking
-  // For LIVE orders: stores { toldTimestamp, toldQuantity } per aggregation key
-  //   - toldTimestamp: when TOLD was clicked
-  //   - toldQuantity: quantity at the time of TOLD action
-  //   - Orders created AFTER toldTimestamp show as new delta
-  // For PRE-ORDERS: stores just the quantity (pre-orders don't return from told)
-  toldCounts: {},
+  // Items tab "told" tracking (Simplified)
+  // Set of strings: `${orderId}_${itemId}`
+  // Tracks individual order items that have been announced.
+  toldItemIds: new Set(),
 
-  // Pending "told" actions (for optimistic updates)
+  // Pending actions (for optimistic updates)
   pendingToldActions: new Set(),
 
   // Stock panel state
@@ -921,12 +918,33 @@ function renderAll() {
 function renderItems() {
   if (!DOM.itemsList) return;
 
-  // Get data for both sections
-  const { visible, hidden } = getVisibleNeedsAnnouncingItems();
-  const preOrderSlots = getPreOrdersForPlanning();
+  // Get data (State-based)
+  const allItems = getNeedsAnnouncingItems();
+  const visible = allItems.filter(i => !i.isTold && !i.isPreOrder);
+  // Note: Pre-orders are separated below, so exclude them here if they are in the array?
+  // getNeedsAnnouncingItems returns both live and pre-orders.
+  // Pre-orders section handles its own list?
+  // renderPreOrdersSection takes `slots` from `getPreOrdersForPlanning`.
+  // Wait, `getNeedsAnnouncingItems` returns Pre-Orders too if we logic'd it so.
+  // The old logic separated them.
+  // My new logic includes them in `items` array with `isPreOrder` flag.
+  // But `renderPreOrdersSection` uses `getPreOrdersForPlanning`.
+  // I should ensure `visible` doesn't double count Pre-orders that are in the "Planning" phase.
+  // The request: "if 'x' pre orders is still in pre orders section...".
+  // Let's filter `visible` to ONLY be `live` items (or pre-orders that are "active" enough to be announced? but pre-orders go to pre-order section).
+  // I will filter out `isPreOrder` from `visible` and `hidden` lists here, assuming Pre-orders are handled by `renderPreOrdersSection`.
+  // Wait, if I click Told on a Pre-order in the Pre-order section, where does it go?
+  // "once counter staff clicked told button then move in 'already told' section".
+  // So TOLD Pre-orders SHOULD appear in `hidden` (Already Told).
+  // But UNTOLD Pre-orders stay in Pre-orders section.
 
-  const hasNeedsAnnouncing = visible.length > 0;
-  const hasToldItems = hidden.length > 0;
+  const needsAnnouncing = allItems.filter(i => !i.isTold && !i.isPreOrder);
+  const alreadyTold = allItems.filter(i => i.isTold); // Includes told pre-orders
+
+  const preOrderSlots = getPreOrdersForPlanning(); // This needs to check `!isTold` internally!
+
+  const hasNeedsAnnouncing = needsAnnouncing.length > 0;
+  const hasToldItems = alreadyTold.length > 0;
   const hasPreOrders = preOrderSlots.length > 0;
   const hasAnyContent = hasNeedsAnnouncing || hasToldItems || hasPreOrders;
 
@@ -940,19 +958,19 @@ function renderItems() {
 
   let html = '';
 
-  // Section 1: Needs Announcing (action items with TOLD button)
+  // Section 1: Needs Announcing (Live Orders)
   if (hasNeedsAnnouncing) {
     html += `<div class="item-section-header">
       <div style="display:flex;align-items:center;gap:4px;">
         <span class="item-section-header__dot"></span>
         <span>Needs announcing</span>
-        <span class="item-section-header__count">${visible.length}</span>
+        <span class="item-section-header__count">${needsAnnouncing.length}</span>
       </div>
     </div>`;
-    html += visible.map(item => renderNeedsAnnouncingRow(item)).join('');
+    html += needsAnnouncing.map(item => renderNeedsAnnouncingRow(item)).join('');
   }
 
-  // Section 2: Already Told (collapsible history)
+  // Section 2: Already Told (collapsible history) with UNTOLD option
   if (hasToldItems) {
     const chevronClass = AdminState.toldSectionOpen ? 'item-section-header__chevron--open' : '';
     const chevronSvg = `<svg class="item-section-header__chevron ${chevronClass}" viewBox="0 0 16 16" fill="currentColor"><path d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>`;
@@ -960,18 +978,18 @@ function renderItems() {
     html += `<div class="item-section-header item-section-header--muted" id="told-section-toggle">
       <div style="display:flex;align-items:center;gap:4px;">
         <span>Already told</span>
-        <span class="item-section-header__count" style="color:var(--text-muted);">${hidden.length}</span>
+        <span class="item-section-header__count" style="color:var(--text-muted);">${alreadyTold.length}</span>
       </div>
       ${chevronSvg}
     </div>`;
 
     const collapsibleClass = AdminState.toldSectionOpen ? 'told-section-collapsible--open' : '';
     html += `<div class="told-section-collapsible ${collapsibleClass}">`;
-    html += hidden.map(item => renderToldRow(item)).join('');
+    html += alreadyTold.map(item => renderToldRow(item)).join('');
     html += '</div>';
   }
 
-  // Section 3: Pre-orders (planning only, no action buttons)
+  // Section 3: Pre-orders (Planning)
   if (hasPreOrders) {
     html += renderPreOrdersSection(preOrderSlots);
   }
@@ -982,9 +1000,21 @@ function renderItems() {
   DOM.itemsList.querySelectorAll('.item-row__told').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const isPreOrder = btn.dataset.isPreorder === 'true';
-      const timestamp = parseInt(btn.dataset.toldTimestamp, 10) || null;
-      handleTold(btn.dataset.aggregationKey, parseInt(btn.dataset.itemQuantity, 10), isPreOrder, timestamp);
+      const idString = btn.dataset.itemIds; // "id1,id2"
+      if (idString) {
+        handleTold(idString.split(','));
+      }
+    });
+  });
+
+  // Add click handlers for UNTOLD buttons
+  DOM.itemsList.querySelectorAll('.item-row__untold').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idString = btn.dataset.itemIds;
+      if (idString) {
+        handleUntold(idString.split(','));
+      }
     });
   });
 
@@ -1109,9 +1139,7 @@ function renderNeedsAnnouncingRow(item) {
         <button class="item-row__told ${isPendingTold ? 'item-row__told--pending' : ''}"
                 ${isPendingTold ? 'disabled' : ''}
                 aria-label="Mark ${item.name} as told"
-                data-aggregation-key="${escapeHtml(toldKey)}"
-                data-item-quantity="${commitQuantity}"
-                data-told-timestamp="${item.newestOrderTime}"
+                data-item-ids="${(item.contributingItemIds || []).join(',')}"
                 data-is-preorder="${item.hasPreOrderSource}">
           ${isPendingTold ? '...' : 'TOLD'}
         </button>
@@ -1134,24 +1162,11 @@ function renderToldFilterToggle(hiddenCount) {
  */
 function renderToldRow(item) {
   let timeHint = '';
-
-  if (item.hasPreOrderSource) {
-    // Pre-orders: keep existing logic (future/past pickup time)
-    if (item.earliestPickupMinutes !== null && item.earliestPickupMinutes > 0) {
-      timeHint = formatRelativeTime(item.earliestPickupMinutes);
-    } else if (item.earliestPickupTime) {
-      timeHint = formatAbsoluteTime(new Date(item.earliestPickupTime));
-    }
-  } else if (item.originalToldTime) {
-    // Live Told Batch: Show time since it was marked told
-    const minutesSinceTold = Math.floor((Date.now() - item.originalToldTime) / 60000);
-    timeHint = `Told ${formatWaitTime(minutesSinceTold)}`;
-  } else if (item.waitMinutes !== undefined) {
-    // Fallback
-    timeHint = formatWaitTime(item.waitMinutes);
+  if (item.hasPreOrderSource && item.earliestPickupTime) {
+    timeHint = formatAbsoluteTime(new Date(item.earliestPickupTime));
   }
 
-  // PRE-ORDER badge sits inline with time
+  // PRE-ORDER badge sits inline
   const timeRow = timeHint || item.hasPreOrderSource ? `
     <div class="item-row__time-row">
       ${timeHint ? `<span class="item-row__time-hint">${timeHint}</span>` : ''}
@@ -1162,7 +1177,7 @@ function renderToldRow(item) {
   return `
     <div class="item-row item-row--told"
          role="listitem"
-         aria-label="${item.quantity} ${item.name}, ${timeHint}">
+         aria-label="${item.quantity} ${item.name} told">
       <div class="item-row__content">
         <div class="item-row__primary">
           <span class="item-row__qty">${item.quantity}</span><span class="item-row__sep">×</span>
@@ -1171,7 +1186,13 @@ function renderToldRow(item) {
         ${timeRow}
       </div>
       <div class="item-row__right">
-        <span class="item-row__told-indicator">✓ told</span>
+         <!-- Untold Button -->
+         <button class="item-row__untold" 
+                 aria-label="Undo tell for ${item.name}"
+                 data-item-ids="${(item.contributingItemIds || []).join(',')}"
+                 style="background:none;border:none;color:var(--text-muted);font-size:12px;font-weight:500;cursor:pointer;padding:4px 8px;">
+           Untold
+         </button>
       </div>
     </div>
   `;
@@ -1308,137 +1329,62 @@ async function handleTold() {
 } // DEPRECATED - See bottom of file
 
 /**
- * Save told counts to localStorage for persistence
+ * Save told state to localStorage
  */
-function saveToldCounts() {
+function saveToldState() {
   try {
-    localStorage.setItem('adminToldCounts', JSON.stringify(AdminState.toldCounts));
+    const data = Array.from(AdminState.toldItemIds);
+    localStorage.setItem('adminToldItemIds', JSON.stringify(data));
   } catch (e) {
-    console.warn('Could not save told counts to localStorage:', e);
+    console.warn('Could not save told state:', e);
   }
 }
 
 /**
- * Load told counts from localStorage
+ * Load told state from localStorage
  */
-function loadToldCounts() {
+function loadToldState() {
   try {
-    const saved = localStorage.getItem('adminToldCounts');
-    if (saved) {
-      AdminState.toldCounts = JSON.parse(saved);
-      console.log('📋 Loaded told counts from storage');
+    const data = localStorage.getItem('adminToldItemIds');
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        AdminState.toldItemIds = new Set(parsed);
+        console.log(`📋 Loaded ${AdminState.toldItemIds.size} told items`);
+      }
     }
   } catch (e) {
-    console.warn('Could not load told counts from localStorage:', e);
-    AdminState.toldCounts = {};
+    console.warn('Could not load told state:', e);
+    // Fallback or clear
+    AdminState.toldItemIds = new Set();
   }
 }
 
 /**
- * Clean up told counts for aggregation keys that no longer have matching orders
- * 
- * CRITICAL: This function uses the new aggregation key strategy to determine
- * which entries to keep. It builds a set of valid aggregation keys from current
- * orders and removes any told entries that don't match.
- * 
+ * Clean up told state for items no longer in pending orders
  * Called after orders are fetched to remove stale entries.
  */
-function cleanupToldCounts() {
-  // Build set of valid aggregation keys from current pending orders
-  const validKeys = new Set();
-
-  const pendingOrders = AdminState.orders.filter(o => ['PENDING', 'PAID', 'PLACED', 'PREPARING'].includes(o.status));
-
-  pendingOrders.forEach(order => {
-    const isPreOrder = !!order.preorder_time;
-    const scheduledTimeISO = order.preorder_time;
-
-    (order.items || []).forEach(item => {
-      if (isPreOrder && scheduledTimeISO) {
-        // Pre-order: key includes scheduled time
-        validKeys.add(getAggregationKey(item.title, true, scheduledTimeISO));
-      } else {
-        // Live order: key is just item name with live: prefix
-        validKeys.add(getAggregationKey(item.title, false, null));
-      }
-    });
-  });
-
-  // Remove told counts for keys that are no longer valid
+function cleanupToldState() {
+  const currentOrderIds = new Set(AdminState.orders.map(o => o.id));
   let changed = false;
-  Object.keys(AdminState.toldCounts).forEach(key => {
-    if (!validKeys.has(key)) {
-      delete AdminState.toldCounts[key];
+
+  AdminState.toldItemIds.forEach(key => {
+    // Key format: orderId_itemId (or just orderId for simple cases?)
+    // The plan said: `${order.id}_${item.name}`.
+    // If order is gone, remove key.
+    const [orderId] = key.split('_');
+    if (!currentOrderIds.has(orderId)) {
+      AdminState.toldItemIds.delete(key);
       changed = true;
     }
   });
 
   if (changed) {
-    saveToldCounts();
+    saveToldState();
   }
 }
 
-/**
- * Migrate old told counts format to new aggregation key format
- * 
- * Old format: { "itemName": count, "preorder_itemName": count }
- * New format: { "live:itemName": count, "preorder:itemName:scheduledTimeISO": count }
- * 
- * This migration runs once on load if old format is detected.
- * Pre-order entries without scheduled time are discarded (cannot be migrated accurately).
- */
-/**
- * Migrate old told counts format to new timestamp array format
- * 
- * Old formats:
- * - { "itemName": count } (Legacy)
- * - { "live:itemName": { toldTimestamp, toldQuantity } } (Previous V2)
- * 
- * New format:
- * - { "live:itemName": [timestamp1, timestamp2, ...] }
- * 
- * This allows multiple "Told" batches for the same item.
- */
-function migrateToldCountsIfNeeded() {
-  const needsMigration = Object.entries(AdminState.toldCounts).some(([key, value]) => {
-    return !Array.isArray(value);
-  });
 
-  if (!needsMigration) return;
-
-  const newCounts = {};
-
-  Object.entries(AdminState.toldCounts).forEach(([key, value]) => {
-    // 1. Handle legacy pre-orders (discard)
-    if (key.startsWith('preorder_')) return;
-
-    // 2. Normalize key (add prefix if missing)
-    let newKey = key;
-    if (!key.startsWith('live:') && !key.startsWith('preorder:')) {
-      newKey = `live:${key}`;
-    }
-
-    // 3. Convert value to array of timestamps
-    if (typeof value === 'number') {
-      // Legacy number: we don't have timestamp, so we can't migrate accurately.
-      // Best effort: use current time to mark as "told just now" or discard?
-      // Discarding is safer to force re-announce if critical, but annoying.
-      // Let's assume it was told "long ago" (0) so it appears as told?
-      // Actually, if we use 0, it might mess up "new orders" calculation.
-      // Let's discard to force fresh start - safest for strict batching.
-    } else if (value && typeof value === 'object' && value.toldTimestamp) {
-      // Previous V2 format: { toldTimestamp, toldQuantity }
-      newCounts[newKey] = [value.toldTimestamp];
-    } else if (Array.isArray(value)) {
-      // Already array
-      newCounts[newKey] = value;
-    }
-  });
-
-  AdminState.toldCounts = newCounts;
-  saveToldCounts();
-  console.log('📋 Migrated told counts to timestamp array format');
-}
 
 /**
  * Get items for Needs Announcing section with Strict Batching.
@@ -1449,351 +1395,157 @@ function migrateToldCountsIfNeeded() {
  * 3. Match orders to timestamps to create "Already Told" batches.
  * 4. Remaining orders form "New Batches".
  */
+/**
+ * Get items for Needs Announcing section (State-Based).
+ * 
+ * Strategy:
+ * 1. Iterate all pending orders.
+ * 2. Check if order-item is in AdminState.toldItemIds.
+ * 3. Group filtered items by Name/Variant.
+ */
 function getNeedsAnnouncingItems() {
   const { needsAnnouncingOrders } = partitionOrders(AdminState.orders);
-  const now = Date.now();
 
-  // Separate into normal orders (Live) and pre-orders
-  const normalOrders = needsAnnouncingOrders.filter(o => !isTransitionedPreOrder(o));
-  const preOrders = needsAnnouncingOrders.filter(o => isTransitionedPreOrder(o));
+  // Grouping maps
+  const needsAnnouncingGroups = {};
+  const alreadyToldGroups = {};
 
-  const items = [];
-
-  // ========================================
-  // LIVE ORDERS - Strict Batching
-  // ========================================
-  // Group orders by item name first
-  const ordersByName = {};
-
-  normalOrders.forEach(order => {
-    const orderTime = new Date(order.created_at).getTime();
-    (order.items || []).forEach(item => {
-      if (!ordersByName[item.title]) {
-        ordersByName[item.title] = {
-          name: item.title,
-          aggregationKey: getAggregationKey(item.title, false, null),
-          orders: []
-        };
-      }
-      ordersByName[item.title].orders.push({
-        orderTime,
-        quantity: item.quantity,
-        orderId: order.id
-      });
-    });
-  });
-
-  // Process each item
-  Object.values(ordersByName).forEach(entry => {
-    // 1. Sort orders by time (oldest first)
-    entry.orders.sort((a, b) => a.orderTime - b.orderTime);
-
-    // 2. Get told history (timestamps)
-    // Default to empty array if no history
-    let toldTimestamps = AdminState.toldCounts[entry.aggregationKey] || [];
-    if (!Array.isArray(toldTimestamps)) toldTimestamps = [];
-
-    // Sort timestamps ascending just in case
-    toldTimestamps.sort((a, b) => a - b);
-
-    const processedOrderIds = new Set();
-
-    // 3. Reconstruct "Told Batches" from history
-    toldTimestamps.forEach((ts, index) => {
-      // Find orders belonging to this batch
-      // Condition: Not processed AND (Created <= ts OR (Created <= ts + 3min))
-      const batchOrders = [];
-      let batchTotalQty = 0;
-      let batchDeltaQty = 0;
-      let batchMaxTime = 0;
-      let batchMinTime = Infinity;
-
-      entry.orders.forEach(order => {
-        if (processedOrderIds.has(order.orderId)) return;
-
-        const isHistoric = order.orderTime <= ts;
-        const nextTs = toldTimestamps[index + 1];
-        const coveredByFuture = nextTs && order.orderTime <= nextTs;
-
-        const isGracePeriod = !coveredByFuture && order.orderTime > ts && (order.orderTime - ts <= LIVE_ORDER_DELTA_WINDOW_MS);
-
-        if (isHistoric || isGracePeriod) {
-          batchOrders.push(order);
-          batchTotalQty += order.quantity;
-          batchMinTime = Math.min(batchMinTime, order.orderTime);
-          batchMaxTime = Math.max(batchMaxTime, order.orderTime);
-
-          if (isGracePeriod) {
-            batchDeltaQty += order.quantity;
-          }
-        }
-      });
-
-      // Mark as processed
-      batchOrders.forEach(o => processedOrderIds.add(o.orderId));
-
-      if (batchOrders.length > 0) {
-        const waitMinutes = Math.floor((now - batchMinTime) / 60000);
-
-        // Add Item: Told Batch
-        items.push({
-          aggregationKey: entry.aggregationKey,
-          name: entry.name,
-          quantity: batchTotalQty,
-          orderCount: batchOrders.length,
-          oldestOrderTime: batchMinTime,
-          newestOrderTime: batchMaxTime,
-          isPreOrder: false,
-          scheduledTimeISO: null,
-          earliestPickupMinutes: null,
-          waitMinutes,
-          toldCount: batchTotalQty - batchDeltaQty,
-          delta: batchDeltaQty,
-          isTold: batchDeltaQty === 0,
-          hasPreOrderSource: false,
-          batchType: 'told',
-          originalToldTime: ts // Reference to original timestamp for updates
-        });
-      }
-    });
-
-    // 4. Create "New Batches" from remaining orders
-    // Group remaining orders into clusters separated by > 3 minutes
-    const remainingOrders = entry.orders.filter(o => !processedOrderIds.has(o.orderId));
-
-    if (remainingOrders.length > 0) {
-      let currentBatch = [];
-
-      remainingOrders.forEach((order, index) => {
-        const prevOrder = currentBatch[currentBatch.length - 1];
-
-        // If gap > 3 min from previous order in this batch, start NEW batch
-        // Wait, logic check: "User B orders 3 Chinese Bhel (12:10) -> NEW card"
-        // "12:00 PM - User A ... 12:10 PM - User B"
-        // If I have 12:10, 12:12, 12:20.
-        // 12:10 and 12:12 are one batch. 12:20 is another.
-
-        const timeDiff = prevOrder ? (order.orderTime - prevOrder.orderTime) : 0;
-
-        if (currentBatch.length > 0 && timeDiff > LIVE_ORDER_DELTA_WINDOW_MS) {
-          // Gap exceeded - finalize current batch
-          addBatchAsItem(currentBatch);
-          currentBatch = [];
-        }
-
-        currentBatch.push(order);
-
-        // If last order, finalize
-        if (index === remainingOrders.length - 1) {
-          addBatchAsItem(currentBatch);
-        }
-      });
-
-      function addBatchAsItem(batch) {
-        if (batch.length === 0) return;
-
-        const totalQty = batch.reduce((sum, o) => sum + o.quantity, 0);
-        const minTime = batch[0].orderTime;
-        const maxTime = batch[batch.length - 1].orderTime; // Approx
-        const waitMinutes = Math.floor((now - minTime) / 60000);
-
-        items.push({
-          aggregationKey: entry.aggregationKey,
-          name: entry.name,
-          quantity: totalQty,
-          orderCount: batch.length,
-          oldestOrderTime: minTime,
-          newestOrderTime: maxTime,
-          isPreOrder: false,
-          scheduledTimeISO: null,
-          earliestPickupMinutes: null,
-          waitMinutes,
-          toldCount: 0,
-          delta: totalQty,
-          isTold: false,
-          hasPreOrderSource: false,
-          batchType: 'new',
-          originalToldTime: null
-        });
-      }
-    }
-  });
-
-
-  // ========================================
-  // PRE-ORDERS - Absolute Model (unchanged)
-  // ========================================
-  // Group by item name AND scheduled time (never merge different times)
-  const preOrderItems = {};
-
-  preOrders.forEach(order => {
-    const scheduledTimeISO = order.preorder_time;
-    const pickupTime = new Date(scheduledTimeISO).getTime();
-    const minutesUntilPickup = Math.round((pickupTime - now) / 60000);
-    const orderTime = new Date(order.created_at).getTime();
+  needsAnnouncingOrders.forEach(order => {
+    // Skip if status is not valid for kitchen (though partitionOrders handles this?)
+    // Double check status just in case
+    if (!['PENDING', 'PAID', 'PLACED', 'PREPARING'].includes(order.status)) return;
 
     (order.items || []).forEach(item => {
-      // Key includes scheduled time to keep different pickup slots separate
-      const aggKey = getAggregationKey(item.title, true, scheduledTimeISO);
+      // Create unique ID for this order item instance
+      // Using order.id + item.title (or variant info if available)
+      // Note: If multiple of same item in one order, we treat them as a block?
+      // Yes, usually "Burger x2". If we tell, we tell both.
+      // So key is `${order.id}_${item.title}`.
 
-      if (!preOrderItems[aggKey]) {
-        preOrderItems[aggKey] = {
-          aggregationKey: aggKey,
+      // Handle Pre-orders: logic is same! "Pre-order Burger" is just an item.
+      const isPreOrder = !!order.preorder_time;
+      let scheduleKey = null;
+      if (isPreOrder && order.preorder_time) {
+        scheduleKey = order.preorder_time;
+      }
+
+      // Aggregation Key (for grouping in UI)
+      // We group by Name. 
+      // For Pre-orders, we MIGHT group by Time too?
+      // User said: "if 'x' pre orders is still in pre orders section... add it on the same pre order time card list."
+      // So Pre-orders group by Name + Time.
+      // Live orders group by Name.
+
+      const distinctKey = `${order.id}_${item.title}`;
+      const isTold = AdminState.toldItemIds.has(distinctKey);
+
+      const groupKey = isPreOrder
+        ? `preorder:${item.title}:${scheduleKey}`
+        : `live:${item.title}`;
+
+      const targetGroups = isTold ? alreadyToldGroups : needsAnnouncingGroups;
+
+      if (!targetGroups[groupKey]) {
+        targetGroups[groupKey] = {
+          aggregationKey: groupKey,
           name: item.title,
           quantity: 0,
           orderCount: 0,
           oldestOrderTime: Infinity,
-          isPreOrder: true,
-          scheduledTimeISO: scheduledTimeISO,
-          earliestPickupMinutes: minutesUntilPickup,
-          earliestPickupTime: pickupTime,
+          newestOrderTime: 0,
+          isPreOrder: isPreOrder,
+          earliestPickupTime: isPreOrder ? new Date(scheduleKey).getTime() : null,
+          earliestPickupMinutes: null, // Calc later
+
+          // Helper for "Told" action
+          contributingItemIds: [], // List of "orderId_title" to mark as told
+
+          // Display helpers
+          isTold: isTold
         };
       }
 
-      const entry = preOrderItems[aggKey];
-      entry.quantity += item.quantity;
-      entry.orderCount++;
-      entry.oldestOrderTime = Math.min(entry.oldestOrderTime, orderTime);
-      // Track earliest pickup time (in case multiple orders have same scheduled time)
-      if (minutesUntilPickup < entry.earliestPickupMinutes) {
-        entry.earliestPickupMinutes = minutesUntilPickup;
-        entry.earliestPickupTime = pickupTime;
-      }
+      const group = targetGroups[groupKey];
+      group.quantity += item.quantity;
+      group.orderCount++;
+      const orderTime = new Date(order.created_at).getTime();
+      group.oldestOrderTime = Math.min(group.oldestOrderTime, orderTime);
+      group.newestOrderTime = Math.max(group.newestOrderTime, orderTime);
+
+      // Track IDs for the "Told" button action
+      group.contributingItemIds.push(distinctKey);
     });
   });
 
-  // Convert pre-order items to array (pre-orders use simple quantity-based told)
-  Object.values(preOrderItems).forEach(item => {
-    // Pre-orders don't use the array history (yet), they use simple quantity
-    // But our new state structure implies arrays everywhere?
-    // Let's keep Pre-Orders using simple quantity for now as they are "Pre-Planned"
-    // and unlikely to have the "Add +3" flow in the same way (they move to live eventually?)
-    // Actually, `isTransitionedPreOrder` logic handles them moving to live?
-    // "Pre-orders stay in Pre-Orders until 45 min before".
-    // Once they are "Need Announcing", they are in `preOrders` array above.
-    // They are separated here.
+  // Convert to array
+  const items = [
+    ...Object.values(needsAnnouncingGroups),
+    ...Object.values(alreadyToldGroups)
+  ];
 
-    // Check if we migrated pre-orders to arrays?
-    // `migrateToldCountsIfNeeded` ignores 'preorder:' keys for array conversion?
-    // No, it converts them: `if (!key.startsWith('preorder:'))... newKey = live:...`
-    // Wait, pre-orders HAVE `preorder:` prefix.
-    // `if (key.startsWith('live:') || key.startsWith('preorder:'))` -> matches array format.
-    // So Pre-orders ARE arrays now if they were migrated.
-    // But `handleTold` for pre-orders sets simple quantity:
-    // `AdminState.toldCounts[aggregationKey] = currentQuantity;`
-    // This will break if we expect array.
-
-    // Let's stick to simple quantity for Pre-Orders for now to avoid regression.
-    // They are "Planning" items, not "Reactive" items.
-
-    const toldState = AdminState.toldCounts[item.aggregationKey];
-    let toldCount = 0;
-
-    if (Array.isArray(toldState)) {
-      // Fallback if it somehow became an array
-      toldCount = toldState.length > 0 ? item.quantity : 0; // Rough approx
+  // Final processing (calc times, etc)
+  const now = Date.now();
+  return items.map(item => {
+    if (item.isPreOrder && item.earliestPickupTime) {
+      const minutesUntil = Math.round((item.earliestPickupTime - now) / 60000);
+      item.earliestPickupMinutes = minutesUntil;
+      // Logic for formatting is in render
     } else {
-      toldCount = typeof toldState === 'number' ? toldState : 0;
+      item.waitMinutes = Math.floor((now - item.oldestOrderTime) / 60000);
     }
 
-    const delta = Math.max(0, item.quantity - toldCount);
+    // Add Delta property for compatibility (Delta = Qty if not told, 0 if told)
+    item.delta = item.isTold ? 0 : item.quantity;
 
-    items.push({
-      ...item,
-      waitMinutes: 0, // Not used for pre-orders
-      toldCount,
-      delta,
-      isTold: delta <= 0,
-      hasPreOrderSource: true,
-      earliestPickupMinutes: item.earliestPickupMinutes === Infinity ? null : item.earliestPickupMinutes,
-      earliestPickupTime: item.earliestPickupTime,
-    });
+    // hasPreOrderSource flag
+    item.hasPreOrderSource = item.isPreOrder;
+
+    return item;
   });
-
-  return items;
 }
 
 /**
  * Handle TOLD button click.
  */
-async function handleTold(aggregationKey, currentQuantity, isPreOrder = false, customTimestamp = null) {
-  if (AdminState.pendingToldActions.has(aggregationKey)) return;
-
-  // Store previous value for rollback
-  const previousToldState = AdminState.toldCounts[aggregationKey];
+/**
+ * Handle TOLD button click.
+ * Adds items to toldItemIds set.
+ * @param {Array<string>} itemIds - List of "orderId_title" to mark as told.
+ */
+async function handleTold(itemIds) {
+  if (!itemIds || itemIds.length === 0) return;
 
   // Optimistic update
-  AdminState.pendingToldActions.add(aggregationKey);
+  itemIds.forEach(id => {
+    AdminState.toldItemIds.add(id);
+    // Track pending if we want to show spinner, but local is instant
+  });
 
-  if (isPreOrder) {
-    // Pre-orders use simple quantity
-    AdminState.toldCounts[aggregationKey] = currentQuantity;
-  } else {
-    // Live orders: Manage timestamp array
-    let timestamps = AdminState.toldCounts[aggregationKey] || [];
-    if (!Array.isArray(timestamps)) timestamps = [];
+  saveToldState();
+  renderAll();
 
-    // Clone to avoid mutation issues during render
-    timestamps = [...timestamps];
-
-    const now = Date.now();
-    const targetTime = customTimestamp || now;
-
-    if (customTimestamp && experimental_isReopening(timestamps, customTimestamp)) {
-      // We are "reopening" an existing batch (updating its timestamp to now/newest)
-      // Actually, we pass `newestOrderTime` as `customTimestamp` from `renderNeedsAnnouncingRow`.
-      // If we have an `originalToldTime` in the item, we should use THAT to find the entry to update.
-      // But `renderItems` doesn't pass `originalToldTime`.
-      // Let's assume `customTimestamp` IS the `originalToldTime` if it's a "Told Batch".
-      // Ah, `renderNeedsAnnouncingRow` sets `data-told-timestamp="${item.newestOrderTime}"`.
-      // If it's a "Told Batch" (reopened), `newestOrderTime` > `originalToldTime`.
-      // We need to pass `originalToldTime` to find the record!
-
-      // CORRECTION: `renderNeedsAnnouncingRow` needs `originalToldTime`.
-      // I will update this locally in this function first, but I need to update the HTML generation too.
-      // For now, let's just append the new timestamp.
-      // If we append, we have two timestamps.
-      // e.g. [12:00, 12:05].
-      // Orders <= 12:00 match batch 1.
-      // Orders > 12:00 & <= 12:05 match batch 2.
-      // Creating a new timestamp effectively "claims" the semantic gap.
-      // So appending is actually correct and simpler!
-      // We don't need to "update" the old timestamp.
-      // The old timestamp remains valid for the *old* orders.
-      // The new timestamp covers the *new* orders (the delta).
-
-      timestamps.push(targetTime);
-    } else {
-      // New batch - just push
-      timestamps.push(targetTime);
-    }
-
-    // Sort to ensure validity
-    timestamps.sort((a, b) => a - b);
-
-    AdminState.toldCounts[aggregationKey] = timestamps;
-  }
-
-  renderItems();
-
-  try {
-    saveToldCounts();
-    await new Promise(resolve => setTimeout(resolve, 150));
-    AdminState.pendingToldActions.delete(aggregationKey);
-    renderItems();
-    console.log(`✅ Marked "${aggregationKey}" as told (batches: ${AdminState.toldCounts[aggregationKey]?.length || 1})`);
-  } catch (error) {
-    console.error('❌ Error saving told count:', error);
-    AdminState.toldCounts[aggregationKey] = previousToldState;
-    AdminState.pendingToldActions.delete(aggregationKey);
-    renderItems();
-  }
+  console.log(`✅ Marked ${itemIds.length} items as told`);
 }
 
-// Helper to check if we are reopening (placeholder)
-function experimental_isReopening(timestamps, time) {
-  return false; // Always append for now - simpler and correctly segments history
+/**
+ * Handle UNTOLD action.
+ * Removes items from toldItemIds set.
+ * @param {Array<string>} itemIds - List of IDs to un-tell.
+ */
+async function handleUntold(itemIds) {
+  if (!itemIds || itemIds.length === 0) return;
+
+  itemIds.forEach(id => {
+    AdminState.toldItemIds.delete(id);
+  });
+
+  saveToldState();
+  renderAll();
+
+  console.log(`↩️ Un-told ${itemIds.length} items`);
 }
+
+
 function renderActiveOrders() {
   if (!DOM.activeOrdersList) return;
 
@@ -2770,8 +2522,8 @@ async function fetchOrders() {
 
   console.log("📦 Orders fetched:", AdminState.orders.length);
 
-  // Clean up told counts for items no longer in pending orders
-  cleanupToldCounts();
+  // Clean up told state for items no longer in pending orders
+  cleanupToldState();
 
   // Debounce render to prevent UI jitter on rapid updates (Requirement: Scalability)
   if (window.renderTimeout) clearTimeout(window.renderTimeout);
@@ -2859,8 +2611,8 @@ function handleOrderChange(payload) {
     // fetchOrders();
   }
 
-  // Clean up told counts for items no longer in pending orders
-  cleanupToldCounts();
+  // Clean up told state for items no longer in pending orders
+  cleanupToldState();
 
   // Re-render UI from local state (no DB call)
   renderAll();
@@ -3396,11 +3148,11 @@ async function initAdmin() {
   // Initialize event listeners
   initEventListeners();
 
-  // Load told counts from localStorage
-  loadToldCounts();
+  // Load told state from localStorage
+  loadToldState();
 
-  // Migrate old told counts format if needed
-  migrateToldCountsIfNeeded();
+  // Migrate logic removed
+  // migrateToldCountsIfNeeded();
 
   // Start UI timer for wait time updates
   startWaitTimeTimer();
@@ -3512,10 +3264,9 @@ if (typeof module !== 'undefined' && module.exports) {
     updateBadgeCounts,
     handleTabSwitch,
     handleTold,
-    saveToldCounts,
-    loadToldCounts,
-    cleanupToldCounts,
-    migrateToldCountsIfNeeded,
+    saveToldState,
+    loadToldState,
+    cleanupToldState,
     // Pre-order separation exports
     needsAnnouncing,
     isTransitionedPreOrder,
