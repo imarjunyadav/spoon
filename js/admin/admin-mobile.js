@@ -1046,70 +1046,76 @@ function renderItemRow(item, showDelta) {
  * @param {Object} item - Item data.
  * @returns {string} HTML string.
  */
+/**
+ * Render a needs-announcing item row (V5 — Name & Delta First).
+ * Priority: Name > Delta > Time > Told > Quantity.
+ * @param {Object} item - Item data.
+ * @returns {string} HTML string.
+ */
 function renderNeedsAnnouncingRow(item) {
-  // Use the aggregation key for told state tracking
   const toldKey = item.aggregationKey;
   const isPendingTold = AdminState.pendingToldActions.has(toldKey);
-
-  // Urgency tier based on wait time
-  const urgency = item.hasPreOrderSource ? 'low' : getUrgencyLevel(item.waitMinutes || 0);
-  const urgencyClass = `item-row--urgent-${urgency}`;
-
-  // Time hint with urgency coloring
-  let timeHint = '';
-  let timeHintClass = '';
-  if (item.hasPreOrderSource && item.earliestPickupTime !== null) {
-    if (item.earliestPickupMinutes !== null && item.earliestPickupMinutes > 0) {
-      timeHint = formatRelativeTime(item.earliestPickupMinutes);
-    } else {
-      timeHint = formatAbsoluteTime(new Date(item.earliestPickupTime));
-      timeHintClass = 'item-row__time-hint--critical';
-    }
-  } else if (item.waitMinutes !== undefined) {
-    timeHint = item.waitMinutes < 1 ? 'Just now' : `${item.waitMinutes}m ago`;
-    timeHintClass = getTimeHintClass(item.waitMinutes);
-  }
-
-  // Time row with PRE-ORDER badge
-  const timeRow = timeHint || item.hasPreOrderSource ? `
-    <div class="item-row__time-row">
-      ${timeHint ? `<span class="item-row__time-hint ${timeHintClass}">${timeHint}</span>` : ''}
-      ${item.hasPreOrderSource ? '<span class="item-row__preorder-badge">PRE-ORDER</span>' : ''}
-    </div>
-  ` : '';
-
-  // SVG check icon for TOLD button
-  const checkIcon = `<svg viewBox="0 0 16 16" fill="currentColor"><path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/></svg>`;
-  const pendingIcon = `<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="2"/></svg>`;
-
-  // Determine correct quantity to commit when told
   const commitQuantity = item.totalItemQuantity || item.quantity;
 
+  // 1. Time & Pre-order Context
+  let timeText = '';
+  let isPreOrder = false;
+
+  if (item.hasPreOrderSource && item.earliestPickupTime !== null) {
+    isPreOrder = true;
+    if (item.earliestPickupMinutes !== null && item.earliestPickupMinutes > 0) {
+      timeText = `in ${formatRelativeTime(item.earliestPickupMinutes)}`;
+    } else {
+      timeText = formatAbsoluteTime(new Date(item.earliestPickupTime));
+    }
+  } else if (item.waitMinutes !== undefined) {
+    timeText = item.waitMinutes < 1 ? 'Just now' : `${item.waitMinutes}m ago`;
+  }
+
+  // 2. Delta Badge (High Priority)
+  const deltaHtml = item.delta > 0
+    ? `<span class="item-row__delta-badge">+${item.delta}</span>`
+    : '';
+
+  // 3. Pre-order Badge
+  const preOrderHtml = isPreOrder
+    ? `<span class="item-row__tag--preorder">Pre-order</span>`
+    : '';
+
+  // 4. Quantity (Low Priority)
+  const quantityHtml = `<span class="item-row__meta-qty">Qty: ${item.quantity}</span>`;
+
+  // 5. Meta Row Construction
+  const metaParts = [preOrderHtml, timeText, quantityHtml].filter(Boolean);
+  const metaHtml = metaParts.join('<span class="item-row__dot">•</span>');
+
   return `
-    <div class="item-row item-row--announcing"
+    <div class="item-row item-row--v5"
          role="listitem"
-         aria-label="${item.quantity} ${item.name}, ${item.delta} new${timeHint ? `, ${timeHint}` : ''}">
-      <div class="item-row__content">
-        <div class="item-row__primary">
-          <span class="item-row__qty">${item.quantity}</span><span class="item-row__sep">×</span>
+         aria-label="${item.name}, ${item.delta} new">
+      
+      <!-- LEFT: Name & Details -->
+      <div class="item-row__main">
+        <div class="item-row__top">
           <span class="item-row__name">${escapeHtml(item.name)}</span>
+          ${deltaHtml}
         </div>
-        ${timeRow}
+        <div class="item-row__meta">
+          ${metaHtml}
+        </div>
       </div>
-      <div class="item-row__right">
-        <div class="item-row__action">
-          <span class="item-row__delta">+${item.delta}</span>
-          <button class="item-row__told ${isPendingTold ? 'item-row__told--pending' : ''}"
-                  ${isPendingTold ? 'disabled' : ''}
-                  aria-label="Mark ${item.name} as told"
-                  data-aggregation-key="${escapeHtml(toldKey)}"
-                  data-item-quantity="${commitQuantity}"
-                  data-told-timestamp="${item.newestOrderTime}"
-                  data-is-preorder="${item.hasPreOrderSource}">
-            ${isPendingTold ? pendingIcon : checkIcon}
-            <span>${isPendingTold ? '...' : 'TOLD'}</span>
-          </button>
-        </div>
+
+      <!-- RIGHT: Action -->
+      <div class="item-row__action">
+        <button class="item-row__told ${isPendingTold ? 'item-row__told--pending' : ''}"
+                ${isPendingTold ? 'disabled' : ''}
+                aria-label="Mark ${item.name} as told"
+                data-aggregation-key="${escapeHtml(toldKey)}"
+                data-item-quantity="${commitQuantity}"
+                data-told-timestamp="${item.newestOrderTime}"
+                data-is-preorder="${item.hasPreOrderSource}">
+          ${isPendingTold ? '...' : 'TOLD'}
+        </button>
       </div>
     </div>
   `;

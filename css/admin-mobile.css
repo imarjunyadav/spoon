@@ -2232,8 +2232,110 @@ body {
 }
 
 /* ====================
-   21. ITEM ROW COMPONENT (v3 — Simplified)
-   Clean, flat design without panic/urgency cues
+   21. ITEM ROW COMPONENT (V5: Name-First Layout)
+   Priority: Name > Delta > Time > Told > Quantity
+   ==================== */
+
+/* V5 Container */
+.item-row--v5 {
+    display: flex;
+    align-items: center;
+    padding: 12px 14px;
+    gap: 12px;
+    /* Clean overrides */
+    border: none;
+    min-height: auto;
+}
+
+/* Left Main Content (Grow) */
+.item-row--v5 .item-row__main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    /* Text truncation fix */
+}
+
+/* Top Row: Name + Delta */
+.item-row--v5 .item-row__top {
+    display: flex;
+    align-items: baseline;
+    /* Align text baselines */
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.item-row--v5 .item-row__name {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+    /* #1f2937 */
+    line-height: 1.3;
+    /* Reset old styles just in case */
+    margin: 0;
+    flex: initial;
+}
+
+/* Delta Badge (High Visibility) */
+.item-row--v5 .item-row__delta-badge {
+    background-color: #fff7ed;
+    /* Orange-50 */
+    color: #c2410c;
+    /* Orange-700 */
+    font-size: 13px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 99px;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    border: 1px solid rgba(194, 65, 12, 0.1);
+}
+
+/* Meta Row: Time • Qty */
+.item-row--v5 .item-row__meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--text-muted);
+    /* #6b7280 */
+    gap: 6px;
+    font-weight: 500;
+}
+
+.item-row--v5 .item-row__tag--preorder {
+    color: #7e22ce;
+    /* Purple-700 */
+    background-color: #f3e8ff;
+    /* Purple-100 */
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* Action Area (Right) */
+.item-row--v5 .item-row__action {
+    flex-shrink: 0;
+    margin: 0;
+    /* Reset margins */
+}
+
+/* Ensure Button is clear */
+.item-row--v5 .item-row__told {
+    min-width: 72px;
+    height: 48px;
+    /* Taller touch target */
+    font-size: 14px;
+    border-radius: 12px;
+    padding: 0 12px;
+}
+
+/* ====================
+   LEGACY ITEM ROW (For 'Already Told' & Compatibility)
    ==================== */
 
 .item-row {
