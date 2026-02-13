@@ -9,7 +9,7 @@
 // STATE MANAGEMENT
 // ============================================
 
-console.log("🥄 Admin Mobile v2.16 loaded - Cache-bust + Error handling fix");
+console.log("🥄 Admin Mobile v2.17 loaded - Deep debug markComplete");
 
 const AdminState = {
   // Current active tab
@@ -2033,11 +2033,17 @@ async function executeConfirmedAction() {
  * @param {string} orderId - The order ID.
  */
 async function markComplete(orderId) {
-  console.log("🔄 Marking order as COMPLETE:", orderId);
+  console.log("🔄 [1/6] Marking order as COMPLETE:", orderId);
 
   // Optimistic update (Requirements: 10.3)
   const order = AdminState.orders.find(o => o.id === orderId);
-  if (!order) return;
+  if (!order) {
+    console.error("❌ [1/6] Order NOT FOUND in AdminState.orders for id:", orderId);
+    console.log("   Available order IDs:", AdminState.orders.map(o => o.id));
+    showErrorOverlay("Order not found in local state. Please refresh.");
+    return;
+  }
+  console.log("✅ [1/6] Order found. Current status:", order.status);
 
   const previousStatus = order.status;
   const previousUpdatedAt = order.updated_at;
@@ -2047,19 +2053,43 @@ async function markComplete(orderId) {
   order.status = 'COMPLETE';
   order.updated_at = new Date().toISOString();
   renderAll();
+  console.log("✅ [2/6] Optimistic update applied, UI re-rendered");
 
   try {
-    const response = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/orders/${orderId}/status`, {
+    // Step 3: Extract auth token
+    console.log("🔄 [3/6] Extracting auth token...");
+    let authToken = '';
+    try {
+      const rawToken = localStorage.getItem('sb-mnvxojjbbiqmymlatigh-auth-token');
+      if (rawToken) {
+        const parsed = JSON.parse(rawToken);
+        authToken = parsed?.access_token || '';
+        console.log("✅ [3/6] Auth token extracted, length:", authToken.length);
+      } else {
+        console.warn("⚠️ [3/6] No auth token found in localStorage");
+      }
+    } catch (tokenErr) {
+      console.error("❌ [3/6] Failed to parse auth token:", tokenErr.message);
+    }
+
+    // Step 4: Make API call
+    const url = `${window.SPOON_CONFIG.API_BASE_URL}/api/orders/${orderId}/status`;
+    console.log("🔄 [4/6] Sending PATCH to:", url);
+
+    const response = await fetch(url, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('sb-mnvxojjbbiqmymlatigh-auth-token') ? JSON.parse(localStorage.getItem('sb-mnvxojjbbiqmymlatigh-auth-token')).access_token : ''}`
+        'Authorization': `Bearer ${authToken}`
       },
       body: JSON.stringify({ status: 'COMPLETE' })
     });
 
+    console.log("✅ [4/6] Response received. Status:", response.status, response.statusText);
+
     // Handle session expiry (Requirements: 13.1)
     if (response.status === 401) {
+      console.warn("⚠️ [4/6] Got 401 - Session expired");
       order.status = previousStatus;
       AdminState.pendingActions.delete(orderId);
       renderAll();
@@ -2067,10 +2097,13 @@ async function markComplete(orderId) {
       return;
     }
 
+    // Step 5: Parse response
+    console.log("🔄 [5/6] Parsing response JSON...");
     const result = await response.json();
+    console.log("✅ [5/6] Response body:", JSON.stringify(result).substring(0, 200));
 
     if (result.success) {
-      console.log('✅ Order marked as COMPLETE');
+      console.log('✅ [6/6] Order marked as COMPLETE successfully!');
       AdminState.pendingActions.delete(orderId);
 
       // cleanupToldState handled by fetchOrders -> renderAll
@@ -2079,7 +2112,10 @@ async function markComplete(orderId) {
       throw new Error(result.error || 'Failed to update order');
     }
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ markComplete FAILED:', error);
+    console.error('   Error name:', error.name);
+    console.error('   Error message:', error.message);
+    console.error('   Error stack:', error.stack);
 
     // Rollback optimistic update (Requirements: 10.4)
     order.status = previousStatus;
