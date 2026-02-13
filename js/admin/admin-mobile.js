@@ -2072,9 +2072,9 @@ async function markComplete(orderId) {
     if (result.success) {
       console.log('✅ Order marked as COMPLETE');
       AdminState.pendingActions.delete(orderId);
-      // Don't refetch immediately - let Realtime handle it to avoid race conditions
-      // await fetchOrders(); 
-      cleanupToldState(); // Ensure cleaner state
+
+      // cleanupToldState handled by fetchOrders -> renderAll
+      await fetchOrders();
     } else {
       throw new Error(result.error || 'Failed to update order');
     }
@@ -2087,7 +2087,8 @@ async function markComplete(orderId) {
     AdminState.pendingActions.delete(orderId);
     renderAll();
 
-    // Removed toast - rollback is visible in UI
+    // Show visible error to user
+    showErrorOverlay(`Failed to mark order as complete: ${error.message}`);
   }
 }
 
@@ -2142,8 +2143,7 @@ async function markPickedUp(orderId) {
       // Auto-focus search field for next order
       setTimeout(() => DOM.searchInput?.focus(), 100);
 
-      // Don't refetch immediately - let Realtime handle it
-      // await fetchOrders();
+      await fetchOrders();
     } else {
       throw new Error(result.error || 'Failed to update order');
     }
@@ -2156,7 +2156,8 @@ async function markPickedUp(orderId) {
     AdminState.pendingActions.delete(orderId);
     renderAll();
 
-    // Removed toast - rollback is visible in UI
+    // Show visible error to user
+    showErrorOverlay(`Failed to mark order as picked up: ${error.message}`);
   }
 }
 
@@ -2478,6 +2479,21 @@ async function fetchOrders() {
         order.preorder_time = normalized;
       }
     }
+
+    // 🛡️ Merge pending optimistic actions
+    // If we have a pending action for this order, override the DB state
+    // This allows fetchOrders to run safely without clobbering local updates
+    if (AdminState.pendingActions.has(order.id)) {
+      const pending = AdminState.pendingActions.get(order.id);
+      if (pending.action === 'complete') {
+        order.status = 'COMPLETE';
+      } else if (pending.action === 'pickup') {
+        order.status = 'PICKED_UP';
+      }
+      // Keep original timestamp or use new Date()? 
+      // Better to rely on what the DB sent unless we want to simulate the time too.
+    }
+
     return order;
   });
 
