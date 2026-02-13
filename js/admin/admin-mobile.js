@@ -2072,7 +2072,9 @@ async function markComplete(orderId) {
     if (result.success) {
       console.log('✅ Order marked as COMPLETE');
       AdminState.pendingActions.delete(orderId);
-      await fetchOrders();
+      // Don't refetch immediately - let Realtime handle it to avoid race conditions
+      // await fetchOrders(); 
+      cleanupToldState(); // Ensure cleaner state
     } else {
       throw new Error(result.error || 'Failed to update order');
     }
@@ -2140,7 +2142,8 @@ async function markPickedUp(orderId) {
       // Auto-focus search field for next order
       setTimeout(() => DOM.searchInput?.focus(), 100);
 
-      await fetchOrders();
+      // Don't refetch immediately - let Realtime handle it
+      // await fetchOrders();
     } else {
       throw new Error(result.error || 'Failed to update order');
     }
@@ -2530,6 +2533,20 @@ function handleOrderChange(payload) {
   }
 
   const { eventType, new: newOrder, old: oldOrder } = payload;
+
+  // 🛡️ Guard: Protect optimistic updates
+  // If we have a pending action for this order, prioritize local state over realtime
+  if (newOrder && AdminState.pendingActions.has(newOrder.id)) {
+    const pending = AdminState.pendingActions.get(newOrder.id);
+    if (pending.action === 'complete' && newOrder.status !== 'COMPLETE') {
+      console.log('🛡️ Ignoring stale realtime update for pending completion:', newOrder.id);
+      return;
+    }
+    if (pending.action === 'pickup' && newOrder.status !== 'PICKED_UP') {
+      console.log('🛡️ Ignoring stale realtime update for pending pickup:', newOrder.id);
+      return;
+    }
+  }
 
   if (eventType === 'INSERT' && newOrder) {
     // Normalize preorder_time
