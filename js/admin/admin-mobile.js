@@ -9,7 +9,7 @@
 // STATE MANAGEMENT
 // ============================================
 
-console.log("🥄 Admin Mobile v2.17 loaded - Deep debug markComplete");
+console.log("🥄 Admin Mobile v2.18 loaded - Fix renderAll crash");
 
 const AdminState = {
   // Current active tab
@@ -876,11 +876,10 @@ function toggleToldSection() {
  * Render all views
  */
 function renderAll() {
-  renderItems();
-  renderActiveOrders();
-  renderCompletedOrders();
-  renderCancelledOrders();
-  updateBadgeCounts();
+  try { renderItems(); } catch (e) { console.error('renderItems crashed:', e); }
+  try { renderActiveOrders(); } catch (e) { console.error('renderActiveOrders crashed:', e); }
+  try { renderCompletedOrders(); } catch (e) { console.error('renderCompletedOrders crashed:', e); }
+  try { renderCancelledOrders(); } catch (e) { console.error('renderCancelledOrders crashed:', e); }
 }
 
 /**
