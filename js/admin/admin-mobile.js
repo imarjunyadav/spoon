@@ -9,7 +9,7 @@
 // STATE MANAGEMENT
 // ============================================
 
-console.log("🥄 Admin Mobile v2.15 loaded - UX V3.1 REFINED");
+console.log("🥄 Admin Mobile v2.16 loaded - Cache-bust + Error handling fix");
 
 const AdminState = {
   // Current active tab
@@ -3222,6 +3222,30 @@ window.addEventListener('beforeunload', () => {
   stopWaitTimeTimer();
   RealtimeSubscriptionManager.cleanup();
 });
+
+/**
+ * Show a temporary error overlay at top of screen
+ * @param {string} message - Error message to display
+ */
+function showErrorOverlay(message) {
+  // Remove any existing overlay
+  const existing = document.getElementById('error-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'error-overlay';
+  overlay.style.cssText = `
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #d32f2f; color: #fff; padding: 12px 16px;
+    font-size: 14px; text-align: center; font-family: sans-serif;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  `;
+  overlay.textContent = message;
+  document.body.appendChild(overlay);
+
+  // Auto-dismiss after 5 seconds
+  setTimeout(() => overlay.remove(), 5000);
+}
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', initAdmin);
