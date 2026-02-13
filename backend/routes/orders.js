@@ -15,6 +15,7 @@ const { createClient } = require('@supabase/supabase-js');
 const nodemailer = require('nodemailer');
 const adminService = require('../services/adminService');
 const walletService = require('../services/walletService');
+const { requireAdminSession } = require('../middleware/sessionAuth');
 
 // Initialize Supabase client with SERVICE_ROLE_KEY
 // This bypasses RLS policies and allows admin operations
@@ -67,52 +68,16 @@ async function sendOrderEmail(toEmail, subject, htmlContent) {
  * Method: PATCH
  * Path: /api/orders/:orderId/status
  * 
- * Request Body:
- * {
- *   "status": "COMPLETE" | "PICKED_UP"
- * }
- * 
- * Response:
- * {
- *   "success": true,
- *   "order": { ... },
- *   "email": { "sent": true, "messageId": "..." }
- * }
+ * Security:
+ * - Uses requireAdminSession middleware
+ * - Enforces both JWT and x-admin-session-token
  */
-router.patch('/:orderId/status', async (req, res) => {
+router.patch('/:orderId/status', requireAdminSession, async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status } = req.body;
-
-    // Authentication Check
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required'
-      });
-    }
-
-    const token = authHeader.slice(7);
-    const tokenResult = await adminService.validateToken(token);
-
-    if (tokenResult.error) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid or expired token'
-      });
-    }
-
-    // Verify user is admin
-    const adminResult = await adminService.isUserAdmin(tokenResult.user.email);
-    if (!adminResult.isAdmin) {
-      return res.status(403).json({
-        success: false,
-        error: 'Admin access required'
-      });
-    }
-
-    console.log('✅ Admin authenticated:', tokenResult.user.email);
+    // User verified by middleware (includes admin check)
+    console.log('✅ Admin authenticated:', req.user.email);
 
     // Diagnostic Logging - Request
     console.log('\n========================================');

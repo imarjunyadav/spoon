@@ -337,7 +337,7 @@ router.post('/signup', async (req, res) => {
 });
 
 // ========================================
-// ENDPOINT: Validate Session (Heartbeat)
+// ENDPOINT: Validate Session (Heartbeat/Check)
 // ========================================
 
 /**
@@ -345,24 +345,22 @@ router.post('/signup', async (req, res) => {
  * 
  * Method: POST
  * Path: /api/auth/validate-session
- * Body: { "email": "user@example.com", "sessionToken": "uuid" }
+ * Body: { "email": "...", "sessionToken": "...", "type": "app"|"admin" }
  * 
  * @returns {object} { valid: boolean }
  */
 router.post('/validate-session', async (req, res) => {
   try {
-    const { email, sessionToken } = req.body;
+    const { email, sessionToken, type = 'app' } = req.body;
 
     if (!email || !sessionToken) {
       return res.status(400).json({ valid: false, error: 'MISSING_FIELDS' });
     }
 
-    const { valid, error } = await userService.validateSession(email, sessionToken);
+    const { valid, error } = await userService.validateSession(email, sessionToken, type);
 
     if (error) {
       console.error('Validate session error:', error);
-      // Fail closed for security (if DB error, assume invalid or retry)
-      // Actually, for heartbeat, if service unavailable, maybe return 500 and client retries?
       return res.status(500).json({ valid: false, error });
     }
 
@@ -379,18 +377,20 @@ router.post('/validate-session', async (req, res) => {
 // ========================================
 
 /**
- * Sync Supabase Auth with App Session.
- * Called by Admin App after Supabase Login.
+ * Sync Supabase Auth with Admin Session.
+ * Implements "Sticky Session" - returns existing token if valid.
  * 
  * Method: POST
  * Path: /api/auth/sync-session
  * Headers: Authorization: Bearer <supabase_jwt>
+ * Body: { "existingToken": "uuid" } (Optional)
  * 
  * @returns {object} { sessionToken: "uuid" }
  */
 router.post('/sync-session', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
+    const { existingToken } = req.body; // Client sends current local token if any
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'UNAUTHORIZED' });
@@ -404,30 +404,52 @@ router.post('/sync-session', async (req, res) => {
     }
 
     const email = tokenResult.user.email;
+    const SESSION_TYPE = 'admin'; // sync-session is exclusively for Admin
 
+    // --- STICKY SESSION LOGIC ---
+    // If client provided a token, check if it's still valid in DB
+    if (existingToken) {
+      const { valid } = await userService.validateSession(email, existingToken, SESSION_TYPE);
+      if (valid) {
+        // Resume existing session
+        console.log(`♻️ Resuming sticky admin session for ${email}`);
+        return res.json({
+          success: true,
+          email,
+          sessionToken: existingToken,
+          restored: true
+        });
+      }
+    }
+
+    // --- NEW SESSION LOGIC ---
     // Generate new session token
     const sessionToken = crypto.randomUUID();
 
     // Update active session in database
-    const updateResult = await userService.updateSession(email, sessionToken);
+    const updateResult = await userService.updateSession(email, sessionToken, SESSION_TYPE);
 
     if (!updateResult.success) {
       if (updateResult.error === 'USER_NOT_FOUND') {
         // Auto-create user record if missing (Safety net for Admins)
-        // This ensures Realtime works even if they weren't in public.users
         console.warn(`⚠️ User record missing for ${email}. Auto-creating...`);
-        await userService.createUser(email, 'Admin User', sessionToken);
+        // Note: createUser default slot is 'active_session_token' (app). 
+        // We need to insert then update, or update createUser to support cols.
+        // For simplicity, create then update.
+        await userService.createUser(email, 'Admin User');
+        await userService.updateSession(email, sessionToken, SESSION_TYPE);
       } else {
         throw new Error(`Failed to update session: ${updateResult.error}`);
       }
     }
 
-    console.log(`✅ Admin session synced for ${email}`);
+    console.log(`✅ New Admin session synced for ${email}`);
 
     res.json({
       success: true,
       email,
-      sessionToken
+      sessionToken,
+      restored: false
     });
 
   } catch (error) {

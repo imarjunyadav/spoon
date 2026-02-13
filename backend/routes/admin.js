@@ -12,6 +12,7 @@
 const express = require('express');
 const router = express.Router();
 const adminService = require('../services/adminService');
+const { requireAdminSession } = require('../middleware/sessionAuth');
 
 // ========================================
 // ENDPOINT: Verify Admin Status
@@ -124,85 +125,21 @@ router.get('/verify', async (req, res) => {
  * Method: PATCH
  * Path: /api/admin/stock/:itemId
  * Headers: Authorization: Bearer <token>
+ * Headers: x-admin-session-token: <session_token>
  * Body: { "is_available": boolean }
  * 
  * @returns {object} Updated item status
  */
-router.patch('/stock/:itemId', async (req, res) => {
+router.patch('/stock/:itemId', requireAdminSession, async (req, res) => {
   const { itemId } = req.params;
+  // User info is attached by middleware
+  const email = req.user.email;
 
   try {
-    const authHeader = req.headers.authorization;
 
-    if (!authHeader) {
-      console.log(`[${new Date().toISOString()}] Stock update FAILED - No authorization token - Item: ${itemId}`);
-      return res.status(401).json({
-        error: 'UNAUTHORIZED',
-        message: 'No authorization token provided'
-      });
-    }
-
-    if (!authHeader.startsWith('Bearer ')) {
-      console.log(`[${new Date().toISOString()}] Stock update FAILED - Invalid token format - Item: ${itemId}`);
-      return res.status(401).json({
-        error: 'INVALID_TOKEN',
-        message: 'Invalid authorization token format'
-      });
-    }
-
-    const token = authHeader.slice(7);
-    const tokenResult = await adminService.validateToken(token);
-
-    if (tokenResult.error) {
-      if (tokenResult.error === 'NO_TOKEN') {
-        console.log(`[${new Date().toISOString()}] Stock update FAILED - No token - Item: ${itemId}`);
-        return res.status(401).json({
-          error: 'UNAUTHORIZED',
-          message: 'No authorization token provided'
-        });
-      }
-
-      if (tokenResult.error === 'INVALID_TOKEN') {
-        console.log(`[${new Date().toISOString()}] Stock update FAILED - Invalid/expired token - Item: ${itemId}`);
-        return res.status(401).json({
-          error: 'INVALID_TOKEN',
-          message: 'Token expired or invalid'
-        });
-      }
-
-      if (tokenResult.error === 'SERVICE_UNAVAILABLE') {
-        console.log(`[${new Date().toISOString()}] Stock update FAILED - Service unavailable - Item: ${itemId}`);
-        return res.status(500).json({
-          error: 'SERVICE_UNAVAILABLE',
-          message: 'Authentication service unavailable'
-        });
-      }
-
-      console.log(`[${new Date().toISOString()}] Stock update FAILED - Unknown error - Item: ${itemId}`);
-      return res.status(500).json({
-        error: 'SERVER_ERROR',
-        message: 'An unexpected error occurred'
-      });
-    }
-
-    const email = tokenResult.user.email;
-    const adminResult = await adminService.isUserAdmin(email);
-
-    if (adminResult.error) {
-      console.log(`[${new Date().toISOString()}] Stock update FAILED - Admin check error: ${adminResult.error} - User: ${email} - Item: ${itemId}`);
-      return res.status(500).json({
-        error: adminResult.error === 'DATABASE_ERROR' ? 'DATABASE_ERROR' : 'SERVICE_UNAVAILABLE',
-        message: adminResult.error === 'DATABASE_ERROR' ? 'Failed to verify admin status' : 'Authentication service unavailable'
-      });
-    }
-
-    if (!adminResult.isAdmin) {
-      console.log(`[${new Date().toISOString()}] Stock update FAILED - User not admin - User: ${email} - Item: ${itemId}`);
-      return res.status(403).json({
-        error: 'FORBIDDEN',
-        message: 'Admin access required'
-      });
-    }
+    // Admin check is now handled by requireAdminSession middleware
+    // but strict check via isUserAdminService inside middleware guarantees it.
+    // Double check handled by middleware.
 
     const { is_available } = req.body;
 

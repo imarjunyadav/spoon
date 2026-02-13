@@ -275,13 +275,15 @@ module.exports = {
 // ========================================
 
 /**
- * Update user's active session token.
+ * Update active session token for a user.
+ * Now supports role-based tokens (Admin vs App).
  * 
- * @param {string} email - User's email
- * @param {string} sessionToken - New session UUID
+ * @param {string} email - User email
+ * @param {string} sessionToken - New session token
+ * @param {string} type - Session type: 'app' (default) or 'admin'
  * @returns {Promise<{ success: boolean, error?: string }>}
  */
-async function updateSession(email, sessionToken) {
+async function updateSession(email, sessionToken, type = 'app') {
   try {
     if (!email || !sessionToken) {
       return { success: false, error: 'INVALID_INPUT' };
@@ -290,12 +292,18 @@ async function updateSession(email, sessionToken) {
     const normalizedEmail = normalizeEmail(email);
     const client = getClient();
 
+    // Determine column based on type
+    const tokenColumn = type === 'admin' ? 'admin_session_token' : 'active_session_token';
+
+    // Construct update object
+    const updates = {
+      session_created_at: new Date().toISOString()
+    };
+    updates[tokenColumn] = sessionToken;
+
     const { data, error } = await client
       .from('users')
-      .update({
-        active_session_token: sessionToken,
-        session_created_at: new Date().toISOString()
-      })
+      .update(updates)
       .eq('email', normalizedEmail)
       .select();
 
@@ -310,6 +318,7 @@ async function updateSession(email, sessionToken) {
     }
 
     return { success: true };
+
   } catch (err) {
     console.error('UserService updateSession exception:', err);
     return { success: false, error: 'SERVICE_UNAVAILABLE' };
@@ -321,9 +330,10 @@ async function updateSession(email, sessionToken) {
  * 
  * @param {string} email - User's email
  * @param {string} sessionToken - Token to validate
+ * @param {string} type - Session type: 'app' (default) or 'admin'
  * @returns {Promise<{ valid: boolean, error?: string }>}
  */
-async function validateSession(email, sessionToken) {
+async function validateSession(email, sessionToken, type = 'app') {
   try {
     if (!email || !sessionToken) {
       return { valid: false };
@@ -332,9 +342,12 @@ async function validateSession(email, sessionToken) {
     const normalizedEmail = normalizeEmail(email);
     const client = getClient();
 
+    // Determine column based on type
+    const tokenColumn = type === 'admin' ? 'admin_session_token' : 'active_session_token';
+
     const { data, error } = await client
       .from('users')
-      .select('active_session_token')
+      .select(tokenColumn)
       .eq('email', normalizedEmail)
       .single();
 
@@ -345,7 +358,8 @@ async function validateSession(email, sessionToken) {
     }
 
     // Check if tokens match
-    const isValid = data.active_session_token === sessionToken;
+    const storedToken = data[tokenColumn];
+    const isValid = storedToken === sessionToken;
     return { valid: isValid };
 
   } catch (err) {

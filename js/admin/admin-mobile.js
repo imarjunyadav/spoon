@@ -2079,7 +2079,8 @@ async function markComplete(orderId) {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
+        'Authorization': `Bearer ${authToken}`,
+        'x-admin-session-token': localStorage.getItem('spoon-session-token') || ''
       },
       body: JSON.stringify({ status: 'COMPLETE' })
     });
@@ -2152,7 +2153,8 @@ async function markPickedUp(orderId) {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('sb-mnvxojjbbiqmymlatigh-auth-token') ? JSON.parse(localStorage.getItem('sb-mnvxojjbbiqmymlatigh-auth-token')).access_token : ''}`
+        'Authorization': `Bearer ${localStorage.getItem('sb-mnvxojjbbiqmymlatigh-auth-token') ? JSON.parse(localStorage.getItem('sb-mnvxojjbbiqmymlatigh-auth-token')).access_token : ''}`,
+        'x-admin-session-token': localStorage.getItem('spoon-session-token') || ''
       },
       body: JSON.stringify({ status: 'PICKED_UP' })
     });
@@ -2429,7 +2431,8 @@ async function toggleStock(itemId, isAvailable) {
       method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'x-admin-session-token': localStorage.getItem('spoon-session-token') || ''
       },
       body: JSON.stringify({ is_available: isAvailable })
     });
@@ -2828,12 +2831,16 @@ async function syncSession() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
+    // Sticky Session: Send existing token if we have one
+    const existingToken = localStorage.getItem('spoon-session-token');
+
     const response = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/auth/sync-session`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json'
-      }
+      },
+      body: JSON.stringify({ existingToken }) // Send optional existing token
     });
 
     if (response.ok) {
@@ -2841,7 +2848,12 @@ async function syncSession() {
       if (data.sessionToken) {
         localStorage.setItem('spoon-session-token', data.sessionToken);
         localStorage.setItem('spoon-is-logged-in', 'true');
-        console.log('✅ Session synced with backend');
+
+        if (data.restored) {
+          console.log('♻️ Sticky session restored');
+        } else {
+          console.log('✅ New session synced with backend');
+        }
       }
     } else {
       console.warn('⚠️ Session sync failed', response.status);
