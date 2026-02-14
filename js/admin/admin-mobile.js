@@ -2079,8 +2079,7 @@ async function markComplete(orderId) {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
-        'x-admin-session-token': localStorage.getItem('spoon-session-token') || ''
+        'Authorization': `Bearer ${authToken}`
       },
       body: JSON.stringify({ status: 'COMPLETE' })
     });
@@ -2153,8 +2152,7 @@ async function markPickedUp(orderId) {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('sb-mnvxojjbbiqmymlatigh-auth-token') ? JSON.parse(localStorage.getItem('sb-mnvxojjbbiqmymlatigh-auth-token')).access_token : ''}`,
-        'x-admin-session-token': localStorage.getItem('spoon-session-token') || ''
+        'Authorization': `Bearer ${localStorage.getItem('sb-mnvxojjbbiqmymlatigh-auth-token') ? JSON.parse(localStorage.getItem('sb-mnvxojjbbiqmymlatigh-auth-token')).access_token : ''}`
       },
       body: JSON.stringify({ status: 'PICKED_UP' })
     });
@@ -2431,8 +2429,7 @@ async function toggleStock(itemId, isAvailable) {
       method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-        'x-admin-session-token': localStorage.getItem('spoon-session-token') || ''
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({ is_available: isAvailable })
     });
@@ -2818,124 +2815,7 @@ async function retryVerification() {
   }
 }
 
-// ============================================
-// SESSION ENFORCEMENT
-// ============================================
-
-/**
- * Sync Supabase session with backend to get a session token.
- * This bridges the Supabase Auth with our Single Device Enforcement system.
- */
-async function syncSession() {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-
-    // Sticky Session: Send existing token if we have one
-    const existingToken = localStorage.getItem('spoon-session-token');
-
-    const response = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/auth/sync-session`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ existingToken }) // Send optional existing token
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.sessionToken) {
-        localStorage.setItem('spoon-session-token', data.sessionToken);
-        localStorage.setItem('spoon-is-logged-in', 'true');
-
-        if (data.restored) {
-          console.log('♻️ Sticky session restored');
-        } else {
-          console.log('✅ New session synced with backend');
-        }
-      }
-    } else {
-      console.warn('⚠️ Session sync failed', response.status);
-    }
-  } catch (error) {
-    console.warn('⚠️ Session sync error', error);
-  }
-}
-
-/**
- * Initialize Single Device Enforcement (Realtime + Heartbeat)
- */
-async function initSessionEnforcement() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || !user.email) return;
-
-  const email = user.email;
-  const filter = `email=eq.${email}`;
-
-  // Store email for session-guard.js (backup enforcement)
-  localStorage.setItem('spoon-user-email', email);
-
-  console.log(`🛡️ Initializing session enforcement for ${email}`);
-
-  // Listen for SessionGuard invalidation (Heartbeat/Visibility)
-  window.addEventListener('session:invalidated', () => {
-    console.warn('⚡ SessionGuard triggered invalidation');
-    handleSessionInvalidated();
-  });
-
-  // Start SessionGuard explicitly (backup heartbeat for admin)
-  // DOMContentLoaded may have already fired before spoon-is-logged-in was set
-  if (window.sessionGuard) {
-    window.sessionGuard.start();
-  }
-
-  // Primary: Realtime subscription for instant detection
-  RealtimeSubscriptionManager.subscribeToTable(
-    'users',
-    (payload) => {
-      console.log('📡 Realtime event on users table:', payload);
-      // Check if active_session_token changed
-      if (payload.new && payload.new.active_session_token) {
-        const currentToken = localStorage.getItem('spoon-session-token');
-        if (currentToken && payload.new.active_session_token !== currentToken) {
-          console.warn('🚫 Session token changed remotely. Logging out.');
-          handleSessionInvalidated();
-        }
-      }
-    },
-    null,
-    filter
-  );
-}
-
-/**
- * Handle session invalidation (Logout)
- */
-function handleSessionInvalidated() {
-  // Prevent loops
-  if (AdminState.isLoggingOut) return;
-  AdminState.isLoggingOut = true;
-
-  // Stop SessionGuard immediately
-  if (window.sessionGuard) {
-    window.sessionGuard.stop();
-  }
-
-  // Clear ALL auth state SYNCHRONOUSLY (before async signOut)
-  // This prevents race conditions with SessionGuard's performDefaultLogout
-  localStorage.removeItem('spoon-session-token');
-  localStorage.removeItem('spoon-user-email');
-  localStorage.removeItem('spoon-is-logged-in');
-  localStorage.removeItem('spoon-email');
-  localStorage.removeItem('spoon-user');
-
-  alert('Your session has been terminated because you logged in on another device.');
-
-  supabase.auth.signOut().then(() => {
-    window.location.href = 'login.html';
-  });
-}
+// (Strict Session Enforcement Functions Removed for Relaxed Mode)
 
 // ============================================
 // UI HELPERS
@@ -3209,10 +3089,8 @@ async function initAdmin() {
   if (isAdmin) {
     hideLoading();
 
-    // Start Session Enforcement (Background)
-    syncSession().then(() => {
-      initSessionEnforcement();
-    });
+    // Relaxed Session: No strict enforcement required
+    // syncSession().then(() => { initSessionEnforcement(); });
 
     // Load told state from DB (must happen before fetchOrders triggers render)
     await loadToldState();
