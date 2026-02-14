@@ -187,22 +187,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function loadOrders() {
     try {
       console.log('📝 Fetching orders for email:', userEmail);
+      const apiBaseUrl = window.SPOON_CONFIG?.API_BASE_URL || '';
+      const sessionToken = localStorage.getItem('spoon-session-token');
 
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('customer_email', userEmail)
-        .order('created_at', { ascending: false });
+      // Use Backend API (Proxy) to bypass RLS restrictions securely
+      const response = await fetch(`${apiBaseUrl}/api/orders`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-email': userEmail,
+          'x-session-token': sessionToken
+        }
+      });
 
-      if (error) {
-        console.error('❌ Error fetching orders:', error);
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        console.error('❌ Error fetching orders:', result.error);
         showToast('Failed to load orders.');
         ordersListContainer.classList.add('hidden');
         emptyOrdersView.classList.remove('hidden');
         return;
       }
 
-      const normalizedData = (data || []).map(order => {
+      const orders = result.orders || [];
+
+      const normalizedData = orders.map(order => {
         if (order.preorder_time) {
           const normalized = normalizePreorderTime(order.preorder_time);
           if (normalized) {

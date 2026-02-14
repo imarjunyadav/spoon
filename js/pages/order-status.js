@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Constants ---
     const CANCEL_WINDOW_MINUTES = 45;
-    const API_BASE = Config.api.baseUrl;
+    const API_BASE = window.SPOON_CONFIG?.API_BASE_URL || '';
 
     // --- Adaptive Polling Configuration ---
     // Intervals in milliseconds based on order status
@@ -389,18 +389,34 @@ document.addEventListener('DOMContentLoaded', async () => {
      * @returns {Promise<Object|null>} Order data or null.
      */
     async function getOrderById(orderId) {
-        const { data, error } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('id', orderId)
-            .maybeSingle();
+        try {
+            const sessionToken = localStorage.getItem('spoon-session-token');
+            const email = getUserEmail();
 
-        if (error) {
+            const response = await fetch(`${API_BASE}/api/orders/${orderId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-email': email,
+                    'x-session-token': sessionToken
+                }
+            });
+
+            if (!response.ok) {
+                console.warn('⚠️ API fetch failed:', response.status);
+                return null;
+            }
+
+            const result = await response.json();
+            if (result.success && result.order) {
+                return result.order;
+            }
+
+            return null;
+        } catch (error) {
             console.error('❌ Error fetching order:', error);
             return null;
         }
-
-        return data;
     }
 
     /**

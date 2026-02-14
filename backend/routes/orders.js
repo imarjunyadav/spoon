@@ -272,6 +272,87 @@ router.patch('/:orderId/status', requireAdminSession, async (req, res) => {
 const requireAuth = require('../middleware/userAuth');
 
 // ========================================
+// ENDPOINT: Get User Orders (List)
+// ========================================
+
+/**
+ * Get all orders for the logged-in user.
+ * 
+ * Method: GET
+ * Path: /api/orders
+ * 
+ * Security:
+ * - Uses requireAuth middleware
+ * - Returns orders ONLY for req.user.email
+ */
+router.get('/', requireAuth, async (req, res) => {
+  try {
+    const email = req.user.email;
+
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('customer_email', email)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Error fetching user orders:', error);
+      return res.status(500).json({ success: false, error: 'Failed to fetch orders' });
+    }
+
+    return res.json({ success: true, orders: orders || [] });
+
+  } catch (error) {
+    console.error('💥 List orders error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+
+// ========================================
+// ENDPOINT: Get Single Order
+// ========================================
+
+/**
+ * Get details for a specific order.
+ * 
+ * Method: GET
+ * Path: /api/orders/:orderId
+ * 
+ * Security:
+ * - Uses requireAuth middleware
+ * - Enforces ownership (customer_email must match)
+ */
+router.get('/:orderId', requireAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const email = req.user.email;
+
+    const { data: order, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single();
+
+    if (error || !order) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    // Security Check: Ownership
+    if (order.customer_email.toLowerCase() !== email.toLowerCase()) {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+
+    return res.json({ success: true, order });
+
+  } catch (error) {
+    console.error('💥 Get order error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+
+// ========================================
 // ENDPOINT: Cancel Pre-Order
 // ========================================
 
