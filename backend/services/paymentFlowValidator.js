@@ -10,6 +10,7 @@
 
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
+const notificationService = require('./notificationService');
 
 // Lazy-initialize Supabase client (env vars may not be available at module load time in Cloud Run)
 let supabaseClient = null;
@@ -349,6 +350,11 @@ class PaymentFlowValidator {
         .eq('razorpay_payment_id', razorpayPaymentId);
 
       console.log(`✅ Payment ${razorpayPaymentId} processed successfully, order ${orderId} created`);
+
+      // Fire-and-forget: Send Telegram notification to admin
+      notificationService.notifyNewOrder(order).catch(err =>
+        console.error('⚠️ Notification failed (non-blocking):', err.message)
+      );
 
       return {
         success: true,
