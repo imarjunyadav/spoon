@@ -2642,20 +2642,26 @@ function handleOrderChange(payload) {
     const index = AdminState.orders.findIndex(o => o.id === newOrder.id);
     if (index > -1) {
       console.log('📝 Surgical UPDATE:', newOrder.id);
-      // Preserve local-only properties if needed, but for now strict overwrite is safer
-      AdminState.orders[index] = newOrder;
 
-      // Notify Smart Batch System if status changed to a relevant one or unacknowledged
+      // 🛡️ Safe Merge: Prevent partial updates from destroying state
+      AdminState.orders[index] = { ...AdminState.orders[index], ...newOrder };
+      const mergedOrder = AdminState.orders[index];
+
+      // Notify Smart Batch System
       if (window.notificationManager) {
-        const needsAlert = !newOrder.is_acknowledged &&
-          ['PENDING', 'PAID', 'PLACED', 'PREPARING'].includes(newOrder.status) &&
-          (typeof needsAnnouncing === 'function' ? needsAnnouncing(newOrder) : true);
+        const isAck = mergedOrder.is_acknowledged === true;
+        const isActiveStatus = ['PENDING', 'PAID', 'PLACED', 'PREPARING'].includes(mergedOrder.status);
+        const needsAnnouncement = typeof needsAnnouncing === 'function' ? needsAnnouncing(mergedOrder) : true;
 
-        if (needsAlert) {
-          window.notificationManager.enqueue([newOrder]);
+        if (isAck) {
+          // Explicit removal on acknowledgment (Remote Sync)
+          window.notificationManager.remove(mergedOrder.id);
+        } else if (isActiveStatus && !mergedOrder.is_acknowledged && needsAnnouncement) {
+          // Re-enqueue if active & unacknowledged (e.g. status change Unpaid -> Paid)
+          window.notificationManager.enqueue([mergedOrder]);
         } else {
-          // Remove if acknowledged OR status is no longer relevant (e.g. COMPLETE/CANCELLED)
-          window.notificationManager.remove(newOrder.id);
+          // Remove if status changed to COMPLETE/CANCELLED or no longer announcing
+          window.notificationManager.remove(mergedOrder.id);
         }
       }
     } else {
@@ -3241,17 +3247,45 @@ function initNotificationSystem() {
 
   // Listen for batch updates from NotificationManager
   window.addEventListener('batch-update', (event) => {
-    const { count, ids } = event.detail;
-    renderNotificationModal(count, ids);
+    const { count, ids, audioLocked } = event.detail;
+    renderNotificationModal(count, ids, audioLocked);
   });
+
+  // 🔄 Re-Sync Poller (Safety Net for missed Realtime events)
+  // Checks DB every 30s to see if pending notifications have been acknowledged elsewhere
+  setInterval(async () => {
+    if (!window.notificationManager || window.notificationManager.batchQueue.size === 0) return;
+
+    const queuedIds = Array.from(window.notificationManager.batchQueue);
+
+    // Check status in DB
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id, is_acknowledged, status')
+      .in('id', queuedIds);
+
+    if (error || !data) return;
+
+    data.forEach(remoteOrder => {
+      const isAck = remoteOrder.is_acknowledged === true;
+      const isValidStatus = ['PENDING', 'PAID', 'PLACED', 'PREPARING'].includes(remoteOrder.status);
+
+      // If acked or status outdated, remove from queue
+      if (isAck || !isValidStatus) {
+        console.log('🔄 Re-sync removing stale order:', remoteOrder.id);
+        window.notificationManager.remove(remoteOrder.id);
+      }
+    });
+  }, 30000);
 }
 
 /**
  * Render the Sticky Notification Modal
  * @param {number} count - Total unacknowledged orders
  * @param {Array<string>} ids - Array of Order IDs in the batch
+ * @param {boolean} audioLocked - whether AudioContext is suspended
  */
-function renderNotificationModal(count, ids) {
+function renderNotificationModal(count, ids, audioLocked) {
   const modal = document.getElementById('notification-modal');
   const title = document.getElementById('notif-title');
   const list = document.getElementById('notif-list');
@@ -3260,11 +3294,38 @@ function renderNotificationModal(count, ids) {
 
   if (count === 0) {
     modal.classList.add('hidden');
+    // Cleanup unlock button if exists
+    const existingBtn = document.getElementById('notif-unlock-btn');
+    if (existingBtn) existingBtn.remove();
     return;
   }
 
   // Update Title
   title.textContent = `${count} New Order${count > 1 ? 's' : ''}`;
+
+  // Audio Unlock UI (Fix for manual refresh)
+  let unlockBtn = document.getElementById('notif-unlock-btn');
+  if (audioLocked) {
+    if (!unlockBtn) {
+      unlockBtn = document.createElement('button');
+      unlockBtn.id = 'notif-unlock-btn';
+      unlockBtn.className = 'w-full bg-amber-500 text-white py-3 rounded-lg font-bold mb-3 animate-pulse shadow-md flex items-center justify-center gap-2';
+      unlockBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+            </svg>
+            Tap to Enable Sound
+        `;
+      unlockBtn.onclick = (e) => {
+        e.stopPropagation();
+        window.notificationManager.unlockAudio();
+      };
+      list.parentElement.insertBefore(unlockBtn, list);
+    }
+  } else {
+    if (unlockBtn) unlockBtn.remove();
+  }
 
   // Update List (Show top 3 recent)
   // We need to find order details from AdminState.orders
