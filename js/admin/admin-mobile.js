@@ -2541,15 +2541,6 @@ async function fetchOrders() {
   if (window.renderTimeout) clearTimeout(window.renderTimeout);
   window.renderTimeout = setTimeout(renderAll, 50);
 
-  // Notify Smart Batch System of initial load (checks for missed orders)
-  if (window.notificationManager && AdminState.orders.length > 0) {
-    const relevantOrders = AdminState.orders.filter(o =>
-      !o.is_acknowledged &&
-      ['PENDING', 'PAID', 'PLACED', 'PREPARING'].includes(o.status) &&
-      (typeof needsAnnouncing === 'function' ? needsAnnouncing(o) : true)
-    );
-    window.notificationManager.enqueue(relevantOrders);
-  }
 }
 
 /**
@@ -3247,45 +3238,17 @@ function initNotificationSystem() {
 
   // Listen for batch updates from NotificationManager
   window.addEventListener('batch-update', (event) => {
-    const { count, ids, audioLocked } = event.detail;
-    renderNotificationModal(count, ids, audioLocked);
+    const { count, ids } = event.detail;
+    renderNotificationModal(count, ids);
   });
-
-  // 🔄 Re-Sync Poller (Safety Net for missed Realtime events)
-  // Checks DB every 30s to see if pending notifications have been acknowledged elsewhere
-  setInterval(async () => {
-    if (!window.notificationManager || window.notificationManager.batchQueue.size === 0) return;
-
-    const queuedIds = Array.from(window.notificationManager.batchQueue);
-
-    // Check status in DB
-    const { data, error } = await supabase
-      .from('orders')
-      .select('id, is_acknowledged, status')
-      .in('id', queuedIds);
-
-    if (error || !data) return;
-
-    data.forEach(remoteOrder => {
-      const isAck = remoteOrder.is_acknowledged === true;
-      const isValidStatus = ['PENDING', 'PAID', 'PLACED', 'PREPARING'].includes(remoteOrder.status);
-
-      // If acked or status outdated, remove from queue
-      if (isAck || !isValidStatus) {
-        console.log('🔄 Re-sync removing stale order:', remoteOrder.id);
-        window.notificationManager.remove(remoteOrder.id);
-      }
-    });
-  }, 30000);
 }
 
 /**
  * Render the Sticky Notification Modal
  * @param {number} count - Total unacknowledged orders
  * @param {Array<string>} ids - Array of Order IDs in the batch
- * @param {boolean} audioLocked - whether AudioContext is suspended
  */
-function renderNotificationModal(count, ids, audioLocked) {
+function renderNotificationModal(count, ids) {
   const modal = document.getElementById('notification-modal');
   const title = document.getElementById('notif-title');
   const list = document.getElementById('notif-list');
@@ -3294,47 +3257,18 @@ function renderNotificationModal(count, ids, audioLocked) {
 
   if (count === 0) {
     modal.classList.add('hidden');
-    // Cleanup unlock button if exists
-    const existingBtn = document.getElementById('notif-unlock-btn');
-    if (existingBtn) existingBtn.remove();
     return;
   }
 
   // Update Title
   title.textContent = `${count} New Order${count > 1 ? 's' : ''}`;
 
-  // Audio Unlock UI (Fix for manual refresh)
-  let unlockBtn = document.getElementById('notif-unlock-btn');
-  if (audioLocked) {
-    if (!unlockBtn) {
-      unlockBtn = document.createElement('button');
-      unlockBtn.id = 'notif-unlock-btn';
-      unlockBtn.className = 'w-full bg-amber-500 text-white py-3 rounded-lg font-bold mb-3 animate-pulse shadow-md flex items-center justify-center gap-2';
-      unlockBtn.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-            </svg>
-            Tap to Enable Sound
-        `;
-      unlockBtn.onclick = (e) => {
-        e.stopPropagation();
-        window.notificationManager.unlockAudio();
-      };
-      list.parentElement.insertBefore(unlockBtn, list);
-    }
-  } else {
-    if (unlockBtn) unlockBtn.remove();
-  }
-
   // Update List (Show top 3 recent)
-  // We need to find order details from AdminState.orders
-  const recentIds = ids.slice(0, 3); // Top 3
+  const recentIds = ids.slice(0, 3);
   const itemsHtml = recentIds.map(id => {
     const order = AdminState.orders.find(o => o.id === id);
-    if (!order) return ''; // Should not happen if state is synced
+    if (!order) return '';
 
-    // Calculate total items
     const totalItems = order.items?.reduce((sum, i) => sum + i.quantity, 0) || 0;
     const timeDisplay = formatTime(order.created_at);
 

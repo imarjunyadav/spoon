@@ -29,28 +29,6 @@ class NotificationManager {
                 this.startAlarm();
             }
         });
-
-        // 🔓 Audio Unlock Strategy (Global Interaction)
-        const unlockHandler = () => this.unlockAudio();
-        ['click', 'touchstart', 'keydown'].forEach(evt =>
-            document.addEventListener(evt, unlockHandler, { once: false, passive: true })
-        );
-    }
-
-    /**
-     * Attempt to unlock AudioContext on user interaction.
-     */
-    async unlockAudio() {
-        if (this.audioCtx.state === 'suspended') {
-            try {
-                await this.audioCtx.resume();
-                console.log('🔓 AudioContext Resumed');
-                // Trigger UI update to remove "Unmute" button if present
-                this.updateUI();
-            } catch (e) {
-                console.warn('Audio unlock failed:', e);
-            }
-        }
     }
 
     /**
@@ -237,8 +215,7 @@ class NotificationManager {
         const event = new CustomEvent('batch-update', {
             detail: {
                 count: this.batchQueue.size,
-                ids: Array.from(this.batchQueue),
-                audioLocked: this.audioCtx.state === 'suspended'
+                ids: Array.from(this.batchQueue)
             }
         });
         window.dispatchEvent(event);
