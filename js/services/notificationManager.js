@@ -1,6 +1,10 @@
 /**
  * NotificationManager
  * Handles Smart Batching, Audio Alerts, and Multi-Tab Sync.
+ * 
+ * Audio Strategy: Pre-generates a "Ding-Dong" WAV blob and plays via <audio> element.
+ * Unlike AudioContext oscillators, <audio> elements use the browser's media player
+ * pathway which is NOT throttled in background tabs (same as Spotify/YouTube).
  */
 class NotificationManager {
     constructor() {
@@ -8,27 +12,107 @@ class NotificationManager {
         this.isRinging = false;
         this.alarmInterval = null;
         this.broadcastChannel = new BroadcastChannel('spoon_admin_alerts');
+        this._soundBlobUrl = null;
+        this._audioUnlocked = false;
 
-        // Audio Context for synthetic "Ding-Dong" (Zero assets/latency)
-        this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // Pre-generate the notification sound as a WAV blob
+        this._generateSound();
 
-        // Bind sync listener
+        // Unlock audio on first user interaction (browser autoplay policy)
+        const unlock = () => {
+            this._audioUnlocked = true;
+            // If orders arrived before user interacted, start alarm now
+            if (this.batchQueue.size > 0 && !this.isRinging) {
+                this.startAlarm();
+            }
+        };
+        ['click', 'touchstart'].forEach(evt =>
+            document.addEventListener(evt, unlock, { once: true, passive: true })
+        );
+
+        // Bind sync listener (same-browser cross-tab)
         this.broadcastChannel.onmessage = (event) => {
             if (event.data.type === 'ACKNOWLEDGE') {
                 console.log('📡 Received remote acknowledgment');
-                this.stopAlarm(false); // Stop globally, but don't re-broadcast
+                this.stopAlarm(false);
                 this.batchQueue.clear();
                 this.updateUI();
             }
         };
 
-        // Handle Background Throttling (Resume alarm when tab becomes visible)
+        // Resume alarm when tab becomes visible (background throttling recovery)
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible' && this.batchQueue.size > 0 && !this.isRinging) {
                 console.log('👁️ Tab visible: Resuming alarm loop');
                 this.startAlarm();
             }
         });
+    }
+
+    /**
+     * Pre-generate a "Ding-Dong" notification sound as a WAV blob URL.
+     * Pure math synthesis — no external audio files needed.
+     */
+    _generateSound() {
+        try {
+            const sampleRate = 44100;
+            const duration = 1.5;
+            const numSamples = Math.floor(sampleRate * duration);
+            const samples = new Int16Array(numSamples);
+
+            let phase = 0;
+            for (let i = 0; i < numSamples; i++) {
+                const t = i / sampleRate;
+
+                // Frequency: 880Hz "Ding" → 659Hz "Dong" over 0.15s, then hold
+                const freq = t < 0.15
+                    ? 880 * Math.pow(659 / 880, t / 0.15)
+                    : 659;
+
+                // Exponential fade out
+                const amp = 0.4 * Math.exp(-t * 3.0);
+
+                phase += (2 * Math.PI * freq) / sampleRate;
+                samples[i] = Math.round(amp * Math.sin(phase) * 0x7FFF);
+            }
+
+            // Encode as WAV
+            const dataSize = numSamples * 2;
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const v = new DataView(buffer);
+            let p = 0;
+
+            const writeStr = (s) => { for (let i = 0; i < s.length; i++) v.setUint8(p++, s.charCodeAt(i)); };
+            const write32 = (val) => { v.setUint32(p, val, true); p += 4; };
+            const write16 = (val) => { v.setUint16(p, val, true); p += 2; };
+
+            writeStr('RIFF');
+            write32(36 + dataSize);
+            writeStr('WAVE');
+            writeStr('fmt ');
+            write32(16);             // PCM chunk size
+            write16(1);              // PCM format
+            write16(1);              // Mono
+            write32(sampleRate);
+            write32(sampleRate * 2); // Byte rate
+            write16(2);              // Block align
+            write16(16);             // Bits per sample
+            writeStr('data');
+            write32(dataSize);
+
+            for (let i = 0; i < numSamples; i++) {
+                v.setInt16(p, samples[i], true);
+                p += 2;
+            }
+
+            this._soundBlobUrl = URL.createObjectURL(
+                new Blob([buffer], { type: 'audio/wav' })
+            );
+
+            console.log('🔊 Notification sound generated');
+        } catch (e) {
+            console.warn('Sound generation failed:', e);
+        }
     }
 
     /**
@@ -72,38 +156,27 @@ class NotificationManager {
         if (changed) {
             this.updateUI();
             if (this.batchQueue.size === 0) {
-                this.stopAlarm(false); // Stop locally, no need to broadcast if it came from remote
+                this.stopAlarm(false);
             }
         }
     }
 
     /**
-     * Start the looping alarm and vibration.
+     * Start the looping alarm.
      */
-    async startAlarm() {
+    startAlarm() {
         if (this.isRinging) return;
-
-        // Double check queue is not empty before starting
         if (this.batchQueue.size === 0) return;
+        if (!this._audioUnlocked) return; // Wait for user gesture
 
         this.isRinging = true;
-
         console.log('🔔 Starting Alarm Loop');
-
-        // Ensure AudioContext is resumed (browser autoplay policy)
-        if (this.audioCtx.state === 'suspended') {
-            try {
-                await this.audioCtx.resume();
-            } catch (e) {
-                console.warn('AudioContext resume failed (waiting for interaction):', e);
-            }
-        }
 
         // Play immediately
         this.playTone();
         this.triggerVibration();
 
-        // Clear any existing interval just in case
+        // Clear any existing interval
         if (this.alarmInterval) clearInterval(this.alarmInterval);
 
         // Loop every 3 seconds
@@ -118,7 +191,7 @@ class NotificationManager {
     }
 
     /**
-     * Stop the alarm and clear batch.
+     * Stop the alarm.
      * @param {boolean} broadcast - Whether to notify other tabs
      */
     stopAlarm(broadcast = true) {
@@ -129,7 +202,6 @@ class NotificationManager {
             this.alarmInterval = null;
         }
 
-        // Stop vibration explicitly
         if (navigator.vibrate) {
             try { navigator.vibrate(0); } catch (e) { }
         }
@@ -140,36 +212,22 @@ class NotificationManager {
     }
 
     /**
-     * Synthesize a pleasant "Ding-Dong" notification sound.
-     * 880Hz (A5) -> 659Hz (E5)
+     * Play the pre-generated "Ding-Dong" via HTML <audio> element.
+     * This survives background tabs because browsers treat media elements
+     * like music players (not throttled like AudioContext).
      */
     playTone() {
-        if (this.audioCtx.state === 'suspended') return; // Can't play yet
-
-        const now = this.audioCtx.currentTime;
-        const osc = this.audioCtx.createOscillator();
-        const gain = this.audioCtx.createGain();
-
-        osc.connect(gain);
-        gain.connect(this.audioCtx.destination);
-
-        // "Ding" (Higher pitch)
-        osc.frequency.setValueAtTime(880, now);
-        gain.gain.setValueAtTime(0.1, now);
-
-        // "Dong" (Lower pitch) after 0.1s
-        osc.frequency.exponentialRampToValueAtTime(659, now + 0.1);
-
-        // Fade out
-        gain.gain.exponentialRampToValueAtTime(0.00001, now + 1.5);
-
-        osc.start(now);
-        osc.stop(now + 1.5);
+        if (!this._soundBlobUrl) return;
+        try {
+            const audio = new Audio(this._soundBlobUrl);
+            audio.volume = 1.0;
+            audio.play().catch(() => { }); // Silently fail if blocked
+        } catch (e) { }
     }
 
     triggerVibration() {
         if (navigator.vibrate) {
-            navigator.vibrate([200, 100, 200]); // SOS-like pattern
+            try { navigator.vibrate([200, 100, 200]); } catch (e) { }
         }
     }
 
@@ -188,7 +246,7 @@ class NotificationManager {
         this.batchQueue.clear();
         this.updateUI();
 
-        // 3. Sync Backend
+        // 3. Sync Backend (triggers Realtime UPDATE → stops other admin devices)
         try {
             const { error } = await supabase
                 .from('orders')
@@ -200,18 +258,13 @@ class NotificationManager {
 
         } catch (err) {
             console.error('❌ Failed to acknowledge orders:', err);
-            // Optional: Add retry logic or re-enqueue? 
-            // Current Decision: Keep silent to avoid "Ghost Alarm". 
-            // They will re-appear on next reload if write failed.
         }
     }
 
     /**
-     * Update the UI Modal content.
-     * This function should be overridden or listened to by the main app.
+     * Update the UI Modal.
      */
     updateUI() {
-        // Dispatch custom event for admin-mobile.js to handle DOM updates
         const event = new CustomEvent('batch-update', {
             detail: {
                 count: this.batchQueue.size,
