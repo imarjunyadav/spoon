@@ -230,17 +230,36 @@ async function initPushUI() {
         <span>Enable Notifications</span>
       `;
 
-      // Insert before divider
-      settingsContent.insertBefore(pushBtn, divider);
+      // Insert before divider (or at end if no divider)
+      if (divider) {
+        settingsContent.insertBefore(pushBtn, divider);
+      } else {
+        settingsContent.appendChild(pushBtn);
+      }
 
       // Add listener
       pushBtn.addEventListener('click', async () => {
-        const granted = await window.pushManager.requestPermission();
-        if (granted) {
-          alert('✅ Notifications Enabled!');
-          updatePushUIState();
-        } else {
-          alert('⚠️ Permission Denied. Please enable notifications in browser settings.');
+        try {
+          pushBtn.disabled = true;
+          pushBtn.querySelector('span').textContent = 'Setting up...';
+
+          // Ensure SW + VAPID key are ready
+          if (!window.pushManager.swRegistration || !window.pushManager.vapidPublicKey) {
+            await window.pushManager.init();
+          }
+
+          const granted = await window.pushManager.requestPermission();
+          if (granted) {
+            updatePushUIState();
+          } else {
+            alert('⚠️ Permission Denied. Please enable notifications in browser settings.');
+            pushBtn.disabled = false;
+            pushBtn.querySelector('span').textContent = 'Enable Notifications';
+          }
+        } catch (err) {
+          console.error('❌ Push button error:', err);
+          pushBtn.disabled = false;
+          pushBtn.querySelector('span').textContent = 'Enable Notifications';
         }
       });
     }

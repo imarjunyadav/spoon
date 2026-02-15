@@ -3,6 +3,19 @@ const router = express.Router();
 const webpush = require('web-push');
 const { requireAdminSession } = require('../middleware/sessionAuth');
 
+// Ensure VAPID is configured for this module too (web-push is singleton, but be safe)
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_EMAIL) {
+    try {
+        webpush.setVapidDetails(
+            process.env.VAPID_EMAIL,
+            process.env.VAPID_PUBLIC_KEY,
+            process.env.VAPID_PRIVATE_KEY
+        );
+    } catch (e) {
+        // Already set — that's fine
+    }
+}
+
 // Lazy load Supabase client (avoid circular deps & env race conditions)
 let supabaseInstance = null;
 function getSupabase() {

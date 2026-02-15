@@ -1,11 +1,31 @@
 /**
  * Web Push Notification Manager
  * Handles Service Worker registration and backend subscription.
+ * 
+ * Auth: Uses Supabase JWT (same as all other admin API calls).
  */
 class PushNotificationManager {
     constructor() {
         this.vapidPublicKey = null;
         this.swRegistration = null;
+    }
+
+    /**
+     * Get the current Supabase access token (JWT).
+     * This is the same auth method used by all admin API calls.
+     */
+    async getAuthToken() {
+        try {
+            // window.supabase is set by admin-mobile.js during init
+            const sb = window.supabase || window.getSupabaseClient?.();
+            if (!sb) return null;
+
+            const { data: { session } } = await sb.auth.getSession();
+            return session?.access_token || null;
+        } catch (e) {
+            console.warn('⚠️ PushManager: Could not get auth token', e);
+            return null;
+        }
     }
 
     async init() {
@@ -15,22 +35,22 @@ class PushNotificationManager {
         }
 
         try {
-            // 1. Register Service Worker
-            this.swRegistration = await navigator.serviceWorker.register('/sw.js');
+            // 1. Register Service Worker (scope covers entire site)
+            this.swRegistration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
             console.log('✅ Service Worker registered');
 
             // 2. Fetch VAPID Key
             const response = await fetch('/api/push/key');
-            if (!response.ok) return;
+            if (!response.ok) {
+                console.warn('⚠️ Could not fetch VAPID key:', response.status);
+                return;
+            }
             const { key } = await response.json();
             this.vapidPublicKey = key;
 
-            // 3. Check current permission
+            // 3. If permission already granted, ensure subscription is synced
             if (Notification.permission === 'granted') {
-                this.subscribeUser();
-            } else if (Notification.permission !== 'denied') {
-                // Determine if we should prompt (e.g. on first admin load)
-                // For now, we expose a method to trigger it via UI
+                await this.subscribeUser();
             }
 
         } catch (error) {
@@ -48,29 +68,46 @@ class PushNotificationManager {
     }
 
     async subscribeUser() {
-        if (!this.swRegistration || !this.vapidPublicKey) return;
+        if (!this.swRegistration || !this.vapidPublicKey) {
+            console.warn('⚠️ PushManager: SW or VAPID key not ready');
+            return;
+        }
 
         try {
+            // Get auth token (Supabase JWT)
+            const token = await this.getAuthToken();
+            if (!token) {
+                console.warn('⚠️ PushManager: No auth token, cannot subscribe');
+                return;
+            }
+
             // Check if already subscribed
             let subscription = await this.swRegistration.pushManager.getSubscription();
 
             if (!subscription) {
-                // Subscribe
+                // Create new subscription
                 subscription = await this.swRegistration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey)
                 });
+                console.log('🔔 New push subscription created');
             }
 
-            // Send to backend
-            await fetch('/api/push/subscribe', {
+            // Send to backend with correct auth header
+            const resp = await fetch('/api/push/subscribe', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-admin-session-token': localStorage.getItem('adminSessionToken')
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ subscription })
             });
+
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                console.error('❌ Backend rejected subscription:', resp.status, err);
+                return;
+            }
 
             console.log('📡 Push subscription synced with backend');
 
@@ -94,5 +131,5 @@ class PushNotificationManager {
 }
 
 window.pushManager = new PushNotificationManager();
-// Auto-init
-window.pushManager.init();
+// Auto-init after a short delay to ensure supabase client is ready
+setTimeout(() => window.pushManager.init(), 2000);
