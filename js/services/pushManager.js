@@ -16,9 +16,13 @@ class PushNotificationManager {
      */
     async getAuthToken() {
         try {
-            // window.supabase is set by admin-mobile.js during init
-            const sb = window.supabase || window.getSupabaseClient?.();
-            if (!sb) return null;
+            // window.spoonSupabase is the initialized client instance (created by config.js)
+            // window.supabase is the CDN library/factory — do NOT use it
+            const sb = window.spoonSupabase || window.getSupabaseClient?.();
+            if (!sb) {
+                console.warn('⚠️ PushManager: Supabase client not initialized yet');
+                return null;
+            }
 
             const { data: { session } } = await sb.auth.getSession();
             return session?.access_token || null;
