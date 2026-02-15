@@ -2647,12 +2647,15 @@ function handleOrderChange(payload) {
 
       // Notify Smart Batch System if status changed to a relevant one or unacknowledged
       if (window.notificationManager) {
-        const shouldNotify = !newOrder.is_acknowledged &&
+        const needsAlert = !newOrder.is_acknowledged &&
           ['PENDING', 'PAID', 'PLACED', 'PREPARING'].includes(newOrder.status) &&
           (typeof needsAnnouncing === 'function' ? needsAnnouncing(newOrder) : true);
 
-        if (shouldNotify) {
+        if (needsAlert) {
           window.notificationManager.enqueue([newOrder]);
+        } else {
+          // Remove if acknowledged OR status is no longer relevant (e.g. COMPLETE/CANCELLED)
+          window.notificationManager.remove(newOrder.id);
         }
       }
     } else {

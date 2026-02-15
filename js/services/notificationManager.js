@@ -21,6 +21,14 @@ class NotificationManager {
                 this.updateUI();
             }
         };
+
+        // Handle Background Throttling (Resume alarm when tab becomes visible)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && this.batchQueue.size > 0 && !this.isRinging) {
+                console.log('👁️ Tab visible: Resuming alarm loop');
+                this.startAlarm();
+            }
+        });
     }
 
     /**
@@ -47,10 +55,37 @@ class NotificationManager {
     }
 
     /**
+     * Remove specific orders from the batch (e.g., remote ack or status change).
+     * @param {Array|string} orderIds - Array of IDs or single ID
+     */
+    remove(orderIds) {
+        const idsToRemove = Array.isArray(orderIds) ? orderIds : [orderIds];
+        let changed = false;
+
+        idsToRemove.forEach(id => {
+            if (this.batchQueue.has(id)) {
+                this.batchQueue.delete(id);
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            this.updateUI();
+            if (this.batchQueue.size === 0) {
+                this.stopAlarm(false); // Stop locally, no need to broadcast if it came from remote
+            }
+        }
+    }
+
+    /**
      * Start the looping alarm and vibration.
      */
     async startAlarm() {
         if (this.isRinging) return;
+
+        // Double check queue is not empty before starting
+        if (this.batchQueue.size === 0) return;
+
         this.isRinging = true;
 
         console.log('🔔 Starting Alarm Loop');
@@ -68,8 +103,15 @@ class NotificationManager {
         this.playTone();
         this.triggerVibration();
 
+        // Clear any existing interval just in case
+        if (this.alarmInterval) clearInterval(this.alarmInterval);
+
         // Loop every 3 seconds
         this.alarmInterval = setInterval(() => {
+            if (this.batchQueue.size === 0) {
+                this.stopAlarm(false);
+                return;
+            }
             this.playTone();
             this.triggerVibration();
         }, 3000);
@@ -87,8 +129,10 @@ class NotificationManager {
             this.alarmInterval = null;
         }
 
-        // Stop vibration
-        if (navigator.vibrate) navigator.vibrate(0);
+        // Stop vibration explicitly
+        if (navigator.vibrate) {
+            try { navigator.vibrate(0); } catch (e) { }
+        }
 
         if (broadcast) {
             this.broadcastChannel.postMessage({ type: 'ACKNOWLEDGE' });
