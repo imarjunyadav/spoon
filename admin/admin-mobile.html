@@ -394,6 +394,26 @@
     <p class="text-secondary mt-md">Redirecting to homepage...</p>
   </div>
   
+  <!-- Smart Batch Notification Modal -->
+  <div class="modal-overlay hidden" id="notification-modal">
+    <div class="notification-modal" role="alertdialog" aria-labelledby="notif-title" aria-modal="true">
+      <div class="notification-header" id="notif-header">
+        <i class="fas fa-bell"></i> <span id="notif-title">1 New Order</span>
+      </div>
+      <div class="notification-body">
+        <div class="notification-summary-title">Recent Arrivals</div>
+        <ul class="notification-list" id="notif-list">
+          <!-- Items injected here -->
+        </ul>
+      </div>
+      <div class="notification-footer">
+        <button class="admin-btn admin-btn--primary pulsing-btn" id="notif-ack-btn">
+          GOT IT
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Session Expired Prompt (Requirements: 13.1, 13.2) -->
   <div class="session-prompt hidden" id="session-prompt" role="alertdialog" aria-modal="true">
     <div class="session-prompt__content">
@@ -406,6 +426,9 @@
       </button>
     </div>
   </div>
+
+  <!-- Notification Manager (Smart Batch) -->
+  <script src="../js/services/notificationManager.js"></script>
 
   <!-- Admin Dashboard JavaScript -->
   <script src="../js/admin/admin-mobile.js?v=2.18"></script>

@@ -2540,6 +2540,16 @@ async function fetchOrders() {
   // Debounce render to prevent UI jitter on rapid updates (Requirement: Scalability)
   if (window.renderTimeout) clearTimeout(window.renderTimeout);
   window.renderTimeout = setTimeout(renderAll, 50);
+
+  // Notify Smart Batch System of initial load (checks for missed orders)
+  if (window.notificationManager && AdminState.orders.length > 0) {
+    const relevantOrders = AdminState.orders.filter(o =>
+      !o.is_acknowledged &&
+      ['PENDING', 'PAID', 'PLACED', 'PREPARING'].includes(o.status) &&
+      (typeof needsAnnouncing === 'function' ? needsAnnouncing(o) : true)
+    );
+    window.notificationManager.enqueue(relevantOrders);
+  }
 }
 
 /**
@@ -2610,6 +2620,17 @@ function handleOrderChange(payload) {
     if (!exists) {
       console.log('📥 Surgical INSERT:', newOrder.id);
       AdminState.orders.unshift(newOrder);
+
+      // Notify Smart Batch System
+      if (window.notificationManager) {
+        const shouldNotify = !newOrder.is_acknowledged &&
+          ['PENDING', 'PAID', 'PLACED', 'PREPARING'].includes(newOrder.status) &&
+          (typeof needsAnnouncing === 'function' ? needsAnnouncing(newOrder) : true);
+
+        if (shouldNotify) {
+          window.notificationManager.enqueue([newOrder]);
+        }
+      }
     }
   } else if (eventType === 'UPDATE' && newOrder) {
     // Normalize preorder_time
@@ -2623,6 +2644,17 @@ function handleOrderChange(payload) {
       console.log('📝 Surgical UPDATE:', newOrder.id);
       // Preserve local-only properties if needed, but for now strict overwrite is safer
       AdminState.orders[index] = newOrder;
+
+      // Notify Smart Batch System if status changed to a relevant one or unacknowledged
+      if (window.notificationManager) {
+        const shouldNotify = !newOrder.is_acknowledged &&
+          ['PENDING', 'PAID', 'PLACED', 'PREPARING'].includes(newOrder.status) &&
+          (typeof needsAnnouncing === 'function' ? needsAnnouncing(newOrder) : true);
+
+        if (shouldNotify) {
+          window.notificationManager.enqueue([newOrder]);
+        }
+      }
     } else {
       // Order not in local state (edge case: late subscription)
       console.warn('⚠️ Order not found locally, adding:', newOrder.id);
@@ -3095,6 +3127,9 @@ async function initAdmin() {
     // Load told state from DB (must happen before fetchOrders triggers render)
     await loadToldState();
 
+    // Initialize Notification System (Smart Batch)
+    initNotificationSystem();
+
     fetchOrders();
     fetchMenuItems();
     initRealtimeSubscriptions();
@@ -3174,6 +3209,88 @@ function showErrorOverlay(message) {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', initAdmin);
+
+// ============================================
+// NOTIFICATION SYSTEM INTEGRATION (Smart Batch)
+// ============================================
+
+/**
+ * Initialize Notification System UI and Events
+ */
+function initNotificationSystem() {
+  if (!window.notificationManager) {
+    console.warn('⚠️ NotificationManager not found');
+    return;
+  }
+
+  console.log('🔔 Initializing Notification System UI');
+
+  // "Got It" button handler
+  const ackBtn = document.getElementById('notif-ack-btn');
+  if (ackBtn) {
+    ackBtn.addEventListener('click', () => {
+      window.notificationManager.acknowledge(async () => {
+        // Optional: Optimistic UI update or other post-ack logic
+        console.log('✅ User acknowledged batch');
+      });
+    });
+  }
+
+  // Listen for batch updates from NotificationManager
+  window.addEventListener('batch-update', (event) => {
+    const { count, ids } = event.detail;
+    renderNotificationModal(count, ids);
+  });
+}
+
+/**
+ * Render the Sticky Notification Modal
+ * @param {number} count - Total unacknowledged orders
+ * @param {Array<string>} ids - Array of Order IDs in the batch
+ */
+function renderNotificationModal(count, ids) {
+  const modal = document.getElementById('notification-modal');
+  const title = document.getElementById('notif-title');
+  const list = document.getElementById('notif-list');
+
+  if (!modal || !title || !list) return;
+
+  if (count === 0) {
+    modal.classList.add('hidden');
+    return;
+  }
+
+  // Update Title
+  title.textContent = `${count} New Order${count > 1 ? 's' : ''}`;
+
+  // Update List (Show top 3 recent)
+  // We need to find order details from AdminState.orders
+  const recentIds = ids.slice(0, 3); // Top 3
+  const itemsHtml = recentIds.map(id => {
+    const order = AdminState.orders.find(o => o.id === id);
+    if (!order) return ''; // Should not happen if state is synced
+
+    // Calculate total items
+    const totalItems = order.items?.reduce((sum, i) => sum + i.quantity, 0) || 0;
+    const timeDisplay = formatTime(order.created_at);
+
+    return `
+      <li class="notification-item">
+        <span>#${truncateId(id)} (${totalItems} items)</span>
+        <span class="text-secondary">${timeDisplay}</span>
+      </li>
+    `;
+  }).join('');
+
+  list.innerHTML = itemsHtml;
+
+  if (ids.length > 3) {
+    list.innerHTML += `<li class="notification-item justify-center text-secondary">+ ${ids.length - 3} more</li>`;
+  }
+
+  // Show Modal
+  modal.classList.remove('hidden');
+}
 
 /**
  * Format pre-order time for display
