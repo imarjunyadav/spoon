@@ -121,6 +121,8 @@ async function sendTelegramMessage(message) {
     return true;
 }
 
+const webPushService = require('./webPushService');
+
 // ========================================
 // PUBLIC API
 // ========================================
@@ -133,20 +135,23 @@ async function sendTelegramMessage(message) {
  * @returns {Promise<void>}
  */
 async function notifyNewOrder(order) {
+    // 1. Telegram Notification
     try {
         const config = getTelegramConfig();
-        if (!config) {
-            // Not configured — skip silently (no log spam)
-            return;
+        if (config) {
+            const message = formatOrderMessage(order);
+            await sendTelegramMessage(message);
+            console.log(`📨 Telegram alert sent for order #${(order.id || '').substring(0, 8)}`);
         }
-
-        const message = formatOrderMessage(order);
-        await sendTelegramMessage(message);
-        console.log(`📨 Telegram alert sent for order #${(order.id || '').substring(0, 8)}`);
-
     } catch (error) {
-        // NEVER throw — notification failure must not affect order flow
         console.error('⚠️ Telegram notification failed (non-blocking):', error.message);
+    }
+
+    // 2. Web Push Notification
+    try {
+        await webPushService.sendPushToAdmins(order);
+    } catch (error) {
+        console.error('⚠️ Web Push notification failed (non-blocking):', error.message);
     }
 }
 

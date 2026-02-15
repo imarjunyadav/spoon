@@ -184,6 +184,13 @@ const healthRoutes = require("./routes/health");
 app.use("/api/health", healthRoutes);
 
 /**
+ * PUSH NOTIFICATION ROUTES
+ * Subscription management for Web Push
+ */
+const pushRoutes = require("./routes/push");
+app.use("/api/push", pushRoutes);
+
+/**
  * ADMIN ROUTES
  * Admin role verification endpoint
  * Example: GET /api/admin/verify

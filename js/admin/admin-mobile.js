@@ -205,6 +205,78 @@ function initDOMReferences() {
   DOM.completedEmpty = document.getElementById('completed-empty');
   DOM.cancelledEmpty = document.getElementById('cancelled-empty');
   DOM.searchNoResults = document.getElementById('search-no-results');
+
+  // Push Notifications (New)
+  DOM.pushToggleBtn = document.getElementById('push-toggle-btn');
+}
+
+/**
+ * Initialize Push Notification UI (Called after DOM init)
+ */
+async function initPushUI() {
+  if (!window.pushManager) return; // Guard clause
+
+  // Create toggle button in settings menu if it doesn't exist
+  if (!document.getElementById('push-toggle-btn')) {
+    const settingsContent = document.querySelector('.user-menu__content');
+    if (settingsContent) {
+      const divider = settingsContent.querySelector('.user-menu__divider');
+
+      const pushBtn = document.createElement('button');
+      pushBtn.className = 'user-menu__item';
+      pushBtn.id = 'push-toggle-btn';
+      pushBtn.innerHTML = `
+        <i class="fas fa-bell"></i>
+        <span>Enable Notifications</span>
+      `;
+
+      // Insert before divider
+      settingsContent.insertBefore(pushBtn, divider);
+
+      // Add listener
+      pushBtn.addEventListener('click', async () => {
+        const granted = await window.pushManager.requestPermission();
+        if (granted) {
+          alert('✅ Notifications Enabled!');
+          updatePushUIState();
+        } else {
+          alert('⚠️ Permission Denied. Please enable notifications in browser settings.');
+        }
+      });
+    }
+  }
+
+  updatePushUIState();
+}
+
+/**
+ * Update Push UI based on permission state
+ */
+function updatePushUIState() {
+  const btn = document.getElementById('push-toggle-btn');
+  if (!btn) return;
+
+  if (Notification.permission === 'granted') {
+    btn.innerHTML = `
+      <i class="fas fa-bell-slash"></i>
+      <span>Notifications Active</span>
+    `;
+    btn.classList.add('text-success');
+    btn.disabled = true; // Already active
+  } else if (Notification.permission === 'denied') {
+    btn.innerHTML = `
+      <i class="fas fa-bell-slash"></i>
+      <span>Notifications Blocked</span>
+    `;
+    btn.classList.add('text-error');
+  } else {
+    btn.innerHTML = `
+      <i class="fas fa-bell"></i>
+      <span>Enable Notifications</span>
+    `;
+    btn.classList.remove('text-success', 'text-error');
+    btn.disabled = false;
+  }
 }
 
 /**
@@ -299,6 +371,9 @@ function initEventListeners() {
 
   // Keyboard support for dialogs
   document.addEventListener('keydown', handleKeyDown);
+
+  // Initialize Push UI
+  initPushUI();
 }
 
 
