@@ -18,6 +18,7 @@ const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const walletService = require('../services/walletService');
+const notificationService = require('../services/notificationService');
 const requireAuth = require('../middleware/userAuth');
 
 // Singleton Supabase client (same pattern as orders.js)
@@ -230,6 +231,11 @@ router.post('/pay', async (req, res) => {
         }
 
         console.log(`✅ Wallet order ${orderId}: ${serverTotal} coins from ${email}`);
+
+        // Fire-and-forget: Notify admins (Telegram + Web Push)
+        notificationService.notifyNewOrder(order).catch(err =>
+            console.error('⚠️ Wallet order notification failed (non-blocking):', err.message)
+        );
 
         return res.json({
             success: true,
