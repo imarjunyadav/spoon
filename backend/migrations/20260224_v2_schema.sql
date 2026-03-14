@@ -138,7 +138,9 @@ ALTER TABLE public.orders
 -- CREATE ... IF NOT EXISTS is idempotent.
 -- =============================================================================
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_slot_prepared
+DROP INDEX IF EXISTS idx_orders_slot_prepared;
+
+CREATE UNIQUE INDEX idx_orders_slot_prepared
   ON public.orders (slot_number)
   WHERE status = 'prepared';
 
