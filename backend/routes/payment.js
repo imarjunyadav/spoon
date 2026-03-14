@@ -77,7 +77,7 @@ router.post("/create-order", async (req, res) => {
       notes: {
         email: userEmail,
         cart_items: JSON.stringify(items),
-        preorder_time: req.body.preorderTime || null,
+        preorder_time: null,
         phone_number: req.body.phoneNumber || null
       }
     };
@@ -182,7 +182,6 @@ router.post("/verify-payment", async (req, res) => {
       currency: payment.currency,
       userEmail: payment.notes?.email || payment.email, // Our app email takes priority
       cartItems: payment.notes?.cart_items ? JSON.parse(payment.notes.cart_items) : [],
-      preorderTime: payment.notes?.preorder_time,
       phoneNumber: payment.notes?.phone_number
     });
 
@@ -288,7 +287,6 @@ async function handlePaymentSuccess(payment, webhookBody) {
       currency: payment.currency,
       userEmail: payment.notes?.email || payment.email, // Our app email takes priority
       cartItems: payment.notes?.cart_items ? JSON.parse(payment.notes.cart_items) : [],
-      preorderTime: payment.notes?.preorder_time,
       phoneNumber: payment.notes?.phone_number
     };
 

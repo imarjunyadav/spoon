@@ -155,8 +155,53 @@ async function notifyNewOrder(order) {
     }
 }
 
+/**
+ * Notify user that their order is prepared.
+ * 
+ * @param {Object} order - Order object
+ */
+async function notifyOrderPrepared(order) {
+    try {
+        if (!order.customer_email) return;
+        
+        const payload = {
+            title: `🍽️ Order Ready! Slot #${order.slot_number}`,
+            body: `Your order #${(order.id || '').substring(0, 8)} is ready for pickup at Slot #${order.slot_number}. Please collect it now.`,
+            url: `/pages/user/orders.html`
+        };
+        
+        await webPushService.sendPushToUser(order.customer_email, payload);
+    } catch (error) {
+        console.error('⚠️ notifyOrderPrepared failed:', error.message);
+    }
+}
+
+/**
+ * Notify user that their order was cancelled due to no-show.
+ * 
+ * @param {Object} order - Order object
+ * @param {number} refundAmount - Coins refunded
+ */
+async function notifyOrderCancelledNoShow(order, refundAmount) {
+    try {
+        if (!order.customer_email) return;
+        
+        const payload = {
+            title: `❌ Order Cancelled (No-Show)`,
+            body: `Order #${(order.id || '').substring(0, 8)} was cancelled as it wasn't collected. ${refundAmount} coins have been refunded to your wallet.`,
+            url: `/pages/user/wallet.html`
+        };
+        
+        await webPushService.sendPushToUser(order.customer_email, payload);
+    } catch (error) {
+        console.error('⚠️ notifyOrderCancelledNoShow failed:', error.message);
+    }
+}
+
 module.exports = {
     notifyNewOrder,
+    notifyOrderPrepared,
+    notifyOrderCancelledNoShow,
     // Exported for testing
     formatOrderMessage,
     sendTelegramMessage

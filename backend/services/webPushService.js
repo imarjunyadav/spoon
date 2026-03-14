@@ -90,6 +90,54 @@ async function sendPushToAdmins(order) {
     }
 }
 
+/**
+ * Send push notification to a specific user.
+ * 
+ * @param {string} userEmail - The user's email
+ * @param {Object} payloadOptions - Title, body, url
+ */
+async function sendPushToUser(userEmail, payloadOptions) {
+    if (!publicVapidKey) return;
+
+    try {
+        const { data: subscriptions, error } = await getSupabase()
+            .from('push_subscriptions')
+            .select('endpoint, keys')
+            .eq('user_email', userEmail);
+
+        if (error || !subscriptions || subscriptions.length === 0) {
+            return; // No subscribers for this user
+        }
+
+        const payload = JSON.stringify({
+            title: payloadOptions.title,
+            body: payloadOptions.body,
+            icon: '/images/spoon-logo-square.png',
+            data: { url: payloadOptions.url || '/pages/user/orders.html' }
+        });
+
+        const promises = subscriptions.map(sub =>
+            webpush.sendNotification(sub, payload).catch(err => {
+                if (err.statusCode === 410 || err.statusCode === 404) {
+                    console.log('🗑️ Removing stale user subscription:', sub.endpoint);
+                    return getSupabase()
+                        .from('push_subscriptions')
+                        .delete()
+                        .eq('endpoint', sub.endpoint);
+                }
+                console.error('⚠️ User push send failed:', err.message);
+            })
+        );
+
+        await Promise.all(promises);
+        console.log(`🚀 Sent push notification to ${userEmail} (${subscriptions.length} devices)`);
+
+    } catch (err) {
+        console.error('❌ User Web Push Error:', err);
+    }
+}
+
 module.exports = {
-    sendPushToAdmins
+    sendPushToAdmins,
+    sendPushToUser
 };

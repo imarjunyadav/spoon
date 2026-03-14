@@ -1,328 +1,368 @@
 /**
- * Spoon - Orders API Routes
- * 
- * Handles order status updates with email notifications
- * and pre-order cancellation with eWallet coin refund.
- * 
- * Endpoints:
- * - PATCH /api/orders/:orderId/status  - Update order status and send email
- * - POST  /api/orders/:orderId/cancel  - Cancel pre-order and refund coins
+ * Spoon v2 - Orders API Routes
  */
 
 const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
-const nodemailer = require('nodemailer');
-const adminService = require('../services/adminService');
-const walletService = require('../services/walletService');
 const { requireAdminSession } = require('../middleware/sessionAuth');
+const requireAuth = require('../middleware/userAuth');
+const walletService = require('../services/walletService');
+const notificationService = require('../services/notificationService');
 
-// Initialize Supabase client with SERVICE_ROLE_KEY
-// This bypasses RLS policies and allows admin operations
+// Initialize Supabase client
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Initialize SMTP transporter for email notifications
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_EMAIL,
-    pass: process.env.SMTP_PASSWORD
+// Helper to get system settings
+async function getNumericSetting(key, defaultValue) {
+  try {
+    const { data } = await supabase.from('system_settings').select('value').eq('key', key).single();
+    if (data && data.value) {
+      const parsed = parseInt(data.value, 10);
+      if (!isNaN(parsed)) return parsed;
+    }
+  } catch (err) {
+    console.error(`Error fetching setting ${key}:`, err);
+  }
+  return defaultValue;
+}
+
+// ---------------------------------------------------------
+// GET /api/orders/admin (Admin Dashboard)
+// ---------------------------------------------------------
+router.get('/admin', requireAdminSession, async (req, res) => {
+  try {
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('id, status, items, total, customer_email, created_at, kitchen_at, prepared_at, slot_number')
+      .in('status', ['pending', 'kitchen', 'prepared'])
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    res.json({ success: true, orders: orders || [] });
+  } catch (error) {
+    console.error('Error fetching admin orders:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch admin orders', code: 'DB_ERROR' });
   }
 });
 
-/**
- * Send minimal HTML email notification to customer.
- * 
- * @param {string} toEmail - Customer email address
- * @param {string} subject - Email subject line
- * @param {string} htmlContent - Minimal HTML email body
- * 
- * @returns {Promise<{success: boolean, messageId?: string, error?: string}>}
- */
-async function sendOrderEmail(toEmail, subject, htmlContent) {
-  try {
-    const info = await transporter.sendMail({
-      from: `"SPOON Canteen" <${process.env.SMTP_EMAIL}>`,
-      to: toEmail,
-      subject: subject,
-      html: htmlContent
-    });
-
-    console.log(`📧 Email sent to ${toEmail}:`, info.messageId);
-    return { success: true, messageId: info.messageId };
-
-  } catch (err) {
-    console.error(`❌ Email error for ${toEmail}:`, err.message);
-    return { success: false, error: err.message };
-  }
-}
-
-/**
- * Update order status and send email notification.
- * 
- * Method: PATCH
- * Path: /api/orders/:orderId/status
- * 
- * Security:
- * - Uses requireAdminSession middleware
- * - Enforces both JWT and x-admin-session-token
- */
-router.patch('/:orderId/status', requireAdminSession, async (req, res) => {
+// ---------------------------------------------------------
+// POST /api/orders/:orderId/send-to-kitchen (Admin)
+// ---------------------------------------------------------
+router.post('/:orderId/send-to-kitchen', requireAdminSession, async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { status } = req.body;
-    // User verified by middleware (includes admin check)
-    console.log('✅ Admin authenticated:', req.user.email);
+    const adminEmail = req.user.email;
 
-    // Diagnostic Logging - Request
-    console.log('\n========================================');
-    console.log('🔍 DIAGNOSTIC: Status Update Request');
-    console.log('========================================');
-    console.log('📥 Received orderId:', orderId);
-    console.log('📥 orderId type:', typeof orderId);
-    console.log('📥 orderId length:', orderId.length);
-    console.log('📥 orderId (hex):', Buffer.from(orderId).toString('hex'));
-    console.log('📥 New status:', status);
-    console.log('📥 Supabase URL:', process.env.SUPABASE_URL);
-    console.log('📥 Using ANON_KEY:', process.env.SUPABASE_ANON_KEY ? 'Yes' : 'No');
+    const { data, error } = await supabase
+      .from('orders')
+      .update({
+        status: 'kitchen',
+        kitchen_at: new Date().toISOString(),
+        kitchen_by: adminEmail
+      })
+      .eq('id', orderId)
+      .eq('status', 'pending')
+      .select();
 
-    // Validate status
-    if (!['COMPLETE', 'PICKED_UP'].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid status. Must be COMPLETE or PICKED_UP'
-      });
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return res.status(409).json({ success: false, error: 'Order not found or not in pending state', code: 'STATE_CONFLICT' });
     }
 
-    // Diagnostic Logging - Fetch
-    console.log('\n🔍 DIAGNOSTIC: Fetching order...');
+    res.json({ success: true, order: data[0] });
+  } catch (error) {
+    console.error('send-to-kitchen error:', error);
+    res.status(500).json({ success: false, error: 'Failed to move order to kitchen', code: 'DB_ERROR' });
+  }
+});
 
-    const { data: order, error: fetchError, count } = await supabase
+// ---------------------------------------------------------
+// POST /api/orders/:orderId/mark-prepared (Admin)
+// ---------------------------------------------------------
+router.post('/:orderId/mark-prepared', requireAdminSession, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const adminEmail = req.user.email;
+
+    const maxCapacity = await getNumericSetting('max_prepared_slots', 10);
+    const now = new Date().toISOString();
+    
+    let assignedSlot = null;
+    let preparedOrder = null;
+
+    // Atomic slot assignment loop
+    for (let slot = 1; slot <= maxCapacity; slot++) {
+      const { data, error } = await supabase
+        .from('orders')
+        .update({
+          status: 'prepared',
+          prepared_at: now,
+          prepared_by: adminEmail,
+          slot_number: slot
+        })
+        .eq('id', orderId)
+        .eq('status', 'kitchen')
+        .select();
+
+      if (data && data.length > 0) {
+        assignedSlot = slot;
+        preparedOrder = data[0];
+        break; // Successfully assigned slot!
+      }
+      
+      // If error is unique violation (23505), this slot is taken. Try next.
+      if (error && error.code === '23505') {
+        continue;
+      }
+      
+      // If no error but no rows updated, it means the order wasn't in 'kitchen' state
+      if (!error && (!data || data.length === 0)) {
+        return res.status(409).json({ success: false, error: 'Order not in kitchen state', code: 'STATE_CONFLICT' });
+      }
+
+      // Any other DB error
+      if (error) throw error;
+    }
+
+    if (!assignedSlot) {
+      return res.status(409).json({ success: false, error: 'All pickup slots are currently full', code: 'SLOTS_FULL' });
+    }
+
+    // Fire-and-forget notification
+    if (notificationService.notifyOrderPrepared) {
+      notificationService.notifyOrderPrepared(preparedOrder).catch(err => console.error('notifyOrderPrepared err:', err));
+    }
+
+    res.json({ success: true, order: preparedOrder, slot: assignedSlot });
+  } catch (error) {
+    console.error('mark-prepared error:', error);
+    res.status(500).json({ success: false, error: 'Failed to mark order prepared', code: 'DB_ERROR' });
+  }
+});
+
+// ---------------------------------------------------------
+// POST /api/orders/:orderId/complete (Admin)
+// ---------------------------------------------------------
+router.post('/:orderId/complete', requireAdminSession, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const adminEmail = req.user.email;
+
+    const { data, error } = await supabase
       .from('orders')
-      .select('*', { count: 'exact' })
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        completed_by: adminEmail
+      })
+      .eq('id', orderId)
+      .eq('status', 'prepared')
+      // Note: we do NOT clear slot_number to keep audit trail
+      .select();
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return res.status(409).json({ success: false, error: 'Order not in prepared state', code: 'STATE_CONFLICT' });
+    }
+
+    res.json({ success: true, order: data[0] });
+  } catch (error) {
+    console.error('complete order error:', error);
+    res.status(500).json({ success: false, error: 'Failed to complete order', code: 'DB_ERROR' });
+  }
+});
+
+// ---------------------------------------------------------
+// POST /api/orders/:orderId/cancel-no-show (Admin)
+// ---------------------------------------------------------
+router.post('/:orderId/cancel-no-show', requireAdminSession, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const adminEmail = req.user.email;
+
+    // Fetch order first to get total and prepared_at
+    const { data: order, error: fetchErr } = await supabase
+      .from('orders')
+      .select('id, status, total, customer_email, prepared_at, arrived_at')
       .eq('id', orderId)
       .single();
 
-    console.log('📊 Fetch result:');
-    console.log('  - Found order:', !!order);
-    console.log('  - Order ID match:', order?.id === orderId);
-    console.log('  - Fetch error:', fetchError);
-    console.log('  - Count:', count);
+    if (fetchErr || !order) return res.status(404).json({ success: false, error: 'Order not found', code: 'NOT_FOUND' });
 
-    if (order) {
-      console.log('  - Order details:');
-      console.log('    * ID:', order.id);
-      console.log('    * Status:', order.status);
-      console.log('    * Phone:', order.phone_number);
-      console.log('    * Email:', order.customer_email);
-      console.log('    * Verification Code:', order.verification_code);
+    if (order.status !== 'prepared') {
+      return res.status(400).json({ success: false, error: 'Only prepared orders can be marked no-show', code: 'STATE_CONFLICT' });
+    }
+    if (order.arrived_at) {
+      return res.status(400).json({ success: false, error: 'Student has arrived, cannot cancel no-show', code: 'STUDENT_ARRIVED' });
     }
 
-    if (fetchError || !order) {
-      console.error('❌ DIAGNOSTIC: Order fetch failed');
-      console.error('   Error details:', JSON.stringify(fetchError, null, 2));
-      return res.status(404).json({
-        success: false,
-        error: 'Order not found',
-        debug: {
-          orderId,
-          fetchError: fetchError?.message || 'No order found'
-        }
+    const timeoutMinutes = await getNumericSetting('no_show_timeout_minutes', 10);
+    const preparedTime = new Date(order.prepared_at).getTime();
+    const nowTs = new Date().getTime();
+    const elapsedMinutes = (nowTs - preparedTime) / (1000 * 60);
+
+    if (elapsedMinutes < timeoutMinutes) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `Must wait at least ${timeoutMinutes} minutes before cancelling.`, 
+        code: 'TIMEOUT_NOT_ELAPSED' 
       });
     }
 
-    // Diagnostic Logging - Update
-    console.log('\n🔍 DIAGNOSTIC: Updating order status...');
-    console.log('  - Updating ID:', orderId);
-    console.log('  - New status:', status);
-
-    // Build update object with status and appropriate timestamp
-    const updateData = { status };
-
-    // Set timestamp based on status change
-    if (status === 'COMPLETE') {
-      updateData.ready_at = new Date().toISOString();
-      console.log('  - Setting ready_at:', updateData.ready_at);
-    } else if (status === 'PICKED_UP') {
-      updateData.picked_up_at = new Date().toISOString();
-      console.log('  - Setting picked_up_at:', updateData.picked_up_at);
+    const refundAmount = Math.round(Number(order.total));
+    if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
+      return res.status(500).json({ success: false, error: 'Invalid refund amount', code: 'INVALID_AMOUNT' });
     }
 
-    console.log('  - Full updateData:', JSON.stringify(updateData, null, 2));
-
-    const { data: updatedOrders, error: updateError, count: updateCount } = await supabase
+    // Atomic update to cancel
+    const { data: cancelledData, error: cancelErr } = await supabase
       .from('orders')
-      .update(updateData)
+      .update({
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: adminEmail,
+        cancel_reason: 'no_show',
+        refund_amount: refundAmount
+      })
       .eq('id', orderId)
-      .select('*', { count: 'exact' });
+      .eq('status', 'prepared')
+      .is('arrived_at', null)
+      .select();
 
-    console.log('📊 Update result:');
-    console.log('  - Update error:', updateError);
-    console.log('  - Rows returned:', updatedOrders?.length || 0);
-    console.log('  - Update count:', updateCount);
-
-    if (updateError) {
-      console.error('❌ DIAGNOSTIC: Update failed');
-      console.error('   Error details:', JSON.stringify(updateError, null, 2));
-      console.error('   Error code:', updateError.code);
-      console.error('   Error hint:', updateError.hint);
-      console.error('   Error details:', updateError.details);
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to update order status',
-        debug: {
-          updateError: updateError.message,
-          code: updateError.code,
-          hint: updateError.hint
-        }
-      });
+    if (cancelErr) throw cancelErr;
+    if (!cancelledData || cancelledData.length === 0) {
+      return res.status(409).json({ success: false, error: 'Order state changed', code: 'STATE_CONFLICT' });
     }
 
-    // Check if any rows were updated
-    if (!updatedOrders || updatedOrders.length === 0) {
-      console.error('❌ DIAGNOSTIC: No rows updated');
-      console.error('   This suggests RLS policy blocking update');
-      console.error('   Or ID mismatch issue');
-      return res.status(404).json({
-        success: false,
-        error: 'Order not found or already updated',
-        debug: {
-          orderId,
-          rowsUpdated: 0,
-          possibleCause: 'RLS policy or ID mismatch'
-        }
-      });
+    // Credit Wallet
+    const creditResult = await walletService.creditCoins(
+      order.customer_email,
+      refundAmount,
+      'REFUND',
+      orderId,
+      'Refund for no-show order'
+    );
+
+    if (!creditResult.success) {
+      // Rollback
+      await supabase
+        .from('orders')
+        .update({
+          status: 'prepared',
+          cancelled_at: null,
+          cancelled_by: null,
+          cancel_reason: null,
+          refund_amount: null
+        })
+        .eq('id', orderId)
+        .eq('status', 'cancelled');
+        
+      return res.status(500).json({ success: false, error: 'Wallet credit failed, cancelled rolled back.', code: 'WALLET_CREDIT_FAILED' });
     }
 
-    const updatedOrder = updatedOrders[0];
-    console.log('✅ DIAGNOSTIC: Order status updated successfully');
-    console.log('   New status:', updatedOrder.status);
-    console.log('   ready_at:', updatedOrder.ready_at);
-    console.log('   picked_up_at:', updatedOrder.picked_up_at);
-    console.log('========================================\n');
-
-    // Send email notification based on status
-    let emailResult = { sent: false };
-
-    if (order.customer_email) {
-      let subject = '';
-      let htmlContent = '';
-
-      if (status === 'COMPLETE') {
-        // Order ready for pickup - send verification code
-        subject = 'Your SPOON order is ready for pickup!';
-
-        // Generate items list
-        const itemsList = order.items.map(item =>
-          `<li>${item.title} × ${item.quantity} - ₹${item.price * item.quantity}</li>`
-        ).join('');
-
-        htmlContent = `
-          <div style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333;">
-            <p>Your SPOON order is ready for pickup.</p>
-            <p>Pickup Code: <strong style="font-size: 24px;">${order.verification_code}</strong></p>
-            <p>Show this code at the counter.</p>
-            <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-            <p><strong>Order Details:</strong></p>
-            <ul style="margin: 10px 0; padding-left: 20px;">
-              ${itemsList}
-            </ul>
-            <p><strong>Total: ₹${order.total}</strong></p>
-          </div>
-        `;
-      } else if (status === 'PICKED_UP') {
-        // Order collected
-        subject = 'Order picked up — Enjoy your meal!';
-        htmlContent = `
-          <div style="font-family: Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #333;">
-            <p>Your order has been picked up!</p>
-            <p>Thank you for choosing SPOON.</p>
-          </div>
-        `;
-      }
-
-      if (subject && htmlContent) {
-        emailResult = await sendOrderEmail(order.customer_email, subject, htmlContent);
-      }
-    } else {
-      console.log('⚠️ No customer email found for order');
+    // Fire-and-forget notification
+    if (notificationService.notifyOrderCancelledNoShow) {
+      notificationService.notifyOrderCancelledNoShow(order, refundAmount).catch(err => console.error(err));
     }
 
-    // Return success response
-    res.json({
-      success: true,
-      order: updatedOrder,
-      email: emailResult
-    });
-
+    res.json({ success: true, refundAmount });
   } catch (error) {
-    console.error('💥 Server error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error'
-    });
+    console.error('cancel-no-show error:', error);
+    res.status(500).json({ success: false, error: 'Failed to cancel order, rolled back if needed', code: 'DB_ERROR' });
   }
 });
 
-const requireAuth = require('../middleware/userAuth');
+// ---------------------------------------------------------
+// POST /api/orders/:orderId/arrive (User view)
+// ---------------------------------------------------------
+router.post('/:orderId/arrive', requireAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const userEmail = req.user.email;
 
-// ========================================
-// ENDPOINT: Get User Orders (List)
-// ========================================
+    // Check if order exists and belongs to user
+    const { data: order, error: fetchErr } = await supabase
+      .from('orders')
+      .select('id, status, arrived_at, slot_number, customer_email')
+      .eq('id', orderId)
+      .eq('customer_email', userEmail)
+      .single();
 
-/**
- * Get all orders for the logged-in user.
- * 
- * Method: GET
- * Path: /api/orders
- * 
- * Security:
- * - Uses requireAuth middleware
- * - Returns orders ONLY for req.user.email
- */
+    if (fetchErr || !order) {
+      return res.status(404).json({ success: false, error: 'Order not found or unauthorized' });
+    }
+
+    if (order.status !== 'prepared') {
+       return res.status(400).json({ success: false, error: 'Order is not ready yet', code: 'STATE_CONFLICT' });
+    }
+
+    // Idempotent: already arrived
+    if (order.arrived_at) {
+      return res.json({ success: true, slot_number: order.slot_number });
+    }
+
+    // Atomic update to mark arrived
+    const { data: updated, error: updateErr } = await supabase
+      .from('orders')
+      .update({ arrived_at: new Date().toISOString() })
+      .eq('id', orderId)
+      .eq('status', 'prepared')
+      .eq('customer_email', userEmail)
+      // double check in case of race
+      .is('arrived_at', null)
+      .select();
+
+    if (updateErr) throw updateErr;
+    if (!updated || updated.length === 0) {
+      // it might have just been updated
+      const { data: rechecked } = await supabase.from('orders').select('slot_number').eq('id', orderId).single();
+      return res.json({ success: true, slot_number: rechecked?.slot_number });
+    }
+
+    res.json({ success: true, slot_number: updated[0].slot_number });
+  } catch (error) {
+    console.error('arrive error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error', code: 'DB_ERROR' });
+  }
+});
+
+// ---------------------------------------------------------
+// GET /api/orders (User view - list)
+// ---------------------------------------------------------
 router.get('/', requireAuth, async (req, res) => {
   try {
     const email = req.user.email;
 
     const { data: orders, error } = await supabase
       .from('orders')
-      .select('*')
+      .select('id, status, total, items, created_at, kitchen_at, prepared_at, completed_at, cancelled_at, arrived_at, slot_number, cancel_reason')
       .eq('customer_email', email)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('❌ Error fetching user orders:', error);
-      return res.status(500).json({ success: false, error: 'Failed to fetch orders' });
-    }
+    if (error) throw error;
 
-    return res.json({ success: true, orders: orders || [] });
+    // Mask slot_number for prepared orders if not arrived
+    const safeOrders = (orders || []).map(o => {
+      if (!o.arrived_at && o.status === 'prepared') {
+         o.slot_number = null;
+      }
+      return o;
+    });
 
+    res.json({ success: true, orders: safeOrders });
   } catch (error) {
-    console.error('💥 List orders error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    console.error('list user orders error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error', code: 'DB_ERROR' });
   }
 });
 
-
-// ========================================
-// ENDPOINT: Get Single Order
-// ========================================
-
-/**
- * Get details for a specific order.
- * 
- * Method: GET
- * Path: /api/orders/:orderId
- * 
- * Security:
- * - Uses requireAuth middleware
- * - Enforces ownership (customer_email must match)
- */
+// ---------------------------------------------------------
+// GET /api/orders/:orderId (User view)
+// ---------------------------------------------------------
 router.get('/:orderId', requireAuth, async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -330,201 +370,24 @@ router.get('/:orderId', requireAuth, async (req, res) => {
 
     const { data: order, error } = await supabase
       .from('orders')
-      .select('*')
+      .select('id, status, total, items, created_at, kitchen_at, prepared_at, completed_at, cancelled_at, arrived_at, slot_number, cancel_reason, customer_email')
       .eq('id', orderId)
       .single();
 
-    if (error || !order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
-    }
+    if (error || !order) return res.status(404).json({ success: false, error: 'Order not found' });
 
-    // Security Check: Ownership
     if (order.customer_email.toLowerCase() !== email.toLowerCase()) {
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
 
-    return res.json({ success: true, order });
+    if (!order.arrived_at && order.status === 'prepared') {
+      order.slot_number = null;
+    }
 
+    res.json({ success: true, order });
   } catch (error) {
-    console.error('💥 Get order error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
-  }
-});
-
-
-// ========================================
-// ENDPOINT: Cancel Pre-Order
-// ========================================
-
-/**
- * Cancel a pre-order and refund coins to wallet.
- *
- * Rules:
- * - Only PLACED orders can be cancelled
- * - Only pre-orders (with preorder_time) are eligible
- * - Must be >= 45 minutes before preorder_time
- * - Refund amount = order.total (what they paid)
- * - Max 3 cancellations per user per 24 hours
- *
- * Security:
- * - Uses requireAuth middleware
- * - Enforces order ownership (order.customer_email MUST match session email)
- *
- * Method: POST
- * Path: /api/orders/:orderId/cancel
- */
-router.post('/:orderId/cancel', requireAuth, async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const { reason } = req.body;
-    const email = req.user.email; // Guaranteed by requireAuth
-
-    // --- Input validation ---
-    if (!orderId || typeof orderId !== 'string') {
-      return res.status(400).json({ success: false, error: 'Valid orderId is required' });
-    }
-
-    // Sanitize optional reason (max 200 chars, no HTML)
-    const safeReason = reason
-      ? String(reason).replace(/<[^>]*>/g, '').substring(0, 200)
-      : 'User cancelled';
-
-    // STEP 1: Fetch the order
-    const { data: order, error: fetchError } = await supabase
-      .from('orders')
-      .select('id, status, total, preorder_time, customer_email, payment_method')
-      .eq('id', orderId)
-      .single();
-
-    if (fetchError || !order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
-    }
-
-    // STEP 2: Ownership check
-    // Vital security check: Session email must match Order email
-    if (order.customer_email.toLowerCase() !== email) {
-      console.warn(`⚠️ Cancel ownership mismatch: ${email} tried to cancel ${orderId} owned by ${order.customer_email}`);
-      return res.status(403).json({ success: false, error: 'Not your order' });
-    }
-
-    // STEP 3: Status check
-    if (order.status !== 'PLACED') {
-      return res.status(400).json({
-        success: false,
-        error: `Cannot cancel order with status: ${order.status}`
-      });
-    }
-
-    // STEP 4: Pre-order check
-    if (!order.preorder_time) {
-      return res.status(400).json({
-        success: false,
-        error: 'Only pre-orders can be cancelled'
-      });
-    }
-
-    // STEP 5: 45-minute window check (server-side time only)
-    const now = new Date();
-    const preorderTime = new Date(order.preorder_time);
-    const minutesUntilPickup = (preorderTime - now) / (1000 * 60);
-
-    if (minutesUntilPickup < 45) {
-      return res.status(400).json({
-        success: false,
-        error: 'Too late to cancel. Must cancel at least 45 minutes before pickup time.',
-        minutesRemaining: Math.max(0, Math.floor(minutesUntilPickup)),
-        serverTime: now.toISOString()  // Let frontend sync to server clock
-      });
-    }
-
-    // STEP 6: Rate limit check (max 3 cancellations per 24h)
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-    const { data: recentCancels } = await supabase
-      .from('orders')
-      .select('id')
-      .eq('customer_email', email)
-      .eq('status', 'CANCELLED')
-      .gte('cancelled_at', twentyFourHoursAgo);
-
-    if (recentCancels && recentCancels.length >= 3) {
-      return res.status(429).json({
-        success: false,
-        error: 'Maximum 3 cancellations per day. Please try again tomorrow.'
-      });
-    }
-
-    // STEP 7: Atomic cancel — only cancel if still PLACED
-    // order.total is numeric in DB, convert to integer coins
-    const refundAmount = Math.round(Number(order.total));
-    if (!Number.isInteger(refundAmount) || refundAmount <= 0) {
-      console.error(`❌ Invalid refund amount for order ${orderId}: total=${order.total}`);
-      return res.status(500).json({ success: false, error: 'Invalid order total for refund' });
-    }
-
-    const { data: cancelled, error: cancelError } = await supabase
-      .from('orders')
-      .update({
-        status: 'CANCELLED',
-        cancelled_at: new Date().toISOString(),
-        cancellation_reason: safeReason,
-        refund_amount: refundAmount
-      })
-      .eq('id', orderId)
-      .eq('status', 'PLACED')  // Optimistic lock
-      .select();
-
-    if (cancelError) {
-      console.error('❌ Cancel update failed:', cancelError);
-      return res.status(500).json({ success: false, error: 'Failed to cancel order' });
-    }
-
-    if (!cancelled || cancelled.length === 0) {
-      return res.status(409).json({
-        success: false,
-        error: 'Order status changed. Please refresh and try again.'
-      });
-    }
-
-    // STEP 8: Credit coins to wallet
-    const creditResult = await walletService.creditCoins(
-      email,
-      refundAmount,
-      'REFUND',
-      orderId,
-      `Refund for cancelled order`
-    );
-
-    if (!creditResult.success) {
-      // Rollback: revert order to PLACED
-      await supabase
-        .from('orders')
-        .update({
-          status: 'PLACED',
-          cancelled_at: null,
-          cancellation_reason: null,
-          refund_amount: null
-        })
-        .eq('id', orderId);
-
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to credit wallet. Order not cancelled.'
-      });
-    }
-
-    console.log(`✅ Order ${orderId} cancelled. ${refundAmount} coins credited to ${email}`);
-
-    return res.json({
-      success: true,
-      refundAmount: refundAmount,
-      walletBalance: creditResult.balance,
-      message: `Order cancelled. ${refundAmount} coins credited to your wallet.`
-    });
-
-  } catch (error) {
-    console.error('💥 Cancel order error:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    console.error('get order error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error', code: 'DB_ERROR' });
   }
 });
 

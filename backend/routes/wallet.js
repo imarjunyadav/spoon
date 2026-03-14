@@ -86,7 +86,7 @@ router.get('/transactions', async (req, res) => {
 router.post('/pay', async (req, res) => {
     try {
         const email = req.user.email;
-        const { items, preorderTime, phoneNumber } = req.body;
+        const { items, phoneNumber } = req.body;
 
         // --- Input Validation ---
         if (!items || !Array.isArray(items) || items.length === 0 || items.length > 20) {
@@ -204,8 +204,8 @@ router.post('/pay', async (req, res) => {
                 customer_email: email,
                 total: serverTotal,
                 items: items,
-                status: 'PLACED',
-                preorder_time: preorderTime || null,
+                status: 'pending',
+                preorder_time: null,
                 phone_number: phoneNumber || null,
                 payment_method: 'WALLET',
                 verification_code: verificationCode,

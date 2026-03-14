@@ -91,7 +91,7 @@ app.use(cors({
     ].filter(Boolean)
     : true,
   credentials: true,
-  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS', 'PUT'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -206,6 +206,13 @@ app.use("/api/admin", adminRoutes);
  */
 const walletRoutes = require("./routes/wallet");
 app.use("/api/wallet", walletRoutes);
+
+/**
+ * SETTINGS ROUTES
+ * Admin-only endpoints to configure system settings (e.g., slot capacity)
+ */
+const settingsRoutes = require("./routes/settings");
+app.use("/api/settings", settingsRoutes);
 
 /**
  * STATIC FILE SERVING

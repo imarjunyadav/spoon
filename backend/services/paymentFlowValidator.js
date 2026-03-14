@@ -239,7 +239,6 @@ class PaymentFlowValidator {
       currency,
       userEmail,
       cartItems,
-      preorderTime,
       phoneNumber
     } = paymentData;
 
@@ -315,8 +314,8 @@ class PaymentFlowValidator {
           customer_email: userEmail,
           total: amount / 100, // Convert paise to rupees
           items: cartItems,
-          status: 'PLACED',
-          preorder_time: preorderTime,
+          status: 'pending',
+          preorder_time: null,
           phone_number: phoneNumber,
           razorpay_payment_id: razorpayPaymentId,
           verification_code: verificationCode,
