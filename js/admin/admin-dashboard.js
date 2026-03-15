@@ -42,8 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
         inputTimeout: document.getElementById('setting-timeout'),
         indicator: document.getElementById('live-indicator'),
         stockItemsList: document.getElementById('stock-items-list'),
-        stockSearch: document.getElementById('stock-search'),
-        stockCategory: document.getElementById('stock-category-filter')
+        stockSearch: document.getElementById('stock-search')
     };
 
     // ---------------------------------------------------------
@@ -152,13 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 .order('name');
             if (error) throw error;
             stockItemsList = data || [];
-            
-            // Populate categories dropdown
-            const categories = [...new Set(stockItemsList.map(item => item.category))].sort();
-            const currentFilter = dom.stockCategory.value;
-            dom.stockCategory.innerHTML = '<option value="all">All Categories</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
-            dom.stockCategory.value = currentFilter || 'all';
-
             renderStockItems();
         } catch (err) {
             console.error('Failed to load menu items', err);
@@ -300,14 +292,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderStockItems() {
         if (!dom.stockItemsList) return;
 
-        const categoryFilter = dom.stockCategory?.value || 'all';
         const searchQuery = (dom.stockSearch?.value || '').trim().toLowerCase();
 
         let filteredItems = stockItemsList;
-
-        if (categoryFilter !== 'all') {
-            filteredItems = filteredItems.filter(item => item.category === categoryFilter);
-        }
 
         if (searchQuery) {
             filteredItems = filteredItems.filter(item =>
@@ -320,18 +307,38 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        dom.stockItemsList.innerHTML = filteredItems.map(item => {
-            const checked = item.is_available;
-            return `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: white; border: 1px solid var(--border-color); border-radius: 8px; opacity: ${checked ? '1' : '0.5'}; transition: opacity 0.2s;">
-                <span style="font-weight: 500; font-size: 14px;">${item.name} <span style="color:var(--text-secondary); font-size:12px; font-weight:normal; margin-left: 4px;">(${item.category})</span></span>
-                <label style="position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer;">
-                    <input type="checkbox" onchange="window.toggleStock('${item.id}', this.checked)" ${checked ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;">
-                    <span style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: ${checked ? 'var(--success-green)' : '#ccc'}; border-radius: 24px; transition: background-color .3s;"></span>
-                    <span style="position: absolute; height: 18px; width: 18px; left: ${checked ? '22px' : '3px'}; top: 3px; background-color: white; border-radius: 50%; transition: left .3s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
-                </label>
-            </div>`;
-        }).join('');
+        // Group by category
+        const grouped = {};
+        filteredItems.forEach(item => {
+            const cat = item.category || 'Uncategorized';
+            if (!grouped[cat]) grouped[cat] = [];
+            grouped[cat].push(item);
+        });
+
+        // Sort categories alphabetically
+        const sortedCategories = Object.keys(grouped).sort();
+
+        let html = '';
+        sortedCategories.forEach(category => {
+            // Category label
+            html += `<div style="font-size: 13px; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px; padding: 8px 4px 4px; margin-top: 8px; border-bottom: 1px solid var(--border-color);">${category}</div>`;
+
+            // Items in this category
+            grouped[category].forEach(item => {
+                const checked = item.is_available;
+                html += `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 4px; border-bottom: 1px solid #f0f0f0; opacity: ${checked ? '1' : '0.5'}; transition: opacity 0.2s;">
+                    <span style="font-weight: 500; font-size: 14px;">${item.name}</span>
+                    <label style="position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer; flex-shrink: 0;">
+                        <input type="checkbox" onchange="window.toggleStock('${item.id}', this.checked)" ${checked ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;">
+                        <span style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: ${checked ? 'var(--success-green)' : '#ccc'}; border-radius: 24px; transition: background-color .3s;"></span>
+                        <span style="position: absolute; height: 18px; width: 18px; left: ${checked ? '22px' : '3px'}; top: 3px; background-color: white; border-radius: 50%; transition: left .3s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
+                    </label>
+                </div>`;
+            });
+        });
+
+        dom.stockItemsList.innerHTML = html;
     }
 
     // ---------------------------------------------------------
@@ -395,9 +402,8 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchMenuItems(); // Fetch latest stock when opened
     });
     
-    // Search and Filter logic for Stock Modal
+    // Search logic for Stock Modal
     dom.stockSearch?.addEventListener('input', renderStockItems);
-    dom.stockCategory?.addEventListener('change', renderStockItems);
 
     // Redirects for placeholder buttons
     document.getElementById('btn-cancelled').addEventListener('click', () => window.location.href = '#');
