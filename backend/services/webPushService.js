@@ -63,7 +63,7 @@ async function sendPushToAdmins(order) {
             body: `Order #${(order.id || '').substring(0, 8)}\nItems: ${order.items ? order.items.length : 0} | Total: ₹${order.total}`,
             icon: '/images/spoon-logo-square.png', // Ensure this exists public facing
             data: {
-                url: '/pages/admin/mobile.html' // Open dashboard on click
+                url: '/admin/admin-mobile.html' // Open dashboard on click
             }
         });
 

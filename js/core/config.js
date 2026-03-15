@@ -32,7 +32,11 @@ const Config = {
     API_BASE_URL: '',
     SUPABASE_URL: '',
     SUPABASE_ANON_KEY: '',
-    RAZORPAY_KEY_ID: ''
+    RAZORPAY_KEY_ID: '',
+    features: {
+      preorder: false,
+      cancellation: false
+    }
   };
 
   // Global config object

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPOON ADMIN</title>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- User-facing font theme (copied from main App) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Dashboard Styles -->
+    <link rel="stylesheet" href="../css/admin-dashboard.css">
+    
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.4/dist/umd/supabase.min.js"></script>
+    <script src="../js/core/config.js"></script>
+    <!-- Bridge: map Config object to flat config shape expected by admin-dashboard.js -->
+    <script>
+        const config = {
+            supabaseUrl: Config.supabase.url,
+            supabaseAnonKey: Config.supabase.anonKey,
+            apiUrl: Config.api.baseUrl + '/api'
+        };
+    </script>
+</head>
+<body>
+    <div class="admin-shell">
+        <!-- HEADER -->
+        <header class="admin-header">
+            <div class="brand-title">SPOON ADMIN <span id="live-indicator" style="font-size:10px; color:var(--text-secondary);">●</span></div>
+            <div class="header-actions">
+                <button class="hdr-btn" id="btn-cancelled">CANCELLED</button>
+                <button class="hdr-btn" id="btn-stock">STOCK</button>
+                <button class="hdr-btn" id="btn-settings">SETTING</button>
+                <button class="profile-btn" id="btn-profile" title="Sign Out">
+                    <i class="fas fa-user"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN WORKSPACE -->
+        <main class="workspace">
+            <!-- PENDING COLUMN -->
+            <div class="column">
+                <h2 class="col-title">PENDING</h2>
+                <div class="order-list" id="pending-list">
+                    <!-- Cards injected here -->
+                </div>
+                <button class="queue-trigger" id="btn-queue">QUEUE...</button>
+            </div>
+
+            <!-- PREPARED COLUMN -->
+            <div class="column">
+                <h2 class="col-title">PREPARED</h2>
+                <div class="order-list" id="prepared-list">
+                    <!-- Cards injected here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODALS OVERLAYS -->
+    <div class="modal-overlay hidden" id="modal-container">
+        
+        <!-- SETTINGS MODAL -->
+        <div class="modal-content hidden" id="modal-settings">
+            <div class="modal-header">
+                <h2 class="col-title">Settings</h2>
+                <button class="close-btn modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 16px;">
+                    <label style="display:block; margin-bottom:8px; font-weight:600;">Max Prepared Slots</label>
+                    <input type="number" id="setting-max-slots" placeholder="10" style="padding:8px; width:100px; border:1px solid var(--border-color); border-radius:4px;">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display:block; margin-bottom:8px; font-weight:600;">No-Show Timeout (minutes)</label>
+                    <input type="number" id="setting-timeout" placeholder="10" style="padding:8px; width:100px; border:1px solid var(--border-color); border-radius:4px;">
+                </div>
+                <button class="hdr-btn" id="btn-save-settings" style="background:var(--brand-primary); color:white; border:none;">SAVE</button>
+            </div>
+        </div>
+
+        <!-- QUEUE MODAL -->
+        <div class="modal-content hidden" id="modal-queue">
+            <div class="modal-header">
+                <h2 class="col-title">Queue</h2>
+                <button class="close-btn modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="order-list" id="queue-overflow-list" style="max-height: 400px; padding-right:8px;">
+                     <!-- Overflow cards injected here -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Toast container for notifications -->
+    <div id="toast-container" style="position:fixed; top:16px; right:16px; z-index:9999;"></div>
+
+    <!-- MAIN SCRIPT -->
+    <!-- Include audio functionality and the main dashboard script -->
+    <script src="../js/admin/admin-dashboard.js"></script>
+</body>
+</html>

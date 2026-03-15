@@ -8,11 +8,12 @@
  */
 
 const HorizontalStepperRenderer = {
-  // Stepper stages configuration
+  // Stepper stages configuration (v2 states)
   STAGES: [
-    { dbStatus: 'PENDING', displayName: 'Preparing', icon: 'fa-utensils' },
-    { dbStatus: 'COMPLETE', displayName: 'Ready', icon: 'fa-bowl-rice' },
-    { dbStatus: 'PICKED_UP', displayName: 'Picked Up', icon: 'fa-circle-check' }
+    { dbStatus: 'pending', displayName: 'In Queue', icon: 'fa-clock' },
+    { dbStatus: 'kitchen', displayName: 'Preparing', icon: 'fa-fire-burner' },
+    { dbStatus: 'prepared', displayName: 'Ready', icon: 'fa-bell' },
+    { dbStatus: 'completed', displayName: 'Collected', icon: 'fa-circle-check' }
   ],
 
   COLORS: {
@@ -26,31 +27,33 @@ const HorizontalStepperRenderer = {
    * @returns {Array<{stage: Object, state: string, showTimestamp: boolean}>}
    */
   calculateStepStates(currentStatus) {
+    // Note: status order assumed: pending -> kitchen -> prepared -> completed
+    const statusMap = {
+      'pending': 0,
+      'kitchen': 1,
+      'prepared': 2,
+      'completed': 3,
+      'cancelled': -1
+    };
+    
+    const currentIndex = statusMap[currentStatus] !== undefined ? statusMap[currentStatus] : 0;
+
     return this.STAGES.map((stage, index) => {
       let state = 'pending';
       let showTimestamp = false;
 
-      // Preparing Stage
-      if (['PENDING', 'PLACED', 'PREPARING'].includes(currentStatus)) {
-        if (index === 0) {
-          state = 'current';
-          showTimestamp = true;
-        }
-      }
-      // Ready Stage
-      else if (currentStatus === 'COMPLETE') {
-        if (index === 0) {
-          state = 'complete';
-          showTimestamp = true;
-        } else if (index === 1) {
-          state = 'current';
-          showTimestamp = true;
-        }
-      }
-      // Picked Up Stage
-      else if (currentStatus === 'PICKED_UP') {
+      if (index < currentIndex) {
         state = 'complete';
         showTimestamp = true;
+      } else if (index === currentIndex) {
+        state = 'current';
+        showTimestamp = true;
+      }
+
+      // If cancelled, show what happened up to where it stopped
+      if (currentStatus === 'cancelled') {
+         state = 'pending'; 
+         showTimestamp = false; 
       }
 
       return { stage, state, showTimestamp };
@@ -63,7 +66,7 @@ const HorizontalStepperRenderer = {
    * @returns {string} HTML string.
    */
   renderStepper(order) {
-    const currentStatus = order.status || 'PENDING';
+    const currentStatus = order.status || 'pending';
     const stepStates = this.calculateStepStates(currentStatus);
 
     const formatTime = (dateStr) => {
@@ -76,9 +79,10 @@ const HorizontalStepperRenderer = {
     };
 
     const stepTimestamps = {
-      'PENDING': order.created_at,
-      'COMPLETE': order.ready_at,
-      'PICKED_UP': order.picked_up_at
+      'pending': order.created_at,
+      'kitchen': order.kitchen_at || order.created_at, // Fallback
+      'prepared': order.prepared_at,
+      'completed': order.completed_at
     };
 
     let stepsHTML = '';
@@ -124,38 +128,60 @@ const HorizontalStepperRenderer = {
   },
 
   /**
-   * Renders the hero verification code section.
-   * Shows OTP only when order is Ready (COMPLETE).
+   * Renders the hero verification code section based on v2 logic.
    * @param {Object} order - Order object.
    * @returns {string} HTML string.
    */
   renderHeroCode(order) {
-    const currentStatus = order.status || 'PENDING';
-    const code = order.verification_code || '----';
+    const currentStatus = order.status || 'pending';
 
-    if (currentStatus === 'PICKED_UP') {
+    if (currentStatus === 'completed') {
       return `
         <div class="hero-section hero-section--complete">
           <p class="hero-complete-message">Order completed successfully</p>
-          <p class="hero-complete-submessage">Thank you for ordering</p>
+          <p class="hero-complete-submessage">Thank you for ordering with Spoon!</p>
         </div>
       `;
     }
 
-    if (currentStatus === 'COMPLETE') {
-      return `
-        <div class="hero-section hero-section--ready">
-          <span class="hero-label">Pickup Code</span>
-          <div class="hero-code">${code}</div>
-          <p class="hero-instruction">Show this code at the counter to collect your order</p>
+    if (currentStatus === 'cancelled') {
+       return `
+        <div class="hero-section" style="background: #ffebee;">
+          <p class="hero-complete-message" style="color: #d32f2f;">Order Cancelled</p>
+          <p class="hero-complete-submessage" style="color: #c62828;">${order.refund_amount ? '₹' + order.refund_amount + ' refunded to wallet as coins' : 'Refund processed'}</p>
         </div>
       `;
     }
 
+    if (currentStatus === 'prepared') {
+      if (order.arrived_at) {
+        // Slot is revealed
+        return `
+          <div class="hero-section hero-section--ready" style="text-align:center;">
+            <span class="hero-label">Collect your order at</span>
+            <div class="hero-code" style="font-size: 32px; letter-spacing: 0;">Slot ${order.slot_number}</div>
+            <p class="hero-instruction">Show this screen to the staff</p>
+          </div>
+        `;
+      } else {
+        // Needs user to arrive
+        return `
+          <div class="hero-section hero-section--ready" style="text-align:center;">
+            <p class="hero-complete-message" style="margin-bottom: 12px; font-size: 18px;">Your food is hot and ready!</p>
+            <button id="btn-arrive" onclick="window.markArrived()" style="background:var(--brand-primary); color:white; border:none; padding:12px 24px; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer; width:100%; box-shadow:0 4px 12px rgba(235, 23, 0, 0.2);">
+               I am available to collect
+            </button>
+            <p class="hero-instruction" style="margin-top: 12px; font-size: 12px;">Tap when you reach the counter to reveal your slot number</p>
+          </div>
+        `;
+      }
+    }
+
+    // Pending / Kitchen
     return `
       <div class="hero-section hero-section--waiting">
-        <p class="hero-message">Your order is being prepared</p>
-        <p class="hero-submessage">We'll notify you when it's ready for pickup</p>
+        <p class="hero-message">${currentStatus === 'kitchen' ? 'Your order is being cooked' : 'Your order is in the queue'}</p>
+        <p class="hero-submessage">We'll notify you when it's ready for collection</p>
       </div>
     `;
   },

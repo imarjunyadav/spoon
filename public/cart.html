@@ -114,14 +114,7 @@
         <!-- Order items will be listed here -->
         <div class="modal__order-summary" id="modal-order-summary"></div>
 
-        <!-- Pre-order button -->
-        <button class="preorder-btn" id="preorder-btn">
-            <div class="preorder-btn__label">
-                <span>Order for later</span>
-                <strong>Choose pickup time</strong>
-            </div>
-            <i class="fa-solid fa-chevron-right"></i>
-        </button>
+        <!-- Preorder disabled in v2 -->
 
         <!-- Payment Method Selection -->
         <div class="payment-method-section">
@@ -164,41 +157,7 @@
         </div>
     </div>
 
-    <!-- Secondary overlay for nested modal (pickup time over confirm order) -->
-    <div class="modal-overlay-secondary hidden" id="modal-overlay-secondary"></div>
-
-    <!-- === Pre-order Time Picker Modal === -->
-    <div class="modal hidden" id="preorder-modal">
-        <div class="modal__header">
-            <h2 class="modal__title">Select Pickup Time</h2>
-            <button class="modal__close-btn" id="close-preorder-modal-btn"><i class="fa-solid fa-times"></i></button>
-        </div>
-
-        <!-- Info message about timing -->
-        <div class="time-picker__info">
-            <i class="fa-solid fa-clock"></i>
-            <span>Pickup available 45 minutes after order placement</span>
-        </div>
-
-        <!-- Horizontal scrolling time chips (populated by JavaScript) -->
-        <div class="time-chips-wrapper">
-            <div class="time-chips-container" id="time-chips-container">
-                <!-- Time chip buttons will be generated here -->
-            </div>
-        </div>
-
-        <!-- Error message when no slots available -->
-        <div class="time-picker__error hidden" id="time-picker-error">
-            <i class="fa-solid fa-info-circle"></i>
-            <p>No pickup times available today</p>
-            <p>Canteen closes at 6:00 PM. Orders resume tomorrow at 8:00 AM.</p>
-        </div>
-
-        <!-- Fixed confirm button at bottom -->
-        <div class="time-picker__confirm-container">
-            <button class="btn--primary" id="confirm-preorder-btn" style="width: 100%;">Confirm Time</button>
-        </div>
-    </div>
+    <!-- Preorder modals removed in v2 -->
 
     <!-- Toast notification utility -->
     <script src="../js/core/toast.js"></script>

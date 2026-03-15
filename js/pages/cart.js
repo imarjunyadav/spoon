@@ -28,17 +28,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const subtotalValueEl = document.getElementById('subtotal-value');
   const cartBadge = document.getElementById('cart-badge');
   const modalOverlay = document.getElementById('modal-overlay');
-  const modalOverlaySecondary = document.getElementById('modal-overlay-secondary');
   const confirmOrderModal = document.getElementById('confirm-order-modal');
   const modalOrderSummary = document.getElementById('modal-order-summary');
   const modalTotalValue = document.getElementById('modal-total-value');
   const userPhoneNumber = localStorage.getItem("spoon-user-phone");
-
-  // Pre-order elements
-  const preorderBtn = document.getElementById('preorder-btn');
-  const preorderModal = document.getElementById('preorder-modal');
-  const confirmPreorderBtn = document.getElementById('confirm-preorder-btn');
-  const closePreorderBtn = document.getElementById('close-preorder-modal-btn');
 
   // Payment Method Elements
   const paymentOptions = document.querySelectorAll('input[name="payment-method"]');
@@ -49,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // --- State Variables ---
-  let selectedPreOrderTime = null;
   let walletBalance = 0;
   let selectedPaymentMethod = 'razorpay'; // 'razorpay' or 'wallet'
 
@@ -259,24 +251,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 300);
   }
 
-  function openModalSecondary(modalElement) {
-    modalOverlaySecondary.classList.remove('hidden');
-    modalElement.classList.remove('hidden');
-    setTimeout(() => {
-      modalOverlaySecondary.classList.add('visible');
-      modalElement.classList.add('visible');
-    }, 10);
-  }
-
-  function closeModalSecondary(modalElement) {
-    modalOverlaySecondary.classList.remove('visible');
-    modalElement.classList.remove('visible');
-    setTimeout(() => {
-      modalOverlaySecondary.classList.add('hidden');
-      modalElement.classList.add('hidden');
-    }, 300);
-  }
-
   /**
    * Populate the confirmation modal with item details.
    */
@@ -302,124 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePaymentUI();
   }
 
-  // --- Pre-order Time Picker ---
-
-  function roundUpToNearest5Minutes(date) {
-    const rounded = new Date(date);
-    const minutes = rounded.getMinutes();
-    const remainder = minutes % 5;
-
-    if (remainder !== 0) {
-      rounded.setMinutes(minutes + (5 - remainder));
-    }
-
-    rounded.setSeconds(0);
-    rounded.setMilliseconds(0);
-    return rounded;
-  }
-
-  function generateTimeSlots() {
-    const now = new Date();
-    const slots = [];
-
-    const roundedNow = roundUpToNearest5Minutes(now);
-
-    // Add 45 mins buffer
-    const earliestTime = new Date(roundedNow);
-    earliestTime.setMinutes(earliestTime.getMinutes() + 45);
-
-    // Closing time 6pm
-    const closingTime = new Date(now);
-    closingTime.setHours(18, 0, 0, 0);
-
-    if (earliestTime >= closingTime) {
-      return [];
-    }
-
-    let currentSlot = new Date(earliestTime);
-    while (currentSlot <= closingTime) {
-      const hours = currentSlot.getHours();
-      const minutes = currentSlot.getMinutes();
-
-      const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-      const displayMinutes = minutes.toString().padStart(2, '0');
-      const period = hours >= 12 ? 'PM' : 'AM';
-
-      const displayText = `${displayHours}:${displayMinutes} ${period}`;
-
-      slots.push({
-        display: displayText,
-        date: new Date(currentSlot),
-        iso: currentSlot.toISOString()
-      });
-
-      currentSlot.setMinutes(currentSlot.getMinutes() + 5);
-    }
-
-    return slots;
-  }
-
-  function populateTimeChips() {
-    const container = document.getElementById('time-chips-container');
-    const wrapper = container.parentElement;
-    const errorDiv = document.getElementById('time-picker-error');
-    const confirmBtn = document.getElementById('confirm-preorder-btn');
-
-    container.innerHTML = '';
-    const slots = generateTimeSlots();
-
-    if (slots.length === 0) {
-      wrapper.classList.add('hidden');
-      errorDiv.classList.remove('hidden');
-      confirmBtn.disabled = true;
-      confirmBtn.style.opacity = '0.5';
-      confirmBtn.style.cursor = 'not-allowed';
-      return;
-    }
-
-    wrapper.classList.remove('hidden');
-    errorDiv.classList.add('hidden');
-    confirmBtn.disabled = true;
-    confirmBtn.style.opacity = '0.5';
-    confirmBtn.style.cursor = 'not-allowed';
-
-    slots.forEach((slot) => {
-      const chip = document.createElement('button');
-      chip.className = 'time-chip';
-      chip.textContent = slot.display;
-      chip.dataset.iso = slot.iso;
-      chip.setAttribute('type', 'button');
-
-      chip.addEventListener('click', () => {
-        document.querySelectorAll('.time-chip').forEach(btn => {
-          btn.classList.remove('selected');
-        });
-        chip.classList.add('selected');
-        selectedPreOrderTime = slot.iso;
-
-        confirmBtn.disabled = false;
-        confirmBtn.style.opacity = '1';
-        confirmBtn.style.cursor = 'pointer';
-
-        scrollToChip(chip);
-      });
-
-      container.appendChild(chip);
-    });
-  }
-
-  function scrollToChip(chip) {
-    const container = document.getElementById('time-chips-container');
-    const chipLeft = chip.offsetLeft;
-    const chipWidth = chip.offsetWidth;
-    const containerWidth = container.offsetWidth;
-    const scrollTo = chipLeft - (containerWidth / 2) + (chipWidth / 2);
-
-    container.scrollTo({
-      left: scrollTo,
-      behavior: 'smooth'
-    });
-  }
+  // --- Pre-order Time Picker (Removed in v2) ---
 
   // --- Modal Event Listeners ---
 
@@ -441,43 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (confirmOrderModal.classList.contains('visible')) {
       closeModal(confirmOrderModal);
     }
-    if (preorderModal.classList.contains('visible')) {
-      closeModal(preorderModal);
-    }
   });
-
-  preorderBtn.addEventListener('click', () => {
-    selectedPreOrderTime = null;
-    populateTimeChips();
-    openModalSecondary(preorderModal);
-  });
-
-  confirmPreorderBtn.addEventListener('click', () => {
-    if (!selectedPreOrderTime) {
-      showToast("Please select a pickup time", 'error');
-      return;
-    }
-
-    closeModalSecondary(preorderModal);
-
-    const selectedDate = new Date(selectedPreOrderTime);
-    const hours = selectedDate.getHours();
-    const minutes = selectedDate.getMinutes();
-    const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-    const displayMinutes = minutes.toString().padStart(2, '0');
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const formattedTime = `${displayHours}:${displayMinutes} ${period}`;
-
-    const preorderBtnLabel = preorderBtn.querySelector('.preorder-btn__label strong');
-    preorderBtnLabel.textContent = `Pickup at ${formattedTime}`;
-    preorderBtn.classList.add('active');
-  });
-
-  if (closePreorderBtn) {
-    closePreorderBtn.addEventListener('click', () => {
-      closeModalSecondary(preorderModal);
-    });
-  }
 
   // --- Payment Method Selection Logic ---
 
@@ -547,7 +368,6 @@ document.addEventListener('DOMContentLoaded', () => {
             amount: subtotal,
             email: userEmail,
             items: cart,
-            preorderTime: selectedPreOrderTime,
             phoneNumber: userPhoneNumber
           })
         });
@@ -579,7 +399,6 @@ document.addEventListener('DOMContentLoaded', () => {
           amount: subtotal,
           userEmail: userEmail,
           items: cart,
-          preorderTime: selectedPreOrderTime,
           phoneNumber: userPhoneNumber
         })
       });

@@ -511,7 +511,15 @@
         
         if (data.isAdmin === true) {
           retryCount = 0;
-          window.location.href = "admin-mobile.html";
+          // Save token so dashboard can use it
+          localStorage.setItem('spoon_admin_token', accessToken);
+          
+          // Smart redirect: desktop users get the desktop dash, mobile users get the mobile app
+          if (window.innerWidth > 768) {
+            window.location.href = "admin-dashboard.html";
+          } else {
+            window.location.href = "admin-mobile.html";
+          }
           return true;
         } else {
           showAccessDeniedModal();
