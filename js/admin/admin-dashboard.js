@@ -172,20 +172,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const itemIndex = stockItemsList.findIndex(i => i.id === itemId);
             if (itemIndex > -1) {
                 stockItemsList[itemIndex].is_available = isAvailable;
-                renderStockItems(); // Re-render to reflect new visual state (dimming)
+                renderStockItems();
             }
 
-            const { error } = await supabase
-                .from('menu_items')
-                .update({ is_available: isAvailable })
-                .eq('id', itemId);
+            const res = await fetch(`${config.apiUrl}/admin/stock/${itemId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ is_available: isAvailable })
+            });
+            const data = await res.json();
                 
-            if (error) throw error;
+            if (!res.ok || !data.success) throw new Error(data.message || 'Update failed');
             showToast('Stock updated', 'success');
         } catch (err) {
             console.error('Stock toggle failed', err);
             showToast('Stock update failed', 'error');
-            // Revert changes on error
+            // Revert on error
             await fetchMenuItems();
         }
     };
@@ -315,17 +320,18 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        dom.stockItemsList.innerHTML = filteredItems.map(item => `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: white; border: 1px solid var(--border-light); border-radius: 8px; margin-bottom: 4px; opacity: ${item.is_available ? '1' : '0.6'}; transition: opacity 0.2s;">
-                <span style="font-weight: 500; font-size: 14px;">${item.name} <span style="color:var(--text-muted); font-size:12px; font-weight:normal; margin-left: 4px;">(${item.category})</span></span>
-                <label style="position: relative; display: inline-block; width: 44px; height: 24px;">
-                    <input type="checkbox" onchange="window.toggleStock('${item.id}', this.checked)" ${item.is_available ? 'checked' : ''} style="opacity: 0; width: 0; height: 0;">
-                    <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${item.is_available ? 'var(--success-green)' : '#ccc'}; transition: .4s; border-radius: 24px;">
-                        <span style="position: absolute; content: ''; height: 18px; width: 18px; left: ${item.is_available ? '22px' : '3px'}; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;"></span>
-                    </span>
+        dom.stockItemsList.innerHTML = filteredItems.map(item => {
+            const checked = item.is_available;
+            return `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: white; border: 1px solid var(--border-color); border-radius: 8px; opacity: ${checked ? '1' : '0.5'}; transition: opacity 0.2s;">
+                <span style="font-weight: 500; font-size: 14px;">${item.name} <span style="color:var(--text-secondary); font-size:12px; font-weight:normal; margin-left: 4px;">(${item.category})</span></span>
+                <label style="position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer;">
+                    <input type="checkbox" onchange="window.toggleStock('${item.id}', this.checked)" ${checked ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;">
+                    <span style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: ${checked ? 'var(--success-green)' : '#ccc'}; border-radius: 24px; transition: background-color .3s;"></span>
+                    <span style="position: absolute; height: 18px; width: 18px; left: ${checked ? '22px' : '3px'}; top: 3px; background-color: white; border-radius: 50%; transition: left .3s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
                 </label>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     }
 
     // ---------------------------------------------------------
