@@ -158,14 +158,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let pendingStockToggles = new Set(); // Guard against realtime overwrite during in-flight toggles
+
     window.toggleStock = async (itemId, isAvailable) => {
         try {
-            // Optimistic UI update
+            // Optimistic local data update
             const itemIndex = stockItemsList.findIndex(i => i.id === itemId);
             if (itemIndex > -1) {
                 stockItemsList[itemIndex].is_available = isAvailable;
-                renderStockItems();
             }
+
+            // Targeted DOM update: just toggle the row class (CSS handles visual via :checked)
+            // No full re-render needed — the checkbox already visually flipped via CSS :checked
+            const row = dom.stockItemsList.querySelector(`input[onchange*="'${itemId}'"]`);
+            if (row) {
+                const itemRow = row.closest('.stock-item-row');
+                if (itemRow) {
+                    itemRow.classList.toggle('out-of-stock', !isAvailable);
+                }
+            }
+
+            // Update tab badges without full re-render
+            renderStockTabs();
+
+            pendingStockToggles.add(itemId);
 
             const res = await fetch(`${config.apiUrl}/admin/stock/${itemId}`, {
                 method: 'PATCH',
@@ -182,8 +198,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             console.error('Stock toggle failed', err);
             showToast('Stock update failed', 'error');
-            // Revert on error
-            await fetchMenuItems();
+            await fetchMenuItems(); // Full revert on error
+        } finally {
+            pendingStockToggles.delete(itemId);
         }
     };
 
@@ -290,6 +307,27 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(render, 30000); 
 
     let activeStockCategory = 'all';
+    let stockSearchDebounce = null;
+
+    function renderStockTabs() {
+        const tabsContainer = dom.stockItemsList.querySelector('.stock-tabs-bar');
+        if (!tabsContainer) return; // tabs not rendered yet, will be created in renderStockItems
+
+        const categories = [...new Set(stockItemsList.map(i => i.category || 'Uncategorized'))].sort();
+        const outOfStockCounts = {};
+        stockItemsList.forEach(item => {
+            const cat = item.category || 'Uncategorized';
+            if (!item.is_available) outOfStockCounts[cat] = (outOfStockCounts[cat] || 0) + 1;
+        });
+        const totalOos = stockItemsList.filter(i => !i.is_available).length;
+
+        let html = `<button class="stock-tab ${activeStockCategory === 'all' ? 'active' : ''}" onclick="window.setStockCategory('all')">All${totalOos > 0 ? ` <span class="oos-badge">${totalOos}</span>` : ''}</button>`;
+        categories.forEach(cat => {
+            const oos = outOfStockCounts[cat] || 0;
+            html += `<button class="stock-tab ${activeStockCategory === cat ? 'active' : ''}" onclick="window.setStockCategory('${cat}')">${cat}${oos > 0 ? ` <span class="oos-badge">${oos}</span>` : ''}</button>`;
+        });
+        tabsContainer.innerHTML = html;
+    }
 
     function renderStockItems() {
         if (!dom.stockItemsList) return;
@@ -304,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         }
 
-        // Build category tabs using CSS classes
+        // Build category tabs
         const categories = [...new Set(stockItemsList.map(i => i.category || 'Uncategorized'))].sort();
         const outOfStockCounts = {};
         stockItemsList.forEach(item => {
@@ -313,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const totalOos = stockItemsList.filter(i => !i.is_available).length;
 
-        let tabsHtml = `<div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:12px; border-bottom:1px solid #eee; margin-bottom:8px; flex-shrink:0;">`;
+        let tabsHtml = `<div class="stock-tabs-bar" style="display:flex; gap:6px; overflow-x:auto; padding-bottom:12px; border-bottom:1px solid #eee; margin-bottom:8px; flex-shrink:0;">`;
         tabsHtml += `<button class="stock-tab ${activeStockCategory === 'all' ? 'active' : ''}" onclick="window.setStockCategory('all')">All${totalOos > 0 ? ` <span class="oos-badge">${totalOos}</span>` : ''}</button>`;
         categories.forEach(cat => {
             const oos = outOfStockCounts[cat] || 0;
@@ -355,7 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        dom.stockItemsList.innerHTML = tabsHtml + `<div style="overflow-y:auto; max-height:350px; padding-right:4px;">` + itemsHtml + `</div>`;
+        dom.stockItemsList.innerHTML = tabsHtml + `<div class="stock-items-scroll" style="overflow-y:auto; max-height:350px; padding-right:4px;">` + itemsHtml + `</div>`;
     }
 
     window.setStockCategory = (cat) => {
@@ -436,8 +474,11 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchMenuItems(); // Fetch latest stock when opened
     });
     
-    // Search logic for Stock Modal
-    dom.stockSearch?.addEventListener('input', renderStockItems);
+    // Search logic for Stock Modal (debounced)
+    dom.stockSearch?.addEventListener('input', () => {
+        clearTimeout(stockSearchDebounce);
+        stockSearchDebounce = setTimeout(renderStockItems, 150);
+    });
 
     // Redirects for placeholder buttons
     document.getElementById('btn-cancelled').addEventListener('click', () => window.location.href = '#');
@@ -483,7 +524,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchSettings();
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, (payload) => {
-                if (!dom.modalStock.classList.contains('hidden')) {
+                // Only refresh if modal is open AND no toggles are in-flight (prevents overwriting optimistic state)
+                if (!dom.modalStock.classList.contains('hidden') && pendingStockToggles.size === 0) {
                     fetchMenuItems();
                 }
             })
