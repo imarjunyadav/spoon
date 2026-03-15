@@ -298,13 +298,7 @@ class PaymentFlowValidator {
         throw paymentError;
       }
 
-      // Generate verification code
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let verificationCode = '';
-      for (let i = 0; i < 4; i++) verificationCode += chars.charAt(Math.floor(Math.random() * chars.length));
-
       // STEP 3: Create order with atomic stock deduction
-      // TODO: This will be enhanced in Task 3 (Stock Management) with proper locking
       const orderId = razorpayPaymentId; // Use payment ID as order ID
 
       const { data: order, error: orderError } = await getSupabase()
@@ -315,10 +309,8 @@ class PaymentFlowValidator {
           total: amount / 100, // Convert paise to rupees
           items: cartItems,
           status: 'pending',
-          preorder_time: null,
           phone_number: phoneNumber,
           razorpay_payment_id: razorpayPaymentId,
-          verification_code: verificationCode,
           created_at: new Date().toISOString()
         }])
         .select()

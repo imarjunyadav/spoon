@@ -240,7 +240,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Handle adding item to cart with stock validation.
+     * Handle adding item to cart with inline stock validation.
+     * Uses cached is_available from menuData (kept fresh via realtime subscription).
      */
     async function handleAddToCart(e) {
         const addButton = e.target.closest('.product-card__add-btn');
@@ -250,35 +251,58 @@ document.addEventListener('DOMContentLoaded', () => {
         const { id, title, price } = addButton.dataset;
         const itemId = parseInt(id);
 
+        // Fast path: check cached availability from menuData first
+        let cachedItem = null;
+        for (const cat of menuData.categories) {
+            cachedItem = cat.items.find(i => i.id === itemId);
+            if (cachedItem) break;
+        }
+
+        if (cachedItem && !cachedItem.is_available) {
+            showToast(`${title} is currently out of stock`, 'error');
+            return;
+        }
+
         // Loading state
-        const originalContent = addButton.innerHTML;
         addButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
         addButton.disabled = true;
 
         try {
-            // Lazy stock validation
-            const stockResult = await StockValidator.checkAvailability(itemId);
+            // Verify stock in real-time from DB (single lightweight query)
+            const { data, error } = await supabase
+                .from('menu_items')
+                .select('is_available')
+                .eq('id', itemId)
+                .single();
 
-            if (!stockResult.available) {
-                StockValidator.markItemUnavailable(itemId);
-                const itemName = stockResult.item?.name || title;
-                StockValidator.showOutOfStockAlert(itemName);
+            if (error) throw error;
+
+            if (!data.is_available) {
+                // Update local cache and grey out card
+                if (cachedItem) cachedItem.is_available = false;
+                const card = addButton.closest('.product-card');
+                if (card) {
+                    card.classList.add('out-of-stock');
+                    const infoDiv = card.querySelector('.product-card__info');
+                    if (infoDiv && !infoDiv.querySelector('.out-of-stock-label')) {
+                        infoDiv.insertAdjacentHTML('beforeend', '<span class="out-of-stock-label">Out of Stock</span>');
+                    }
+                }
+                addButton.classList.add('disabled');
+                addButton.disabled = true;
+                addButton.innerHTML = '<i class="fa-solid fa-plus"></i>';
+                showToast(`${title} is currently out of stock`, 'error');
                 return;
             }
 
-            // Proceed with add to cart
+            // Stock confirmed — add to cart
             const cart = getCart();
             const existingItem = cart.find(item => item.id === itemId);
 
             if (existingItem) {
                 existingItem.quantity += 1;
             } else {
-                cart.push({
-                    id: itemId,
-                    title: title,
-                    price: parseFloat(price),
-                    quantity: 1
-                });
+                cart.push({ id: itemId, title, price: parseFloat(price), quantity: 1 });
             }
 
             saveCart(cart);
@@ -298,32 +322,71 @@ document.addEventListener('DOMContentLoaded', () => {
                 addButton.style.borderColor = '';
                 addButton.style.color = '';
                 addButton.innerHTML = '<i class="fa-solid fa-plus"></i>';
-            }, 1000);
+            }, 800);
 
         } catch (error) {
-            console.warn('Stock validation failed, proceeding optimistically:', error);
-
-            // Optimistic add
+            console.warn('Stock check failed, adding optimistically:', error);
             const cart = getCart();
             const existingItem = cart.find(item => item.id === itemId);
-
-            if (existingItem) {
-                existingItem.quantity += 1;
-            } else {
-                cart.push({
-                    id: itemId,
-                    title: title,
-                    price: parseFloat(price),
-                    quantity: 1
-                });
-            }
-
+            if (existingItem) { existingItem.quantity += 1; }
+            else { cart.push({ id: itemId, title, price: parseFloat(price), quantity: 1 }); }
             saveCart(cart);
             updateCartBadge();
-
             addButton.disabled = false;
-            addButton.innerHTML = originalContent;
+            addButton.innerHTML = '<i class="fa-solid fa-plus"></i>';
         }
+    }
+
+    /**
+     * Subscribe to realtime stock changes on menu_items.
+     * When admin toggles an item off, all connected menu pages instantly update.
+     */
+    function subscribeToStockChanges() {
+        if (!supabase) return;
+
+        supabase
+            .channel('menu-stock-changes')
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'menu_items'
+            }, (payload) => {
+                const updated = payload.new;
+                if (!updated) return;
+
+                // Update local cache
+                for (const cat of menuData.categories) {
+                    const item = cat.items.find(i => i.id === updated.id);
+                    if (item) {
+                        item.is_available = updated.is_available;
+                        break;
+                    }
+                }
+
+                // Update visible card without re-rendering entire grid
+                const btn = productsGrid.querySelector(`[data-id="${updated.id}"]`);
+                if (btn) {
+                    const card = btn.closest('.product-card');
+                    if (!card) return;
+
+                    if (updated.is_available) {
+                        card.classList.remove('out-of-stock');
+                        const label = card.querySelector('.out-of-stock-label');
+                        if (label) label.remove();
+                        btn.classList.remove('disabled');
+                        btn.disabled = false;
+                    } else {
+                        card.classList.add('out-of-stock');
+                        const infoDiv = card.querySelector('.product-card__info');
+                        if (infoDiv && !infoDiv.querySelector('.out-of-stock-label')) {
+                            infoDiv.insertAdjacentHTML('beforeend', '<span class="out-of-stock-label">Out of Stock</span>');
+                        }
+                        btn.classList.add('disabled');
+                        btn.disabled = true;
+                    }
+                }
+            })
+            .subscribe();
     }
 
     /**
@@ -430,10 +493,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (typeof StockValidator !== 'undefined') {
-            StockValidator.init(supabase);
-        }
-
         setupProtectedRoutes();
         personalizeHeader();
 
@@ -455,6 +514,9 @@ document.addEventListener('DOMContentLoaded', () => {
         productsGrid.addEventListener('click', handleAddToCart);
         searchInput.addEventListener('input', handleSearch);
         setupPromoCardHandler();
+
+        // Start realtime stock sync
+        subscribeToStockChanges();
     }
 
     init();

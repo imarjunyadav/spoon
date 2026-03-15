@@ -61,13 +61,35 @@ document.addEventListener('DOMContentLoaded', () => {
     let alarmMouseStartX = null;
     let alarmMouseStartY = null;
 
-    // Built-in AudioContext Synthesizer for alerts (no external files needed)
+    // Built-in AudioContext Synthesizer — lazy-initialized on first user gesture
     let audioCtx = null;
+    let audioUnlocked = false;
     let alarmIntervalId = null;
 
-    function playBeep() {
+    /**
+     * Unlock AudioContext on first user interaction.
+     * Browsers block AudioContext creation until a user gesture occurs.
+     */
+    function unlockAudio() {
+        if (audioUnlocked) return;
         try {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            audioUnlocked = true;
+            // Remove one-time listeners after unlock
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('keydown', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        } catch(e) { console.error("Failed to create AudioContext", e); }
+    }
+
+    // Register one-time unlock listeners
+    document.addEventListener('click', unlockAudio, { once: false });
+    document.addEventListener('keydown', unlockAudio, { once: false });
+    document.addEventListener('touchstart', unlockAudio, { once: false });
+
+    function playBeep() {
+        if (!audioCtx || !audioUnlocked) return;
+        try {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             
             const osc = audioCtx.createOscillator();
@@ -82,11 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
             gain.gain.setValueAtTime(1, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.7);
             osc.stop(audioCtx.currentTime + 0.7);
-        } catch(e) { console.error("Audio beep failed", e); }
+        } catch(e) { /* silently ignore audio failures */ }
     }
 
     function startAlarmLoop() {
         if (!window.audioEnabled) return;
+        if (!audioUnlocked) return; // Don't attempt before user gesture
         if (alarmIntervalId) return; // already playing
         playBeep();
         alarmIntervalId = setInterval(playBeep, 2000);
