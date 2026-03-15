@@ -42,7 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
         inputTimeout: document.getElementById('setting-timeout'),
         indicator: document.getElementById('live-indicator'),
         stockItemsList: document.getElementById('stock-items-list'),
-        stockSearch: document.getElementById('stock-search')
+        stockSearch: document.getElementById('stock-search'),
+        modalCancelled: document.getElementById('modal-cancelled'),
+        cancelledItemsList: document.getElementById('cancelled-items-list')
     };
 
     // ---------------------------------------------------------
@@ -92,6 +94,60 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             console.error('Failed to load orders', err);
         }
+    }
+
+    async function fetchCancelledOrders() {
+        try {
+            const res = await fetch(`${config.apiUrl}/orders/admin/cancelled`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const json = await res.json();
+            if (json.success) {
+                renderCancelledOrders(json.orders);
+            }
+        } catch (err) {
+            console.error('Failed to load cancelled orders', err);
+            dom.cancelledItemsList.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding: 24px;">Failed to load</div>';
+        }
+    }
+
+    function renderCancelledOrders(orders) {
+        if (!orders || orders.length === 0) {
+            dom.cancelledItemsList.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding: 24px;">No cancelled orders found</div>';
+            return;
+        }
+
+        let html = '';
+        orders.forEach(order => {
+            const timeStr = new Date(order.cancelled_at || order.created_at).toLocaleString('en-IN', {
+                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+            });
+            const isRefunded = order.refund_amount != null && order.refund_amount > 0;
+            const refundInfo = isRefunded 
+                ? `<span style="color:#d9534f; font-weight:600; font-size:13px;">Refunded: 🪙 ${order.refund_amount}</span>`
+                : `<span style="color:#999; font-size:13px;">No refund</span>`;
+            const reasonInfo = order.cancel_reason === 'no_show' 
+                ? `<span style="color:#666; font-size:12px; font-weight:500;">(No-Show)</span>` 
+                : '';
+
+            html += `
+            <div style="padding:16px; border-bottom:1px solid #eee; display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div>
+                        <div style="font-weight:600; font-size:15px; margin-bottom:4px;">${order.customer_email || 'Unknown User'}</div>
+                        <div style="font-size:12px; color:#999;">${timeStr} ${reasonInfo}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-weight:700; font-size:16px;">₹${order.total}</div>
+                        ${refundInfo}
+                    </div>
+                </div>
+                <div style="font-size:13px; color:#555; background:#f9f9f9; padding:8px 12px; border-radius:6px;">
+                    ${generateItemsHTML(order.items)}
+                </div>
+            </div>`;
+        });
+        dom.cancelledItemsList.innerHTML = html;
     }
 
     async function fetchSettings() {
@@ -482,8 +538,12 @@ document.addEventListener('DOMContentLoaded', () => {
         stockSearchDebounce = setTimeout(renderStockItems, 150);
     });
 
-    // Redirects for placeholder buttons
-    document.getElementById('btn-cancelled').addEventListener('click', () => window.location.href = '#');
+    // Action Buttons
+    document.getElementById('btn-cancelled').addEventListener('click', () => {
+        openModal(dom.modalCancelled);
+        dom.cancelledItemsList.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding: 24px;">Loading...</div>';
+        fetchCancelledOrders();
+    });
     document.getElementById('btn-profile').addEventListener('click', () => {
         localStorage.removeItem('spoon_admin_token');
         sessionStorage.removeItem('spoon_admin_token');

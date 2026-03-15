@@ -50,6 +50,26 @@ router.get('/admin', requireAdminSession, async (req, res) => {
 });
 
 // ---------------------------------------------------------
+// GET /api/orders/admin/cancelled (Admin Dashboard - Cancelled Modal)
+// ---------------------------------------------------------
+router.get('/admin/cancelled', requireAdminSession, async (req, res) => {
+  try {
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('id, status, items, total, customer_email, created_at, cancelled_at, cancel_reason, refund_amount')
+      .eq('status', 'cancelled')
+      .order('cancelled_at', { ascending: false })
+      .limit(50); // Get latest 50 for performance
+
+    if (error) throw error;
+    res.json({ success: true, orders: orders || [] });
+  } catch (error) {
+    console.error('Error fetching cancelled orders:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch cancelled orders', code: 'DB_ERROR' });
+  }
+});
+
+// ---------------------------------------------------------
 // POST /api/orders/:orderId/send-to-kitchen (Admin)
 // ---------------------------------------------------------
 router.post('/:orderId/send-to-kitchen', requireAdminSession, async (req, res) => {
