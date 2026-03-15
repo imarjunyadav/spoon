@@ -99,6 +99,25 @@
             </div>
         </div>
 
+        <!-- Stock Management Modal -->
+        <div class="modal-content hidden" id="modal-stock" style="width: 500px; max-width: 90vw;">
+            <div class="modal-header">
+                <h2 class="col-title">Manage Stock</h2>
+                <button class="close-btn modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="stock-controls" style="display: flex; gap: 8px;">
+                    <input type="text" id="stock-search" placeholder="Search items..." style="flex:1; padding: 8px 12px; border: 1px solid var(--border-light); border-radius: 8px; font-size: 14px;">
+                    <select id="stock-category-filter" style="padding: 8px 12px; border: 1px solid var(--border-light); border-radius: 8px; font-size: 14px; background: white;">
+                        <option value="all">All Categories</option>
+                    </select>
+                </div>
+                <div class="stock-list" id="stock-items-list" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+                    <!-- Stock items injected here -->
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- Toast container for notifications -->

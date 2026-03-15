@@ -6,8 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------------------------------------------------------
     // GLOBALS & STATE
     // ---------------------------------------------------------
-    const supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
     let ordersList = [];
+    let stockItemsList = [];
     let systemSettings = {
         max_prepared_slots: 10,
         no_show_timeout_minutes: 10
@@ -20,6 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    const supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
+        global: {
+            headers: { Authorization: `Bearer ${token}` }
+        }
+    });
+
     // ---------------------------------------------------------
     // DOM ELEMENTS
     // ---------------------------------------------------------
@@ -31,9 +37,13 @@ document.addEventListener('DOMContentLoaded', () => {
         modalContainer: document.getElementById('modal-container'),
         modalSettings: document.getElementById('modal-settings'),
         modalQueue: document.getElementById('modal-queue'),
+        modalStock: document.getElementById('modal-stock'),
         inputMaxSlots: document.getElementById('setting-max-slots'),
         inputTimeout: document.getElementById('setting-timeout'),
-        indicator: document.getElementById('live-indicator')
+        indicator: document.getElementById('live-indicator'),
+        stockItemsList: document.getElementById('stock-items-list'),
+        stockSearch: document.getElementById('stock-search'),
+        stockCategory: document.getElementById('stock-category-filter')
     };
 
     // ---------------------------------------------------------
@@ -133,6 +143,53 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.style.opacity = '1';
         }
     }
+
+    async function fetchMenuItems() {
+        try {
+            const { data, error } = await supabase
+                .from('menu_items')
+                .select('id, name, is_available, category')
+                .order('name');
+            if (error) throw error;
+            stockItemsList = data || [];
+            
+            // Populate categories dropdown
+            const categories = [...new Set(stockItemsList.map(item => item.category))].sort();
+            const currentFilter = dom.stockCategory.value;
+            dom.stockCategory.innerHTML = '<option value="all">All Categories</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+            dom.stockCategory.value = currentFilter || 'all';
+
+            renderStockItems();
+        } catch (err) {
+            console.error('Failed to load menu items', err);
+            showToast('Failed to load menu items', 'error');
+        }
+    }
+
+    window.toggleStock = async (itemId, isAvailable) => {
+        try {
+            // Optimistic UI update
+            const itemIndex = stockItemsList.findIndex(i => i.id === itemId);
+            if (itemIndex > -1) {
+                stockItemsList[itemIndex].is_available = isAvailable;
+                renderStockItems(); // Re-render to reflect new visual state (dimming)
+            }
+
+            const { error } = await supabase
+                .from('menu_items')
+                .update({ is_available: isAvailable })
+                .eq('id', itemId);
+                
+            if (error) throw error;
+            showToast('Stock updated', 'success');
+        } catch (err) {
+            console.error('Stock toggle failed', err);
+            showToast('Stock update failed', 'error');
+            // Revert changes on error
+            await fetchMenuItems();
+        }
+    };
+
 
     // ---------------------------------------------------------
     // RENDER LOGIC
@@ -235,6 +292,42 @@ document.addEventListener('DOMContentLoaded', () => {
     // Interval to refresh timestamps and check timeouts
     setInterval(render, 30000); 
 
+    function renderStockItems() {
+        if (!dom.stockItemsList) return;
+
+        const categoryFilter = dom.stockCategory?.value || 'all';
+        const searchQuery = (dom.stockSearch?.value || '').trim().toLowerCase();
+
+        let filteredItems = stockItemsList;
+
+        if (categoryFilter !== 'all') {
+            filteredItems = filteredItems.filter(item => item.category === categoryFilter);
+        }
+
+        if (searchQuery) {
+            filteredItems = filteredItems.filter(item =>
+                item.name.toLowerCase().includes(searchQuery)
+            );
+        }
+
+        if (filteredItems.length === 0) {
+            dom.stockItemsList.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding: 24px;">No items found</div>';
+            return;
+        }
+
+        dom.stockItemsList.innerHTML = filteredItems.map(item => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: white; border: 1px solid var(--border-light); border-radius: 8px; margin-bottom: 4px; opacity: ${item.is_available ? '1' : '0.6'}; transition: opacity 0.2s;">
+                <span style="font-weight: 500; font-size: 14px;">${item.name} <span style="color:var(--text-muted); font-size:12px; font-weight:normal; margin-left: 4px;">(${item.category})</span></span>
+                <label style="position: relative; display: inline-block; width: 44px; height: 24px;">
+                    <input type="checkbox" onchange="window.toggleStock('${item.id}', this.checked)" ${item.is_available ? 'checked' : ''} style="opacity: 0; width: 0; height: 0;">
+                    <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${item.is_available ? 'var(--success-green)' : '#ccc'}; transition: .4s; border-radius: 24px;">
+                        <span style="position: absolute; content: ''; height: 18px; width: 18px; left: ${item.is_available ? '22px' : '3px'}; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+                    </span>
+                </label>
+            </div>
+        `).join('');
+    }
+
     // ---------------------------------------------------------
     // WINDOW HELPERS & SHORTCUTS
     // ---------------------------------------------------------
@@ -291,10 +384,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Header Buttons
     document.getElementById('btn-settings').addEventListener('click', () => openModal(dom.modalSettings));
     document.getElementById('btn-queue').addEventListener('click', () => openModal(dom.modalQueue));
+    document.getElementById('btn-stock').addEventListener('click', () => {
+        openModal(dom.modalStock);
+        fetchMenuItems(); // Fetch latest stock when opened
+    });
     
+    // Search and Filter logic for Stock Modal
+    dom.stockSearch?.addEventListener('input', renderStockItems);
+    dom.stockCategory?.addEventListener('change', renderStockItems);
+
     // Redirects for placeholder buttons
     document.getElementById('btn-cancelled').addEventListener('click', () => window.location.href = '#');
-    document.getElementById('btn-stock').addEventListener('click', () => window.location.href = '#');
     document.getElementById('btn-profile').addEventListener('click', () => {
         localStorage.removeItem('spoon_admin_token');
         sessionStorage.removeItem('spoon_admin_token');
@@ -335,6 +435,11 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'system_settings' }, (payload) => {
                 fetchSettings();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, (payload) => {
+                if (!dom.modalStock.classList.contains('hidden')) {
+                    fetchMenuItems();
+                }
             })
             .subscribe((status) => {
                 if(status === 'SUBSCRIBED') {
