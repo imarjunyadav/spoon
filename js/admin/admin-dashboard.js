@@ -286,8 +286,32 @@ document.addEventListener('DOMContentLoaded', () => {
     async function apiAction(orderId, actionPath) {
         if (window.isActionInFlight) return;
         window.isActionInFlight = true;
-        document.body.style.pointerEvents = 'none'; // Disable all clicks globally during action
-        document.body.style.opacity = '0.7';
+        
+        // --- Optimistic UI Update ---
+        const orderIndex = ordersList.findIndex(o => o.id === orderId);
+        let originalOrder = null;
+        
+        if (orderIndex > -1) {
+            originalOrder = { ...ordersList[orderIndex] }; // copy for rollback
+            
+            if (actionPath === 'send-to-kitchen') {
+                ordersList[orderIndex].status = 'kitchen';
+            } else if (actionPath === 'mark-prepared') {
+                ordersList[orderIndex].status = 'prepared';
+                ordersList[orderIndex].prepared_at = new Date().toISOString();
+                ordersList[orderIndex].slot_number = 999; // temporary until background fetch syncs it
+            } else if (actionPath === 'complete' || actionPath === 'cancel-no-show') {
+                // Remove from local list
+                ordersList.splice(orderIndex, 1);
+            }
+            
+            // Re-render immediately (zero latency feel)
+            render();
+        } else {
+            // Fallback if order not found locally
+            document.body.style.pointerEvents = 'none';
+            document.body.style.opacity = '0.7';
+        }
 
         try {
             const res = await fetch(`${config.apiUrl}/orders/${orderId}/${actionPath}`, {
@@ -295,14 +319,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
-            if (!data.success) {
-                showToast(data.error || 'Action failed', 'error');
+            
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Action failed');
             }
-            // Realtime subscription will re-fetch or we can force render
-            await fetchOrders();
+            
+            // Silent background sync to get correct slot numbers, etc.
+            fetchOrders(); 
         } catch (err) {
-            console.error(err);
-            showToast('Network error', 'error');
+            console.error('API action error:', err);
+            showToast(err.message || 'Network error', 'error');
+            
+            // Rollback optimistic update
+            if (originalOrder) {
+                if (actionPath === 'complete' || actionPath === 'cancel-no-show') {
+                    ordersList.splice(orderIndex, 0, originalOrder);
+                } else {
+                    const idx = ordersList.findIndex(o => o.id === orderId);
+                    if (idx > -1) ordersList[idx] = originalOrder;
+                }
+                render();
+            }
+            await fetchOrders(); // Force sync
         } finally {
             window.isActionInFlight = false;
             document.body.style.pointerEvents = 'auto';
