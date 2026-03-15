@@ -162,15 +162,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.toggleStock = async (itemId, isAvailable) => {
         try {
-            // Optimistic local data update
-            const itemIndex = stockItemsList.findIndex(i => i.id === itemId);
+            const stringId = String(itemId);
+            
+            // Optimistic local data update (strict equality fix: DB id is integer, HTML passes string)
+            const itemIndex = stockItemsList.findIndex(i => String(i.id) === stringId);
             if (itemIndex > -1) {
                 stockItemsList[itemIndex].is_available = isAvailable;
             }
 
             // Targeted DOM update: just toggle the row class (CSS handles visual via :checked)
             // No full re-render needed — the checkbox already visually flipped via CSS :checked
-            const row = dom.stockItemsList.querySelector(`input[onchange*="'${itemId}'"]`);
+            const row = dom.stockItemsList.querySelector(`input[onchange*="'${stringId}'"]`);
             if (row) {
                 const itemRow = row.closest('.stock-item-row');
                 if (itemRow) {
@@ -181,9 +183,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update tab badges without full re-render
             renderStockTabs();
 
-            pendingStockToggles.add(itemId);
+            pendingStockToggles.add(stringId);
 
-            const res = await fetch(`${config.apiUrl}/admin/stock/${itemId}`, {
+            const res = await fetch(`${config.apiUrl}/admin/stock/${stringId}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -200,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Stock update failed', 'error');
             await fetchMenuItems(); // Full revert on error
         } finally {
-            pendingStockToggles.delete(itemId);
+            pendingStockToggles.delete(String(itemId));
         }
     };
 
