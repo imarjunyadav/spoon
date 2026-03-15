@@ -310,3 +310,107 @@ body {
     font-size: 20px;
     cursor: pointer;
 }
+
+/* ========================
+   STOCK TOGGLE SWITCH
+   ======================== */
+.stock-toggle {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.stock-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.stock-toggle .toggle-track {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #e0e0e0;
+    border-radius: 28px;
+    transition: background-color 0.3s;
+}
+
+.stock-toggle input:checked + .toggle-track {
+    background-color: #4cd964;
+}
+
+.stock-toggle .toggle-knob {
+    position: absolute;
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    top: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: left 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.stock-toggle input:checked ~ .toggle-knob {
+    left: 25px;
+}
+
+/* Stock item row */
+.stock-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid #f0f0f0;
+    transition: opacity 0.2s;
+}
+
+.stock-item-row.out-of-stock {
+    opacity: 0.45;
+}
+
+.stock-item-row .item-name {
+    font-weight: 500;
+    font-size: 15px;
+    color: #333;
+}
+
+.stock-item-row.out-of-stock .item-name {
+    color: #999;
+}
+
+/* Category tab pills */
+.stock-tab {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    text-transform: uppercase;
+    background: #f0f0f0;
+    color: #666;
+    transition: all 0.2s;
+}
+
+.stock-tab.active {
+    background: var(--brand-primary);
+    color: white;
+}
+
+.stock-tab .oos-badge {
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    margin-left: 3px;
+    background: var(--brand-primary);
+    color: #fff;
+}
+
+.stock-tab.active .oos-badge {
+    background: rgba(255,255,255,0.3);
+}

@@ -304,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         }
 
-        // Build category tabs
+        // Build category tabs using CSS classes
         const categories = [...new Set(stockItemsList.map(i => i.category || 'Uncategorized'))].sort();
         const outOfStockCounts = {};
         stockItemsList.forEach(item => {
@@ -314,14 +314,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalOos = stockItemsList.filter(i => !i.is_available).length;
 
         let tabsHtml = `<div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:12px; border-bottom:1px solid #eee; margin-bottom:8px; flex-shrink:0;">`;
-        // All tab
-        const allActive = activeStockCategory === 'all';
-        tabsHtml += `<button onclick="window.setStockCategory('all')" style="padding:6px 14px; border-radius:20px; border:none; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; ${allActive ? 'background:var(--brand-primary); color:white;' : 'background:#f0f0f0; color:#666;'}">All${totalOos > 0 ? ` <span style="background:${allActive ? 'rgba(255,255,255,0.3)' : 'var(--brand-primary)'}; color:${allActive ? '#fff' : '#fff'}; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:2px;">${totalOos}</span>` : ''}</button>`;
-
+        tabsHtml += `<button class="stock-tab ${activeStockCategory === 'all' ? 'active' : ''}" onclick="window.setStockCategory('all')">All${totalOos > 0 ? ` <span class="oos-badge">${totalOos}</span>` : ''}</button>`;
         categories.forEach(cat => {
-            const isActive = activeStockCategory === cat;
             const oos = outOfStockCounts[cat] || 0;
-            tabsHtml += `<button onclick="window.setStockCategory('${cat}')" style="padding:6px 14px; border-radius:20px; border:none; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; text-transform:uppercase; ${isActive ? 'background:var(--brand-primary); color:white;' : 'background:#f0f0f0; color:#666;'}">${cat}${oos > 0 ? ` <span style="background:${isActive ? 'rgba(255,255,255,0.3)' : 'var(--brand-primary)'}; color:#fff; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:2px;">${oos}</span>` : ''}</button>`;
+            tabsHtml += `<button class="stock-tab ${activeStockCategory === cat ? 'active' : ''}" onclick="window.setStockCategory('${cat}')">${cat}${oos > 0 ? ` <span class="oos-badge">${oos}</span>` : ''}</button>`;
         });
         tabsHtml += `</div>`;
 
@@ -344,17 +340,15 @@ document.addEventListener('DOMContentLoaded', () => {
             itemsHtml = '<div style="color:var(--text-secondary); text-align:center; padding: 24px;">No items found</div>';
         } else {
             sortedCats.forEach(category => {
-                // Category label
                 itemsHtml += `<div style="font-size:12px; font-weight:700; text-transform:uppercase; color:#999; letter-spacing:0.5px; padding:12px 0 6px;">${category}</div>`;
                 grouped[category].forEach(item => {
-                    const checked = item.is_available;
                     itemsHtml += `
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid #f0f0f0; opacity:${checked ? '1' : '0.45'};">
-                        <span style="font-weight:500; font-size:15px; color:${checked ? '#333' : '#999'};">${item.name}</span>
-                        <label style="position:relative; display:inline-block; width:50px; height:28px; cursor:pointer; flex-shrink:0;">
-                            <input type="checkbox" onchange="window.toggleStock('${item.id}', this.checked)" ${checked ? 'checked' : ''} style="opacity:0; width:0; height:0; position:absolute;">
-                            <span style="position:absolute; top:0; left:0; right:0; bottom:0; background-color:${checked ? '#4cd964' : '#e0e0e0'}; border-radius:28px; transition:background-color .3s;"></span>
-                            <span style="position:absolute; height:22px; width:22px; left:${checked ? '25px' : '3px'}; top:3px; background-color:white; border-radius:50%; transition:left .3s; box-shadow:0 2px 4px rgba(0,0,0,0.2);"></span>
+                    <div class="stock-item-row ${!item.is_available ? 'out-of-stock' : ''}">
+                        <span class="item-name">${item.name}</span>
+                        <label class="stock-toggle">
+                            <input type="checkbox" onchange="window.toggleStock('${item.id}', this.checked)" ${item.is_available ? 'checked' : ''}>
+                            <span class="toggle-track"></span>
+                            <span class="toggle-knob"></span>
                         </label>
                     </div>`;
                 });
