@@ -52,10 +52,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Audio & Highlight State
+    if (typeof window.audioEnabled === 'undefined') window.audioEnabled = true;
+
     let lastVisiblePendingIds = new Set();
     let isInitialLoad = true;
     let alarmPlayingForIds = new Set();
     let freezeAcknowledgeUntil = 0;
+    let alarmMouseStartX = null;
+    let alarmMouseStartY = null;
 
     // Built-in AudioContext Synthesizer for alerts (no external files needed)
     let audioCtx = null;
@@ -96,8 +100,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Reset alarm on user interaction
-    function acknowledgeAlarm() {
+    function acknowledgeAlarm(e) {
         if (Date.now() < freezeAcknowledgeUntil) return; // Protect against instant accidental triggers from mouse movement
+
+        // Anti-jitter: Require at least 50px of mouse movement to trigger ack
+        if (e && e.type === 'mousemove') {
+            if (alarmMouseStartX === null || alarmMouseStartY === null) {
+                alarmMouseStartX = e.clientX;
+                alarmMouseStartY = e.clientY;
+                return;
+            }
+            const dist = Math.hypot(e.clientX - alarmMouseStartX, e.clientY - alarmMouseStartY);
+            if (dist < 50) return; // Ignore small twitches or sensor noise
+        }
 
         if (alarmPlayingForIds.size > 0) {
             stopAlarmLoop();
@@ -109,6 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             alarmPlayingForIds.clear();
+            alarmMouseStartX = null;
+            alarmMouseStartY = null;
         }
     }
 
@@ -449,7 +466,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (hasNewVisibleOrder) {
-                freezeAcknowledgeUntil = Date.now() + 1000; // 1 second protection before mousemove can cancel it
+                freezeAcknowledgeUntil = Date.now() + 2000; // 2 second absolute protection
+                alarmMouseStartX = null; // Reset mouse anchor for distance calculation
+                alarmMouseStartY = null;
                 startAlarmLoop();
                 // Add visual highlight right away to the DOM elements just rendered
                 alarmPlayingForIds.forEach(id => {
