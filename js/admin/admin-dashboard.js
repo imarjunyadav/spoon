@@ -289,6 +289,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Interval to refresh timestamps and check timeouts
     setInterval(render, 30000); 
 
+    let activeStockCategory = 'all';
+
     function renderStockItems() {
         if (!dom.stockItemsList) return;
 
@@ -302,44 +304,70 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         }
 
-        if (filteredItems.length === 0) {
-            dom.stockItemsList.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding: 24px;">No items found</div>';
-            return;
+        // Build category tabs
+        const categories = [...new Set(stockItemsList.map(i => i.category || 'Uncategorized'))].sort();
+        const outOfStockCounts = {};
+        stockItemsList.forEach(item => {
+            const cat = item.category || 'Uncategorized';
+            if (!item.is_available) outOfStockCounts[cat] = (outOfStockCounts[cat] || 0) + 1;
+        });
+        const totalOos = stockItemsList.filter(i => !i.is_available).length;
+
+        let tabsHtml = `<div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:12px; border-bottom:1px solid #eee; margin-bottom:8px; flex-shrink:0;">`;
+        // All tab
+        const allActive = activeStockCategory === 'all';
+        tabsHtml += `<button onclick="window.setStockCategory('all')" style="padding:6px 14px; border-radius:20px; border:none; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; ${allActive ? 'background:var(--brand-primary); color:white;' : 'background:#f0f0f0; color:#666;'}">All${totalOos > 0 ? ` <span style="background:${allActive ? 'rgba(255,255,255,0.3)' : 'var(--brand-primary)'}; color:${allActive ? '#fff' : '#fff'}; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:2px;">${totalOos}</span>` : ''}</button>`;
+
+        categories.forEach(cat => {
+            const isActive = activeStockCategory === cat;
+            const oos = outOfStockCounts[cat] || 0;
+            tabsHtml += `<button onclick="window.setStockCategory('${cat}')" style="padding:6px 14px; border-radius:20px; border:none; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; text-transform:uppercase; ${isActive ? 'background:var(--brand-primary); color:white;' : 'background:#f0f0f0; color:#666;'}">${cat}${oos > 0 ? ` <span style="background:${isActive ? 'rgba(255,255,255,0.3)' : 'var(--brand-primary)'}; color:#fff; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:2px;">${oos}</span>` : ''}</button>`;
+        });
+        tabsHtml += `</div>`;
+
+        // Filter by active category
+        if (activeStockCategory !== 'all') {
+            filteredItems = filteredItems.filter(i => (i.category || 'Uncategorized') === activeStockCategory);
         }
 
-        // Group by category
+        // Group by category for section labels
         const grouped = {};
         filteredItems.forEach(item => {
             const cat = item.category || 'Uncategorized';
             if (!grouped[cat]) grouped[cat] = [];
             grouped[cat].push(item);
         });
+        const sortedCats = Object.keys(grouped).sort();
 
-        // Sort categories alphabetically
-        const sortedCategories = Object.keys(grouped).sort();
-
-        let html = '';
-        sortedCategories.forEach(category => {
-            // Category label
-            html += `<div style="font-size: 13px; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px; padding: 8px 4px 4px; margin-top: 8px; border-bottom: 1px solid var(--border-color);">${category}</div>`;
-
-            // Items in this category
-            grouped[category].forEach(item => {
-                const checked = item.is_available;
-                html += `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 4px; border-bottom: 1px solid #f0f0f0; opacity: ${checked ? '1' : '0.5'}; transition: opacity 0.2s;">
-                    <span style="font-weight: 500; font-size: 14px;">${item.name}</span>
-                    <label style="position: relative; display: inline-block; width: 44px; height: 24px; cursor: pointer; flex-shrink: 0;">
-                        <input type="checkbox" onchange="window.toggleStock('${item.id}', this.checked)" ${checked ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;">
-                        <span style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: ${checked ? 'var(--success-green)' : '#ccc'}; border-radius: 24px; transition: background-color .3s;"></span>
-                        <span style="position: absolute; height: 18px; width: 18px; left: ${checked ? '22px' : '3px'}; top: 3px; background-color: white; border-radius: 50%; transition: left .3s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
-                    </label>
-                </div>`;
+        let itemsHtml = '';
+        if (filteredItems.length === 0) {
+            itemsHtml = '<div style="color:var(--text-secondary); text-align:center; padding: 24px;">No items found</div>';
+        } else {
+            sortedCats.forEach(category => {
+                // Category label
+                itemsHtml += `<div style="font-size:12px; font-weight:700; text-transform:uppercase; color:#999; letter-spacing:0.5px; padding:12px 0 6px;">${category}</div>`;
+                grouped[category].forEach(item => {
+                    const checked = item.is_available;
+                    itemsHtml += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid #f0f0f0; opacity:${checked ? '1' : '0.45'};">
+                        <span style="font-weight:500; font-size:15px; color:${checked ? '#333' : '#999'};">${item.name}</span>
+                        <label style="position:relative; display:inline-block; width:50px; height:28px; cursor:pointer; flex-shrink:0;">
+                            <input type="checkbox" onchange="window.toggleStock('${item.id}', this.checked)" ${checked ? 'checked' : ''} style="opacity:0; width:0; height:0; position:absolute;">
+                            <span style="position:absolute; top:0; left:0; right:0; bottom:0; background-color:${checked ? '#4cd964' : '#e0e0e0'}; border-radius:28px; transition:background-color .3s;"></span>
+                            <span style="position:absolute; height:22px; width:22px; left:${checked ? '25px' : '3px'}; top:3px; background-color:white; border-radius:50%; transition:left .3s; box-shadow:0 2px 4px rgba(0,0,0,0.2);"></span>
+                        </label>
+                    </div>`;
+                });
             });
-        });
+        }
 
-        dom.stockItemsList.innerHTML = html;
+        dom.stockItemsList.innerHTML = tabsHtml + `<div style="overflow-y:auto; max-height:350px; padding-right:4px;">` + itemsHtml + `</div>`;
     }
+
+    window.setStockCategory = (cat) => {
+        activeStockCategory = cat;
+        renderStockItems();
+    };
 
     // ---------------------------------------------------------
     // WINDOW HELPERS & SHORTCUTS
@@ -388,10 +416,22 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden'));
     }
 
-    document.querySelectorAll('.modal-close, .modal-overlay').forEach(btn => {
+    // Only close modal via X button
+    document.querySelectorAll('.modal-close').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            if(e.target === btn || e.currentTarget === btn) closeAllModals();
+            e.stopPropagation();
+            closeAllModals();
         });
+    });
+
+    // Clicking on the dark overlay background (not the modal content) closes the modal
+    dom.modalContainer.addEventListener('click', (e) => {
+        if (e.target === dom.modalContainer) closeAllModals();
+    });
+
+    // Prevent clicks inside modal content from bubbling to overlay
+    document.querySelectorAll('.modal-content').forEach(mc => {
+        mc.addEventListener('click', (e) => e.stopPropagation());
     });
     
     // Header Buttons
