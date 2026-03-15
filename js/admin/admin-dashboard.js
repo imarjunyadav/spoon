@@ -48,8 +48,36 @@ document.addEventListener('DOMContentLoaded', () => {
         modalProfile: document.getElementById('modal-profile'),
         profileEmail: document.getElementById('admin-profile-email'),
         btnLogoutConfirm: document.getElementById('btn-logout-confirm'),
-        audioToggle: document.getElementById('toggle-audio-notifications')
+        audioToggle: document.getElementById('toggle-audio-notifications'),
+        audioAlarm: document.getElementById('new-order-sound')
     };
+
+    // Audio & Highlight State
+    let lastVisiblePendingIds = new Set();
+    let isInitialLoad = true;
+    let alarmPlayingForIds = new Set();
+
+    // Reset alarm on user interaction
+    function acknowledgeAlarm() {
+        if (alarmPlayingForIds.size > 0 && dom.audioAlarm) {
+            dom.audioAlarm.pause();
+            dom.audioAlarm.currentTime = 0;
+            
+            // Remove highlight class from acknowledged cards
+            alarmPlayingForIds.forEach(id => {
+                const card = document.querySelector(`.order-card[data-id="${id}"]`);
+                if (card) card.classList.remove('new-order-highlight');
+            });
+            
+            alarmPlayingForIds.clear();
+        }
+    }
+
+    // Attach interaction listeners to acknowledge alarm
+    window.addEventListener('keydown', (e) => { if (e.code === 'Space') acknowledgeAlarm(); });
+    window.addEventListener('mousemove', acknowledgeAlarm, { once: false }); // Will optimize this inside the function
+    window.addEventListener('click', acknowledgeAlarm);
+    window.addEventListener('touchstart', acknowledgeAlarm);
 
     // ---------------------------------------------------------
     // UTILITIES
@@ -284,8 +312,11 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `<button class="btn-ready" onclick="window.markPrepared('${order.id}')">ready</button>`
             : `<button class="btn-plus" onclick="window.sendToKitchen('${order.id}')"><i class="fas fa-plus"></i></button>`;
 
+        // Add highlight class if this order is currently triggering the alarm
+        const highlightClass = alarmPlayingForIds.has(order.id) ? 'new-order-highlight' : '';
+
         return `
-            <div class="order-card" data-id="${order.id}">
+            <div class="order-card ${highlightClass}" data-id="${order.id}">
                 <div class="order-items">
                     ${generateItemsHTML(order.items)}
                 </div>
@@ -363,6 +394,34 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             prepared.forEach(o => dom.preparedList.insertAdjacentHTML('beforeend', renderPrepared(o)));
         }
+
+        // --- AUDIO ALARM LOGIC (Diffing Visible Pending) ---
+        const currentVisiblePendingIds = new Set(pendings.slice(0, limit).map(o => o.id));
+        
+        if (!isInitialLoad && window.audioEnabled !== false) {
+            let hasNewVisibleOrder = false;
+            
+            currentVisiblePendingIds.forEach(id => {
+                // If it's a newly visible order (not in last render's visible list)
+                if (!lastVisiblePendingIds.has(id)) {
+                    hasNewVisibleOrder = true;
+                    alarmPlayingForIds.add(id);
+                }
+            });
+
+            if (hasNewVisibleOrder && dom.audioAlarm) {
+                // Play looping sound
+                dom.audioAlarm.play().catch(err => console.error("Audio playback failed (interaction required?):", err));
+                // Add visual highlight right away to the DOM elements just rendered
+                alarmPlayingForIds.forEach(id => {
+                    const card = dom.pendingList.querySelector(`.order-card[data-id="${id}"]`);
+                    if (card) card.classList.add('new-order-highlight');
+                });
+            }
+        }
+        
+        lastVisiblePendingIds = currentVisiblePendingIds;
+        isInitialLoad = false;
     }
 
     // Interval to refresh timestamps and check timeouts
@@ -577,9 +636,14 @@ document.addEventListener('DOMContentLoaded', () => {
         window.audioEnabled = e.target.checked;
         if(window.audioEnabled) {
             // Test sound
-            if(window.playNewOrderSound) window.playNewOrderSound();
+            if(dom.audioAlarm) {
+                dom.audioAlarm.loop = false; // play once for test
+                dom.audioAlarm.play().catch(e => console.log(e));
+                setTimeout(() => { dom.audioAlarm.loop = true; }, 1000); // restore loop
+            }
             showToast('Audio notifications enabled', 'success');
         } else {
+            if(dom.audioAlarm) { dom.audioAlarm.pause(); dom.audioAlarm.currentTime = 0; }
             showToast('Audio notifications disabled', 'info');
         }
     });
