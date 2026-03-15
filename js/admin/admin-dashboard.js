@@ -174,10 +174,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let actionBtn;
         if (isTimedOut) {
-            actionBtn = `<button class="slot-badge btn-cancel" onclick="window.cancelNoShow('${order.id}')"><i class="fas fa-times"></i></button>`;
+            actionBtn = `<button class="slot-badge btn-cancel" onclick="window.cancelNoShow('${order.id}')" title="Cancel Timeout"><i class="fas fa-times"></i></button>`;
+        } else if (!order.arrived_at) {
+            // User hasn't clicked "I am available". Hide slot number.
+            actionBtn = `<button class="slot-badge" style="background:#ffb300; color:#fff;" onclick="window.completeOrder('${order.id}')" title="Waiting for customer"><i class="fas fa-clock"></i></button>`;
         } else {
-            // Shows slot number (e.g. "1") and handles completion
-            actionBtn = `<button class="slot-badge" onclick="window.completeOrder('${order.id}')">${order.slot_number}</button>`;
+            // User has arrived! Show slot number (e.g. "1") and handle completion
+            actionBtn = `<button class="slot-badge" style="background:#4caf50; color:#fff;" onclick="window.completeOrder('${order.id}')" title="Slot ${order.slot_number} - Complete Order">${order.slot_number}</button>`;
         }
 
         return `

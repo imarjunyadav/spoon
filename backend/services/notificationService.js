@@ -165,8 +165,8 @@ async function notifyOrderPrepared(order) {
         if (!order.customer_email) return;
         
         const payload = {
-            title: `🍽️ Order Ready! Slot #${order.slot_number}`,
-            body: `Your order #${(order.id || '').substring(0, 8)} is ready for pickup at Slot #${order.slot_number}. Please collect it now.`,
+            title: `🍽️ Order Ready!`,
+            body: `Your order #${(order.id || '').substring(0, 8)} is hot and ready. Tap "I am available to collect" at the counter to reveal your slot.`,
             url: `/pages/user/orders.html`
         };
         
