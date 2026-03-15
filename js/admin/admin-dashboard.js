@@ -44,7 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
         stockItemsList: document.getElementById('stock-items-list'),
         stockSearch: document.getElementById('stock-search'),
         modalCancelled: document.getElementById('modal-cancelled'),
-        cancelledItemsList: document.getElementById('cancelled-items-list')
+        cancelledItemsList: document.getElementById('cancelled-items-list'),
+        modalProfile: document.getElementById('modal-profile'),
+        profileEmail: document.getElementById('admin-profile-email'),
+        btnLogoutConfirm: document.getElementById('btn-logout-confirm'),
+        audioToggle: document.getElementById('toggle-audio-notifications')
     };
 
     // ---------------------------------------------------------
@@ -545,9 +549,39 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchCancelledOrders();
     });
     document.getElementById('btn-profile').addEventListener('click', () => {
+        openModal(dom.modalProfile);
+        
+        // Extract email from JWT token payload to display
+        try {
+            const payloadBase64 = token.split('.')[1];
+            const payload = JSON.parse(atob(payloadBase64));
+            dom.profileEmail.innerText = payload.email || 'Admin';
+        } catch(e) {
+            dom.profileEmail.innerText = 'Admin';
+        }
+        
+        // Sync audio toggle with actual state
+        if (window.audioEnabled !== undefined) {
+             dom.audioToggle.checked = window.audioEnabled;
+        }
+    });
+
+    // Profile Modal Actions
+    dom.btnLogoutConfirm.addEventListener('click', () => {
         localStorage.removeItem('spoon_admin_token');
         sessionStorage.removeItem('spoon_admin_token');
         window.location.href = '/admin/login.html';
+    });
+
+    dom.audioToggle.addEventListener('change', (e) => {
+        window.audioEnabled = e.target.checked;
+        if(window.audioEnabled) {
+            // Test sound
+            if(window.playNewOrderSound) window.playNewOrderSound();
+            showToast('Audio notifications enabled', 'success');
+        } else {
+            showToast('Audio notifications disabled', 'info');
+        }
     });
 
     // Save Settings
