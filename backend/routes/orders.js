@@ -37,7 +37,7 @@ router.get('/admin', requireAdminSession, async (req, res) => {
   try {
     const { data: orders, error } = await supabase
       .from('orders')
-      .select('id, status, items, total, customer_email, created_at, kitchen_at, prepared_at, slot_number')
+      .select('id, status, items, total, customer_email, created_at, kitchen_at, prepared_at, arrived_at, slot_number')
       .in('status', ['pending', 'kitchen', 'prepared'])
       .order('created_at', { ascending: true });
 
