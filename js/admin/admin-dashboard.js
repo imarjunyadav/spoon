@@ -551,26 +551,49 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Save Settings
-    document.getElementById('btn-save-settings').addEventListener('click', async () => {
+    document.getElementById('btn-save-settings').addEventListener('click', async (e) => {
         const slots = dom.inputMaxSlots.value;
         const timeo = dom.inputTimeout.value;
+        const btn = e.target;
+        
+        const originalText = btn.innerText;
+        btn.innerText = 'SAVING...';
+        btn.style.opacity = '0.7';
+        btn.disabled = true;
         
         try {
-            await fetch(`${config.apiUrl}/settings/max_prepared_slots`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ value: slots })
-            });
-            await fetch(`${config.apiUrl}/settings/no_show_timeout_minutes`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ value: timeo })
-            });
+            // Run both updates in parallel
+            const [slotsRes, timeoRes] = await Promise.all([
+                fetch(`${config.apiUrl}/settings/max_prepared_slots`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ value: slots })
+                }),
+                fetch(`${config.apiUrl}/settings/no_show_timeout_minutes`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ value: timeo })
+                })
+            ]);
+            
+            const slotsData = await slotsRes.json();
+            const timeoData = await timeoRes.json();
+            
+            if (!slotsRes.ok || !slotsData.success) throw new Error(slotsData.error || 'Failed to update slots');
+            if (!timeoRes.ok || !timeoData.success) throw new Error(timeoData.error || 'Failed to update timeout');
+            
             showToast('Settings saved successfully', 'success');
             await fetchSettings();
             closeAllModals();
         } catch(err) {
-            showToast('Failed to save settings', 'error');
+            console.error('Settings save error:', err);
+            showToast(err.message || 'Failed to save settings', 'error');
+            // If it failed due to capacity error, reset input to actual value
+            dom.inputMaxSlots.value = systemSettings.max_prepared_slots;
+        } finally {
+            btn.innerText = originalText;
+            btn.style.opacity = '1';
+            btn.disabled = false;
         }
     });
 

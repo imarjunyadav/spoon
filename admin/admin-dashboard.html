@@ -82,19 +82,23 @@
         <!-- SETTINGS MODAL -->
         <div class="modal-content hidden" id="modal-settings">
             <div class="modal-header">
-                <h2 class="col-title">Settings</h2>
+                <h2 class="col-title">System Settings</h2>
                 <button class="close-btn modal-close"><i class="fas fa-times"></i></button>
             </div>
-            <div class="modal-body">
-                <div style="margin-bottom: 16px;">
-                    <label style="display:block; margin-bottom:8px; font-weight:600;">Max Prepared Slots</label>
-                    <input type="number" id="setting-max-slots" placeholder="10" style="padding:8px; width:100px; border:1px solid var(--border-color); border-radius:4px;">
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 20px;">
+                <div>
+                    <label style="display:block; margin-bottom:4px; font-weight:600; font-size:14px;">Total Kitchen Capacity (Slots)</label>
+                    <p style="margin: 0 0 8px 0; font-size:12px; color:var(--text-secondary);">Maximum number of orders the kitchen can prepare simultaneously.</p>
+                    <input type="number" id="setting-max-slots" placeholder="10" min="1" max="100" style="padding:10px 12px; width:100%; border:1px solid var(--border-color); border-radius:8px; font-size:15px;">
                 </div>
-                <div style="margin-bottom: 16px;">
-                    <label style="display:block; margin-bottom:8px; font-weight:600;">No-Show Timeout (minutes)</label>
-                    <input type="number" id="setting-timeout" placeholder="10" style="padding:8px; width:100px; border:1px solid var(--border-color); border-radius:4px;">
+                
+                <div style="padding-top: 4px; border-top: 1px solid #eee;">
+                    <label style="display:block; margin-bottom:4px; margin-top:12px; font-weight:600; font-size:14px;">No-Show Timeout (Minutes)</label>
+                    <p style="margin: 0 0 8px 0; font-size:12px; color:var(--text-secondary);">Minutes to wait before a prepared order is marked as no-show and can be cancelled.</p>
+                    <input type="number" id="setting-timeout" placeholder="10" min="1" max="300" style="padding:10px 12px; width:100%; border:1px solid var(--border-color); border-radius:8px; font-size:15px;">
                 </div>
-                <button class="hdr-btn" id="btn-save-settings" style="background:var(--brand-primary); color:white; border:none;">SAVE</button>
+                
+                <button class="hdr-btn" id="btn-save-settings" style="background:var(--brand-primary); color:white; border:none; width: 100%; margin-top: 8px; font-size: 15px; padding: 12px; border-radius: 8px;">SAVE SETTINGS</button>
             </div>
         </div>
 
