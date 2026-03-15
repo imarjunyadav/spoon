@@ -48,20 +48,59 @@ document.addEventListener('DOMContentLoaded', () => {
         modalProfile: document.getElementById('modal-profile'),
         profileEmail: document.getElementById('admin-profile-email'),
         btnLogoutConfirm: document.getElementById('btn-logout-confirm'),
-        audioToggle: document.getElementById('toggle-audio-notifications'),
-        audioAlarm: document.getElementById('new-order-sound')
+        audioToggle: document.getElementById('toggle-audio-notifications')
     };
 
     // Audio & Highlight State
     let lastVisiblePendingIds = new Set();
     let isInitialLoad = true;
     let alarmPlayingForIds = new Set();
+    let freezeAcknowledgeUntil = 0;
+
+    // Built-in AudioContext Synthesizer for alerts (no external files needed)
+    let audioCtx = null;
+    let alarmIntervalId = null;
+
+    function playBeep() {
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitch ding A5
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            gain.gain.setValueAtTime(1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.7);
+            osc.stop(audioCtx.currentTime + 0.7);
+        } catch(e) { console.error("Audio beep failed", e); }
+    }
+
+    function startAlarmLoop() {
+        if (!window.audioEnabled) return;
+        if (alarmIntervalId) return; // already playing
+        playBeep();
+        alarmIntervalId = setInterval(playBeep, 2000);
+    }
+
+    function stopAlarmLoop() {
+        if (alarmIntervalId) {
+            clearInterval(alarmIntervalId);
+            alarmIntervalId = null;
+        }
+    }
 
     // Reset alarm on user interaction
     function acknowledgeAlarm() {
-        if (alarmPlayingForIds.size > 0 && dom.audioAlarm) {
-            dom.audioAlarm.pause();
-            dom.audioAlarm.currentTime = 0;
+        if (Date.now() < freezeAcknowledgeUntil) return; // Protect against instant accidental triggers from mouse movement
+
+        if (alarmPlayingForIds.size > 0) {
+            stopAlarmLoop();
             
             // Remove highlight class from acknowledged cards
             alarmPlayingForIds.forEach(id => {
@@ -75,9 +114,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Attach interaction listeners to acknowledge alarm
     window.addEventListener('keydown', (e) => { if (e.code === 'Space') acknowledgeAlarm(); });
-    window.addEventListener('mousemove', acknowledgeAlarm, { once: false }); // Will optimize this inside the function
-    window.addEventListener('click', acknowledgeAlarm);
-    window.addEventListener('touchstart', acknowledgeAlarm);
+    window.addEventListener('mousemove', acknowledgeAlarm, { once: false, passive: true });
+    window.addEventListener('click', acknowledgeAlarm, { passive: true });
+    window.addEventListener('touchstart', acknowledgeAlarm, { passive: true });
 
     // ---------------------------------------------------------
     // UTILITIES
@@ -409,9 +448,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            if (hasNewVisibleOrder && dom.audioAlarm) {
-                // Play looping sound
-                dom.audioAlarm.play().catch(err => console.error("Audio playback failed (interaction required?):", err));
+            if (hasNewVisibleOrder) {
+                freezeAcknowledgeUntil = Date.now() + 1000; // 1 second protection before mousemove can cancel it
+                startAlarmLoop();
                 // Add visual highlight right away to the DOM elements just rendered
                 alarmPlayingForIds.forEach(id => {
                     const card = dom.pendingList.querySelector(`.order-card[data-id="${id}"]`);
@@ -635,15 +674,11 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.audioToggle.addEventListener('change', (e) => {
         window.audioEnabled = e.target.checked;
         if(window.audioEnabled) {
-            // Test sound
-            if(dom.audioAlarm) {
-                dom.audioAlarm.loop = false; // play once for test
-                dom.audioAlarm.play().catch(e => console.log(e));
-                setTimeout(() => { dom.audioAlarm.loop = true; }, 1000); // restore loop
-            }
+            // Test sound natively
+            playBeep();
             showToast('Audio notifications enabled', 'success');
         } else {
-            if(dom.audioAlarm) { dom.audioAlarm.pause(); dom.audioAlarm.currentTime = 0; }
+            stopAlarmLoop();
             showToast('Audio notifications disabled', 'info');
         }
     });
