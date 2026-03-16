@@ -261,15 +261,15 @@ router.post("/webhook", async (req, res) => {
         console.log(`⚠️ Unhandled webhook event: ${event}`);
     }
 
-    // Step 5: Always return 200 to acknowledge webhook receipt
-    // Razorpay will retry if we don't return 200
+    // Step 5: Return 200 if processing was successful
     return res.status(200).json({ status: "ok" });
 
   } catch (error) {
     console.error("❌ Webhook processing error:", error);
 
-    // Still return 200 to prevent Razorpay retries for our internal errors
-    return res.status(200).json({ status: "error", message: error.message });
+    // IMPORTANT: Return 500 to tell Razorpay to retry this webhook later
+    // This provides resilience against temporary database outages
+    return res.status(500).json({ status: "error", message: "Internal server error during webhook processing" });
   }
 });
 

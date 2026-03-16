@@ -225,7 +225,7 @@ class PaymentFlowValidator {
   }
 
   /**
-   * Process successful payment with atomic order creation.
+   * Process successful payment with atomic order creation using Supabase RPC.
    * 
    * @param {Object} paymentData - Payment data from webhook
    * @returns {Promise<Object>} Order creation result
@@ -243,116 +243,55 @@ class PaymentFlowValidator {
     } = paymentData;
 
     try {
-      // STEP 1: Check idempotency
-      const idempotencyCheck = await this.validateIdempotency(razorpayPaymentId);
+      // Execute the atomic checkout RPC to prevent orphaned payments
+      const { data: rpcResult, error: rpcError } = await getSupabase()
+        .rpc('confirm_payment_and_order', {
+          p_payment_id: razorpayPaymentId,
+          p_order_id: razorpayOrderId,
+          p_signature: razorpaySignature,
+          p_amount: amount,
+          p_currency: currency,
+          p_user_email: userEmail,
+          p_items: cartItems,
+          p_phone: phoneNumber
+        });
 
-      if (idempotencyCheck.alreadyProcessed) {
-        console.log(`✅ Payment ${razorpayPaymentId} already processed, returning existing order`);
+      if (rpcError) {
+        console.error('❌ Atomic RPC confirm_payment_and_order failed:', rpcError);
+        throw rpcError;
+      }
+
+      // Check if the RPC caught a duplicate webhook (idempotency handled by the DB lock)
+      if (rpcResult.duplicate) {
+        console.log(`⚠️ Payment ${razorpayPaymentId} already processed (idempotency caught by RPC), returning existing order`);
         return {
           success: true,
-          orderId: idempotencyCheck.existingOrderId,
+          orderId: rpcResult.orderId,
           duplicate: true,
-          message: 'Payment already processed'
+          message: rpcResult.message
         };
       }
 
-      // STEP 2: Create payment transaction record (idempotency lock)
-      const { data: paymentTransaction, error: paymentError } = await getSupabase()
-        .from('payment_transactions')
-        .insert([{
-          razorpay_payment_id: razorpayPaymentId,
-          razorpay_order_id: razorpayOrderId,
-          razorpay_signature: razorpaySignature,
-          amount: amount,
-          currency: currency,
-          status: 'processing',
-          user_email: userEmail,
-          webhook_received: true,
-          webhook_timestamp: new Date().toISOString(),
-          signature_verified: true
-        }])
-        .select()
-        .single();
-
-      if (paymentError) {
-        // Check if error is due to unique constraint violation (duplicate payment ID)
-        if (paymentError.code === '23505') { // PostgreSQL unique violation
-          console.log(`⚠️ Duplicate payment detected: ${razorpayPaymentId}`);
-
-          // Fetch existing order
-          const { data: existing } = await getSupabase()
-            .from('payment_transactions')
-            .select('order_id')
-            .eq('razorpay_payment_id', razorpayPaymentId)
-            .single();
-
-          return {
-            success: true,
-            orderId: existing?.order_id,
-            duplicate: true,
-            message: 'Payment already processed (race condition handled)'
-          };
-        }
-
-        console.error('❌ Failed to create payment transaction:', paymentError);
-        throw paymentError;
-      }
-
-      // STEP 3: Create order with atomic stock deduction
-      const orderId = razorpayPaymentId; // Use payment ID as order ID
-
-      const { data: order, error: orderError } = await getSupabase()
-        .from('orders')
-        .insert([{
-          id: orderId,
-          customer_email: userEmail,
-          total: amount / 100, // Convert paise to rupees
-          items: cartItems,
-          status: 'pending',
-          phone_number: phoneNumber,
-          razorpay_payment_id: razorpayPaymentId,
-          created_at: new Date().toISOString()
-        }])
-        .select()
-        .single();
-
-      if (orderError) {
-        console.error('❌ Failed to create order:', orderError);
-
-        // Update payment transaction status to failed
-        await getSupabase()
-          .from('payment_transactions')
-          .update({
-            status: 'failed',
-            error_reason: `Order creation failed: ${orderError.message}`
-          })
-          .eq('razorpay_payment_id', razorpayPaymentId);
-
-        throw orderError;
-      }
-
-      // STEP 4: Update payment transaction with order ID
-      await getSupabase()
-        .from('payment_transactions')
-        .update({
-          order_id: orderId,
-          status: 'success'
-        })
-        .eq('razorpay_payment_id', razorpayPaymentId);
-
-      console.log(`✅ Payment ${razorpayPaymentId} processed successfully, order ${orderId} created`);
+      console.log(`✅ Payment ${razorpayPaymentId} processed atomically, order ${razorpayPaymentId} created`);
 
       // Fire-and-forget: Send Telegram notification to admin
-      notificationService.notifyNewOrder(order).catch(err =>
+      notificationService.notifyNewOrder({
+        id: razorpayPaymentId,
+        customer_email: userEmail,
+        total: amount / 100,
+        items: cartItems,
+        phone_number: phoneNumber,
+        status: 'pending'
+      }).catch(err =>
         console.error('⚠️ Notification failed (non-blocking):', err.message)
       );
 
       return {
         success: true,
-        orderId: orderId,
+        orderId: razorpayPaymentId,
         paymentId: razorpayPaymentId,
-        stockDeducted: false, // Will be true after Task 3
-        emailSent: false, // Will be true after email integration
+        stockDeducted: false, 
+        emailSent: false, 
         cartCleared: true,
         duplicate: false
       };
