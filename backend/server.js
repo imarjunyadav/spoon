@@ -111,7 +111,7 @@ const rateLimit = require('express-rate-limit');
 // Strict limiter for payments (prevent card testing/spam)
 const paymentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 requests per IP per window
+  max: 50, // 50 requests per IP per window (increased for testing)
   message: {
     success: false,
     error: 'Too many payment attempts, please try again after 15 minutes'

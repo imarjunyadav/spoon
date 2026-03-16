@@ -76,7 +76,14 @@ const Config = {
         if (window.supabase) {
           window.spoonSupabase = window.supabase.createClient(
             window.SPOON_CONFIG.SUPABASE_URL,
-            window.SPOON_CONFIG.SUPABASE_ANON_KEY
+            window.SPOON_CONFIG.SUPABASE_ANON_KEY,
+            {
+              auth: {
+                persistSession: false,
+                autoRefreshToken: false,
+                detectSessionInUrl: false
+              }
+            }
           );
         }
       }

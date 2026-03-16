@@ -21,14 +21,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
-        global: {
-            headers: { Authorization: `Bearer ${token}` }
-        },
         auth: {
             persistSession: false, // Prevents "Multiple GoTrueClient instances" warning
             autoRefreshToken: false,
             detectSessionInUrl: false
-        }
+        },
+        realtime: {
+            params: {
+                eventsPerSecond: 10
+            }
+        },
+        accessToken: async () => token
     });
 
     // ---------------------------------------------------------
@@ -829,9 +832,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Clean up any existing channels first
         supabase.removeAllChannels();
-
-        // Authenticate the WebSocket connection for RLS
-        supabase.realtime.setAuth(token);
 
         supabase.channel('admin-dashboard-changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
