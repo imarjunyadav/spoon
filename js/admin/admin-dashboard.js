@@ -818,14 +818,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------------------------------------------------------
     // REALTIME SUBSCRIPTION
     // ---------------------------------------------------------
+    let realtimeRetryCount = 0;
+    let realtimeRetryTimer = null;
+    let isSettingUpRealtime = false;
+
     function setupRealtime() {
-        // Fix for multiple channels/memory leaks on reconnect
+        // Guard against concurrent calls (prevents channel duplication)
+        if (isSettingUpRealtime) return;
+        isSettingUpRealtime = true;
+
+        // Clean up any existing channels first
         supabase.removeAllChannels();
 
-        // **CRITICAL FIX FOR REALTIME + RLS**
-        // WebSockets cannot send HTTP headers. The `global.headers` config in createClient 
-        // only applies to REST fetches. We MUST explicitly pass the auth token to the Realtime engine 
-        // so PostgreSQL RLS allows the events to flow to us.
+        // Authenticate the WebSocket connection for RLS
         supabase.realtime.setAuth(token);
 
         supabase.channel('admin-dashboard-changes')
@@ -867,13 +872,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             })
             .subscribe((status) => {
-                if(status === 'SUBSCRIBED') {
+                isSettingUpRealtime = false; // Release the guard
+
+                if (status === 'SUBSCRIBED') {
                     dom.indicator.style.color = 'var(--success-green)';
+                    realtimeRetryCount = 0; // Reset backoff on successful connection
                 } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
                     dom.indicator.style.color = 'var(--text-secondary)';
-                    setTimeout(() => {
-                        fetchOrders().then(setupRealtime);
-                    }, 3000);
+
+                    // Exponential backoff: 3s → 6s → 12s → 24s → 48s, then stop
+                    if (realtimeRetryCount < 5) {
+                        const delay = Math.min(3000 * Math.pow(2, realtimeRetryCount), 60000);
+                        realtimeRetryCount++;
+                        console.warn(`[Realtime] Connection lost. Retry ${realtimeRetryCount}/5 in ${delay/1000}s`);
+                        
+                        clearTimeout(realtimeRetryTimer);
+                        realtimeRetryTimer = setTimeout(() => {
+                            fetchOrders().then(setupRealtime).catch(() => {
+                                isSettingUpRealtime = false; // Release guard on fetch failure
+                            });
+                        }, delay);
+                    } else {
+                        console.error('[Realtime] Max retries reached. Falling back to polling only.');
+                        showToast('Live connection lost — auto-refreshing every 60s', 'info');
+                    }
                 }
             });
     }
@@ -885,13 +907,12 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchOrders().then(() => {
         setupRealtime();
         
-        // Safety Fallback: Silent background sync every 30 seconds
-        // Ensures we never miss an order if the WebSocket silently drops an event
+        // Safety Fallback: Silent background sync every 60 seconds
+        // Catches any missed events without hammering the backend
         setInterval(() => {
-            // Only sync if we aren't in the middle of modifying an order
             if (!window.isActionInFlight) {
                 fetchOrders();
             }
-        }, 30000);
+        }, 60000);
     });
 });

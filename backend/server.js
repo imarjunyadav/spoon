@@ -123,7 +123,7 @@ const paymentLimiter = rateLimit({
 // General limiter for other API endpoints
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // 100 requests per IP per window
+  max: 300, // 300 requests per IP per window (admin dashboards need higher limits)
   message: {
     success: false,
     error: 'Too many requests, please slow down'
