@@ -816,7 +816,42 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupRealtime() {
         supabase.channel('admin-dashboard-changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-                fetchOrders(); // Easiest way to sync state is re-fetching. Or could mutate ordersList linearly.
+                const eventType = payload.eventType;
+                const newOrder = payload.new;
+                const oldOrder = payload.old;
+
+                if (eventType === 'INSERT') {
+                    // Inject directly into state
+                    if (!ordersList.find(o => o.id === newOrder.id)) {
+                        ordersList.unshift(newOrder); // Add to top
+                        
+                        // Only alert if it's actually pending
+                        if (newOrder.status === 'pending') {
+                            alarmPlayingForIds.add(newOrder.id);
+                            startAlarmLoop();
+                        }
+                    }
+                } else if (eventType === 'UPDATE') {
+                    const idx = ordersList.findIndex(o => o.id === newOrder.id);
+                    if (idx > -1) {
+                        // Inherit items if Supabase realtime didn't send full JSON payload 
+                        // (sometimes realtime omits large jsonb columns depending on config)
+                        if (!newOrder.items && ordersList[idx].items) {
+                            newOrder.items = ordersList[idx].items;
+                        }
+                        ordersList[idx] = { ...ordersList[idx], ...newOrder };
+                    } else if (newOrder.status === 'pending') {
+                        // Might be transitioning from a drafted state 
+                        ordersList.unshift(newOrder);
+                    }
+                } else if (eventType === 'DELETE') {
+                    const idx = ordersList.findIndex(o => o.id === oldOrder.id);
+                    if (idx > -1) {
+                        ordersList.splice(idx, 1);
+                    }
+                }
+
+                render(); // Efficiently rebuilds the DOM from the updated array
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'system_settings' }, (payload) => {
                 fetchSettings();
@@ -830,8 +865,12 @@ document.addEventListener('DOMContentLoaded', () => {
             .subscribe((status) => {
                 if(status === 'SUBSCRIBED') {
                     dom.indicator.style.color = 'var(--success-green)';
-                } else {
+                } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
                     dom.indicator.style.color = 'var(--text-secondary)';
+                    // Re-sync and reconnect on error/close after 3s
+                    setTimeout(() => {
+                        fetchOrders().then(setupRealtime);
+                    }, 3000);
                 }
             });
     }
@@ -842,5 +881,14 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchSettings();
     fetchOrders().then(() => {
         setupRealtime();
+        
+        // Safety Fallback: Silent background sync every 30 seconds
+        // Ensures we never miss an order if the WebSocket silently drops an event
+        setInterval(() => {
+            // Only sync if we aren't in the middle of modifying an order
+            if (!window.isActionInFlight) {
+                fetchOrders();
+            }
+        }, 30000);
     });
 });
