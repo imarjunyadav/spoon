@@ -828,19 +828,27 @@ document.addEventListener('DOMContentLoaded', () => {
     let realtimeRetryTimer = null;
     let isSettingUpRealtime = false;
 
+    let currentChannel = null;
+
     function setupRealtime() {
-        // Guard against concurrent calls (prevents channel duplication)
+        // Guard against concurrent calls
         if (isSettingUpRealtime) return;
         isSettingUpRealtime = true;
 
-        // Clean up any existing channels first
-        supabase.removeAllChannels();
+        // Unsubscribe the previous channel without killing the transport
+        if (currentChannel) {
+            try {
+                currentChannel.unsubscribe();
+            } catch (e) {
+                // Ignore errors from stale channels
+            }
+            currentChannel = null;
+        }
 
-        // CRITICAL: Authenticate the WebSocket for RLS (documented v2 pattern)
-        // Must be called BEFORE .channel().subscribe()
+        // Authenticate the WebSocket for RLS (documented v2 pattern)
         supabase.realtime.setAuth(token);
 
-        supabase.channel('admin-dashboard-changes')
+        currentChannel = supabase.channel('admin-orders-' + Date.now())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
                 const eventType = payload.eventType;
                 const newOrder = payload.new;
@@ -879,15 +887,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             })
             .subscribe((status) => {
-                isSettingUpRealtime = false; // Release the guard
+                isSettingUpRealtime = false;
 
                 if (status === 'SUBSCRIBED') {
+                    console.log('[Realtime] ✅ Connected successfully');
                     dom.indicator.style.color = 'var(--success-green)';
-                    realtimeRetryCount = 0; // Reset backoff on successful connection
+                    realtimeRetryCount = 0;
                 } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
                     dom.indicator.style.color = 'var(--text-secondary)';
 
-                    // Exponential backoff: 3s → 6s → 12s → 24s → 48s, then stop
                     if (realtimeRetryCount < 5) {
                         const delay = Math.min(3000 * Math.pow(2, realtimeRetryCount), 60000);
                         realtimeRetryCount++;
@@ -896,7 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         clearTimeout(realtimeRetryTimer);
                         realtimeRetryTimer = setTimeout(() => {
                             fetchOrders().then(setupRealtime).catch(() => {
-                                isSettingUpRealtime = false; // Release guard on fetch failure
+                                isSettingUpRealtime = false;
                             });
                         }, delay);
                     } else {

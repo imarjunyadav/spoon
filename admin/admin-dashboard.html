@@ -9,7 +9,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- User-facing font theme (copied from main App) -->
+    <!-- User-facing font theme -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -17,15 +17,16 @@
     <!-- Dashboard Styles -->
     <link rel="stylesheet" href="../css/admin-dashboard.css">
     
-    <!-- Dependencies -->
+    <!-- Supabase JS (SINGLE instance — config.js removed to prevent duplicate GoTrueClient) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.4/dist/umd/supabase.min.js"></script>
-    <script src="../js/core/config.js"></script>
-    <!-- Bridge: map Config object to flat config shape expected by admin-dashboard.js -->
+    <!-- Inline config: avoids duplicate Supabase client that kills WebSocket -->
     <script>
         const config = {
-            supabaseUrl: Config.supabase.url,
-            supabaseAnonKey: Config.supabase.anonKey,
-            apiUrl: Config.api.baseUrl + '/api'
+            supabaseUrl: 'https://mnvxojjbbiqmymlatigh.supabase.co',
+            supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1udnhvampiYmlxbXltbGF0aWdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzcwMjgsImV4cCI6MjA4MDc1MzAyOH0.pejckebDO7ieQlsbrlpqg3K6Xds5uBJCqkSJRaWubZE',
+            apiUrl: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? 'http://localhost:7070' 
+                : 'https://spoon-backend-122591058801.asia-south1.run.app') + '/api'
         };
     </script>
 </head>
@@ -174,7 +175,6 @@
     <div id="toast-container" style="position:fixed; top:16px; right:16px; z-index:9999;"></div>
 
     <!-- MAIN SCRIPT -->
-    <!-- Include the main dashboard script -->
     <script src="../js/admin/admin-dashboard.js"></script>
 </body>
 </html>
