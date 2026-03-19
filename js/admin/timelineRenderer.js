@@ -10,11 +10,13 @@
 const HorizontalStepperRenderer = {
   // Stepper stages configuration (v2 states)
   STAGES: [
-    { dbStatus: 'pending', displayName: 'Received', icon: 'fa-clock' }, // changed from 'In Queue'
-    { dbStatus: 'kitchen', displayName: 'Cooking', icon: 'fa-fire-burner' }, // changed from 'Preparing'
-    { dbStatus: 'prepared', displayName: 'Ready', icon: 'fa-bell' },
-    { dbStatus: 'completed', displayName: 'Collected', icon: 'fa-circle-check' }
+    { dbStatus: 'pending', displayName: 'Received', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2 4.5 3.5 3 2v20zm15-5H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2z"/></svg>' },
+    { dbStatus: 'kitchen', displayName: 'Cooking', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-3.5 3.5-5 5.9-5 8.9 0 2.8 2.2 5 5 5s5-2.2 5-5c0-3-1.5-5.4-5-8.9zm0 11.1c-1.1 0-2-.9-2-2 0-1.2 1-2.4 2-3.8 1 1.4 2 2.6 2 3.8 0 1.1-.9 2-2 2z"/></svg>' },
+    { dbStatus: 'prepared', displayName: 'Ready', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5.5 11h13c.8 0 1.5.7 1.5 1.5V13c0 2.8-2.2 5-5 5H9c-2.8 0-5-2.2-5-5v-.5C4 11.7 4.7 11 5.5 11zM11 5c.6 0 1 .4 1 1v3c0 .6-.4 1-1 1s-1-.4-1-1V6c0-.6.4-1 1-1zm4 0c.6 0 1 .4 1 1v3c0 .6-.4 1-1 1s-1-.4-1-1V6c0-.6.4-1 1-1zm-8 0c.6 0 1 .4 1 1v3c0 .6-.4 1-1 1s-1-.4-1-1V6c0-.6.4-1 1-1z"/></svg>' },
+    { dbStatus: 'completed', displayName: 'Collected', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>' }
   ],
+  
+  CANCELLED_SVG: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>',
 
   COLORS: {
     complete: '#2E7D32',  // Green
@@ -27,7 +29,6 @@ const HorizontalStepperRenderer = {
    * @returns {Array<{stage: Object, state: string, showTimestamp: boolean}>}
    */
   calculateStepStates(currentStatus) {
-    // Note: status order assumed: pending -> kitchen -> prepared -> completed
     const statusMap = {
       'pending': 0,
       'kitchen': 1,
@@ -36,24 +37,31 @@ const HorizontalStepperRenderer = {
       'cancelled': -1
     };
     
+    // Determine the index to stop at. For cancelled, we still show the flow up to where it stopped. 
+    // If it was cancelled immediately, index is 0. But actually, "cancelled" is a terminal state.
+    // The user wants: "If order is cancelled, animation stops immediately after the last reached stage and all remaining segments show static grey dots."
+    // However we don't know the exact stage it was cancelled at from just 'cancelled'. Usually it defaults to pending.
     const currentIndex = statusMap[currentStatus] !== undefined ? statusMap[currentStatus] : 0;
 
     return this.STAGES.map((stage, index) => {
       let state = 'pending';
       let showTimestamp = false;
 
-      if (index < currentIndex) {
+      // Note: User says "collected is treated as a completed stage same as the rest"
+      // So if currentStatus === 'completed', we want step index 3 to be 'complete'.
+      // In the original code, index < currentIndex was 'complete', index === currentIndex was 'current'.
+      // If completed, index is 3. We want it to be fully complete.
+      if (currentStatus === 'completed' || index < currentIndex) {
         state = 'complete';
         showTimestamp = true;
-      } else if (index === currentIndex) {
+      } else if (index === currentIndex && currentStatus !== 'cancelled') {
         state = 'current';
         showTimestamp = true;
       }
 
-      // If cancelled, show what happened up to where it stopped
       if (currentStatus === 'cancelled') {
-         state = 'pending'; 
-         showTimestamp = false; 
+         state = 'pending'; // Inactive
+         showTimestamp = false;
       }
 
       return { stage, state, showTimestamp };
@@ -108,12 +116,15 @@ const HorizontalStepperRenderer = {
         connectorHTML = `<div class="stepper-connector ${connectorClass}"></div>`;
       }
 
+      // Render X if cancelled
+      const iconSVG = currentStatus === 'cancelled' ? this.CANCELLED_SVG : stage.svg;
+
       stepsHTML += `
         <div class="stepper-step ${stepClass}">
           <div class="stepper-icon">
-            <i class="fa-solid ${stage.icon}"></i>
+             ${iconSVG}
           </div>
-          <span class="stepper-label">${stage.displayName}</span>
+          <span class="stepper-label">${currentStatus === 'cancelled' ? 'Cancelled' : stage.displayName}</span>
           <span class="stepper-time">${timestamp}</span>
         </div>
         ${connectorHTML}

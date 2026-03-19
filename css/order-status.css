@@ -249,19 +249,21 @@
     flex: 0 0 auto;
     min-width: 60px;
     max-width: 70px;
+    z-index: 2;
 }
 
-/* --- 4b. Icon Styling (Premium, Clean) --- */
+/* --- 4b. Raw Icon Styling --- */
 .stepper-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
-    z-index: 2;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    height: 32px; /* Fixed container height to align items */
+}
+
+.stepper-icon svg {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: block;
 }
 
 /* --- 4c. Label Styling (Clean Typography) --- */
@@ -279,47 +281,57 @@
     margin-top: 3px;
 }
 
-/* --- 4e. Connector Lines --- */
+/* --- 4e. Animated Dotted Connectors --- */
 .stepper-connector {
     flex: 1;
-    height: 2px;
+    height: 6px;
     min-width: 12px;
-    margin-top: 21px;
-    border-radius: 1px;
-    transition: all 0.3s ease;
+    margin-top: 13px; /* Align with horizontal center of the 32px icon container */
+    background-image: radial-gradient(circle, currentColor 30%, transparent 35%);
+    background-size: 10px 6px;
+    background-position: center;
+    background-repeat: repeat-x;
+    opacity: 0.8;
+}
+
+@keyframes dotFlow {
+    from { background-position: 0px center; }
+    to { background-position: 20px center; } /* 2x background-size for smooth loop */
 }
 
 /* --- 4f. Stepper States (Premium Design) --- */
 
-/* COMPLETED STATE: Green icon, green text, green line */
-.stepper-step--complete .stepper-icon {
-    background-color: var(--success-green);
-    color: white;
-    box-shadow: 0 2px 8px rgba(46, 125, 50, 0.2);
+/* COMPLETED STATE: Larger, Red, flowing red dots */
+.stepper-step--complete .stepper-icon svg {
+    width: 30px;
+    height: 30px;
+    color: var(--brand-primary);
 }
 
 .stepper-step--complete .stepper-label {
-    color: var(--success-green);
+    color: var(--brand-primary);
     font-weight: 600;
 }
 
 .stepper-step--complete .stepper-time {
-    color: var(--success-green);
+    color: var(--text-primary);
     opacity: 0.7;
 }
 
 .stepper-connector--complete {
-    background-color: var(--success-green);
+    color: var(--brand-primary);
+    animation: dotFlow 1s linear infinite;
 }
 
-/* CURRENT STATE: Gray icon, dark text, gray line */
-.stepper-step--current .stepper-icon {
-    background-color: #e0e0e0;
-    color: #666;
+/* CURRENT STATE: Larger, Red, flowing red dots TO next step */
+.stepper-step--current .stepper-icon svg {
+    width: 30px;
+    height: 30px;
+    color: var(--brand-primary);
 }
 
 .stepper-step--current .stepper-label {
-    color: var(--text-primary);
+    color: var(--brand-primary);
     font-weight: 600;
 }
 
@@ -328,13 +340,15 @@
 }
 
 .stepper-connector--current {
-    background-color: #e0e0e0;
+    color: var(--brand-primary);
+    animation: dotFlow 1s linear infinite;
 }
 
-/* PENDING STATE: Light gray icon, muted text, light gray line */
-.stepper-step--pending .stepper-icon {
-    background-color: #f5f5f5;
-    color: #bbb;
+/* PENDING STATE: Smaller, Gray, static gray dots */
+.stepper-step--pending .stepper-icon svg {
+    width: 20px;
+    height: 20px;
+    color: #d0d0d0;
 }
 
 .stepper-step--pending .stepper-label {
@@ -347,7 +361,7 @@
 }
 
 .stepper-connector--pending {
-    background-color: #f5f5f5;
+    color: #d0d0d0;
 }
 
 
