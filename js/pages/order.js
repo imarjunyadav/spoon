@@ -86,20 +86,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function getStatusDisplayName(status) {
-    if (!status) return 'Preparing';
+    if (!status) return 'Received';
     const s = status.toLowerCase();
+    
+    // Mapping Database (DB) Statuses to User-Friendly Display Names
+    // 'pending' -> 'Received' (prevents user irritation from 'In Queue')
+    // 'kitchen' -> 'Cooking'  
+    // 'prepared' -> 'Ready'
+    // 'completed' -> 'Collected'
     const displayMap = {
-      'pending': 'Preparing',
-      'placed': 'Preparing',
-      'kitchen': 'Preparing',
-      'preparing': 'Preparing',
+      'pending': 'Received',
+      'placed': 'Received',     // Legacy fallback
+      'kitchen': 'Cooking',
+      'preparing': 'Cooking',   // Legacy fallback
       'prepared': 'Ready',
-      'complete': 'Completed',
-      'completed': 'Completed',
-      'picked_up': 'Completed',
+      'complete': 'Collected',  // Legacy fallback
+      'completed': 'Collected',
+      'picked_up': 'Collected', // Legacy fallback
       'cancelled': 'Cancelled'
     };
-    return displayMap[s] || 'Preparing';
+    return displayMap[s] || 'Received';
   }
 
   function updateCartBadge() {

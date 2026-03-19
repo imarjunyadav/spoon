@@ -10,8 +10,8 @@
 const HorizontalStepperRenderer = {
   // Stepper stages configuration (v2 states)
   STAGES: [
-    { dbStatus: 'pending', displayName: 'In Queue', icon: 'fa-clock' },
-    { dbStatus: 'kitchen', displayName: 'Preparing', icon: 'fa-fire-burner' },
+    { dbStatus: 'pending', displayName: 'Received', icon: 'fa-clock' }, // changed from 'In Queue'
+    { dbStatus: 'kitchen', displayName: 'Cooking', icon: 'fa-fire-burner' }, // changed from 'Preparing'
     { dbStatus: 'prepared', displayName: 'Ready', icon: 'fa-bell' },
     { dbStatus: 'completed', displayName: 'Collected', icon: 'fa-circle-check' }
   ],
