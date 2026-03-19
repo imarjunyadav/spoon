@@ -250,7 +250,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Populate UI
-        orderIdHeader.textContent = `#${currentOrder.id.substring(0, 8)}`;
+        const displayId = currentOrder.id ? currentOrder.id.slice(-8).toUpperCase() : 'UNKNOWN';
+        orderIdHeader.textContent = `#${displayId}`;
 
         const totalItems = currentOrder.items.reduce((sum, item) => sum + item.quantity, 0);
         orderItemsCount.textContent = `${totalItems} item${totalItems !== 1 ? 's' : ''}`;

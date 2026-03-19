@@ -69,25 +69,37 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function getStatusClass(status) {
+    if (!status) return 'status--preparing';
+    const s = status.toLowerCase();
     const statusMap = {
-      'PENDING': 'status--preparing',
-      'PLACED': 'status--preparing',
-      'PREPARING': 'status--preparing',
-      'COMPLETE': 'status--ready',
-      'PICKED_UP': 'status--completed'
+      'pending': 'status--preparing',
+      'placed': 'status--preparing',
+      'kitchen': 'status--preparing',
+      'preparing': 'status--preparing',
+      'prepared': 'status--ready',
+      'complete': 'status--completed',
+      'completed': 'status--completed',
+      'picked_up': 'status--completed',
+      'cancelled': 'status--preparing' // Or add a cancelled class
     };
-    return statusMap[status] || 'status--preparing';
+    return statusMap[s] || 'status--preparing';
   }
 
   function getStatusDisplayName(status) {
+    if (!status) return 'Preparing';
+    const s = status.toLowerCase();
     const displayMap = {
-      'PENDING': 'Preparing',
-      'PLACED': 'Preparing',
-      'PREPARING': 'Preparing',
-      'COMPLETE': 'Ready',
-      'PICKED_UP': 'Picked Up'
+      'pending': 'Preparing',
+      'placed': 'Preparing',
+      'kitchen': 'Preparing',
+      'preparing': 'Preparing',
+      'prepared': 'Ready',
+      'complete': 'Completed',
+      'completed': 'Completed',
+      'picked_up': 'Completed',
+      'cancelled': 'Cancelled'
     };
-    return displayMap[status] || 'Preparing';
+    return displayMap[s] || 'Preparing';
   }
 
   function updateCartBadge() {
@@ -140,10 +152,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const statusClass = getStatusClass(order.status);
     const statusDisplayName = getStatusDisplayName(order.status);
 
+    // Use last 8 chars to avoid "wallet_1" prefix collision
+    const displayId = order.id ? order.id.slice(-8).toUpperCase() : 'UNKNOWN';
+
     card.innerHTML = `
       <div class="order-card__header">
         <div class="order-card__header-left">
-          <span class="order-card__id">#${order.id.substring(0, 8)}</span>
+          <span class="order-card__id">#${displayId}</span>
           <span class="order-card__status ${statusClass}">${statusDisplayName}</span>
         </div>
         <button class="btn--view-details">
