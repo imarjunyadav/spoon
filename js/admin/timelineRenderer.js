@@ -155,23 +155,38 @@ const HorizontalStepperRenderer = {
 
     if (currentStatus === 'prepared') {
       if (order.arrived_at) {
-        // Slot is revealed
+        // Slot is revealed (Screen 3)
         return `
           <div class="hero-section hero-section--ready" style="text-align:center;">
-            <span class="hero-label">Collect your order at</span>
-            <div class="hero-code" style="font-size: 32px; letter-spacing: 0;">Slot ${order.slot_number}</div>
-            <p class="hero-instruction">Show this screen to the staff</p>
+            <span class="hero-label">Say your order with</span>
+            <div class="hero-code" style="font-size: 64px; font-weight: 800; line-height: 1; margin: 15px 0; letter-spacing: 0; color: #333;">${order.slot_number}</div>
+            <p class="hero-instruction" style="color: #eb1700; font-weight: 600;">Do not share this with anyone</p>
           </div>
         `;
       } else {
         // Needs user to arrive
         return `
-          <div class="hero-section hero-section--ready" style="text-align:center;">
-            <p class="hero-complete-message" style="margin-bottom: 12px; font-size: 18px;">Your food is hot and ready!</p>
-            <button id="btn-arrive" onclick="window.markArrived()" style="background:var(--brand-primary); color:white; border:none; padding:12px 24px; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer; width:100%; box-shadow:0 4px 12px rgba(235, 23, 0, 0.2);">
-               I am available to collect
+          <!-- Screen 1: Walk to counter -->
+          <div id="arrive-screen-1" class="hero-section hero-section--ready" style="text-align:center;">
+            <p class="hero-complete-message" style="margin-bottom: 12px; font-size: 18px;">Your food is ready!</p>
+            <p class="hero-instruction" style="margin-bottom: 20px; font-size: 14px; font-weight: normal; color:#666;">Walk to the counter first,<br>then tap the button below.</p>
+            <button onclick="document.getElementById('arrive-screen-1').style.display='none'; document.getElementById('arrive-screen-2').style.display='block';" style="background:var(--brand-primary); color:white; border:none; padding:14px 24px; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer; width:100%; box-shadow:0 4px 12px rgba(235, 23, 0, 0.2);">
+               I'm at the counter, reveal my slot
             </button>
-            <p class="hero-instruction" style="margin-top: 12px; font-size: 12px;">Tap when you reach the counter to reveal your slot number</p>
+          </div>
+
+          <!-- Screen 2: Confirmation -->
+          <div id="arrive-screen-2" class="hero-section hero-section--ready" style="text-align:center; display:none; background:#fff8f6; border: 1px solid #ffccbc;">
+            <p class="hero-complete-message" style="margin-bottom: 12px; font-size: 16px; color:#c62828;">Are you standing right in front of the counter?</p>
+            <p class="hero-instruction" style="margin-bottom: 24px; font-size: 12px; color:#555;">Slot will be revealed only once.<br>Do not tap unless you are there.</p>
+            <div style="display:flex; gap:12px;">
+                <button id="btn-arrive" onclick="window.markArrived()" style="background:#2E7D32; color:white; border:none; padding:12px 10px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; flex: 1; box-shadow:0 2px 8px rgba(46, 125, 50, 0.2);">
+                    Yes, I'm right here
+                </button>
+                <button onclick="document.getElementById('arrive-screen-2').style.display='none'; document.getElementById('arrive-screen-1').style.display='block';" style="background:#e0e0e0; color:#333; border:none; padding:12px 10px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; flex: 1;">
+                    Not yet
+                </button>
+            </div>
           </div>
         `;
       }
