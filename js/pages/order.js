@@ -234,6 +234,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- Initialization ---
 
+  let pollingInterval = null;
+
   async function init() {
     await window.waitForConfig();
     supabase = window.getSupabaseClient();
@@ -246,6 +248,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     updateCartBadge();
     await loadOrders();
+
+    // Start polling for real-time status updates every 10 seconds
+    pollingInterval = setInterval(loadOrders, 10000);
   }
 
   // Cross-tab sync
@@ -253,6 +258,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.key === 'spoon-cart') {
       updateCartBadge();
     }
+  });
+
+  // Cleanup polling
+  window.addEventListener('beforeunload', () => {
+    if (pollingInterval) clearInterval(pollingInterval);
   });
 
   init();
