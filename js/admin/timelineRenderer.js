@@ -42,9 +42,9 @@ const HorizontalStepperRenderer = {
 
     let cancelIndex = -1;
     if (currentStatus === 'cancelled') {
-        if (order.prepared_at) cancelIndex = 2;
-        else if (order.kitchen_at) cancelIndex = 1;
-        else cancelIndex = 0;
+      if (order.prepared_at) cancelIndex = 2;
+      else if (order.kitchen_at) cancelIndex = 1;
+      else cancelIndex = 0;
     }
 
     return this.STAGES.map((stage, index) => {
@@ -62,15 +62,15 @@ const HorizontalStepperRenderer = {
 
       if (currentStatus === 'cancelled') {
         if (index <= cancelIndex) {
-            state = 'complete';
-            showTimestamp = true;
+          state = 'complete';
+          showTimestamp = true;
         } else if (index === 3) {
-            state = 'current'; 
-            isCancelledNode = true;
-            showTimestamp = true;
+          state = 'current';
+          isCancelledNode = true;
+          showTimestamp = true;
         } else {
-            state = 'pending';
-            showTimestamp = false;
+          state = 'pending';
+          showTimestamp = false;
         }
       }
 
@@ -104,13 +104,13 @@ const HorizontalStepperRenderer = {
     };
 
     let stepsHTML = '';
-    
+
     // Calculate the cancel index again to properly slice the dotted lines
     let cancelIndex = -1;
     if (currentStatus === 'cancelled') {
-        if (order.prepared_at) cancelIndex = 2;
-        else if (order.kitchen_at) cancelIndex = 1;
-        else cancelIndex = 0;
+      if (order.prepared_at) cancelIndex = 2;
+      else if (order.kitchen_at) cancelIndex = 1;
+      else cancelIndex = 0;
     }
 
     stepStates.forEach(({ stage, state, showTimestamp, isCancelledNode }, index) => {
@@ -123,22 +123,22 @@ const HorizontalStepperRenderer = {
 
       let timestamp = showTimestamp ? formatTime(stepTimestamps[stage.dbStatus]) : '';
       if (isCancelledNode && (order.cancelled_at || order.updated_at)) {
-          timestamp = formatTime(order.cancelled_at || order.updated_at);
+        timestamp = formatTime(order.cancelled_at || order.updated_at);
       }
 
       let connectorHTML = '';
       if (index < this.STAGES.length - 1) {
         let connectorClass = 'stepper-connector--pending';
-        
+
         if (currentStatus === 'cancelled' && index >= cancelIndex) {
-            // Line starting from the cancellation point (or any node after) must be grey static.
-            connectorClass = 'stepper-connector--pending';
+          // Line starting from the cancellation point (or any node after) must be grey static.
+          connectorClass = 'stepper-connector--pending';
         } else if (isComplete) {
-            connectorClass = 'stepper-connector--complete';
+          connectorClass = 'stepper-connector--complete';
         } else if (isCurrent) {
-            connectorClass = 'stepper-connector--current';
+          connectorClass = 'stepper-connector--current';
         }
-        
+
         connectorHTML = `<div class="stepper-connector ${connectorClass}"></div>`;
       }
 
@@ -185,18 +185,18 @@ const HorizontalStepperRenderer = {
       let cancelReasonText = 'Order Cancelled';
       // Calculate how long it was uncollected
       if (order.prepared_at && (order.cancelled_at || order.updated_at)) {
-          const prepTime = new Date(order.prepared_at).getTime();
-          const cancelTime = new Date(order.cancelled_at || order.updated_at).getTime();
-          let waitedMins = Math.floor((cancelTime - prepTime) / 60000);
-          
-          if (isNaN(waitedMins)) {
-              cancelReasonText = "Your order was ready but went uncollected. Refunded as Spoon Coins - reorder anytime!";
-          } else {
-              if (waitedMins < 1) waitedMins = 1; // display at least 1 min to prevent '0 mins'
-              cancelReasonText = "Your order was ready for " + waitedMins + " mins but went uncollected. Refunded as Spoon Coins - reorder anytime!";
-          }
+        const prepTime = new Date(order.prepared_at).getTime();
+        const cancelTime = new Date(order.cancelled_at || order.updated_at).getTime();
+        let waitedMins = Math.floor((cancelTime - prepTime) / 60000);
+
+        if (isNaN(waitedMins)) {
+          cancelReasonText = "Your order was ready but went uncollected. Refunded as spoon coins. Reorder anytime!";
+        } else {
+          if (waitedMins < 1) waitedMins = 1; // display at least 1 min to prevent '0 mins'
+          cancelReasonText = "Your order was ready for " + waitedMins + " mins but went uncollected. Refunded as spoon coins. Reorder anytime!";
+        }
       } else {
-          cancelReasonText = order.refund_amount ? "Rs " + order.refund_amount + " refunded to wallet as coins" : "Refund processed";
+        cancelReasonText = order.refund_amount ? "Rs " + order.refund_amount + " refunded to wallet as coins" : "Refund processed";
       }
 
       return `
