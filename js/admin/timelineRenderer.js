@@ -28,7 +28,8 @@ const HorizontalStepperRenderer = {
    * @param {string} currentStatus - Current order status.
    * @returns {Array<{stage: Object, state: string, showTimestamp: boolean}>}
    */
-  calculateStepStates(currentStatus) {
+  calculateStepStates(order) {
+    const currentStatus = order.status || 'pending';
     const statusMap = {
       'pending': 0,
       'kitchen': 1,
@@ -37,20 +38,20 @@ const HorizontalStepperRenderer = {
       'cancelled': -1
     };
 
-    // Determine the index to stop at. For cancelled, we still show the flow up to where it stopped. 
-    // If it was cancelled immediately, index is 0. But actually, "cancelled" is a terminal state.
-    // The user wants: "If order is cancelled, animation stops immediately after the last reached stage and all remaining segments show static grey dots."
-    // However we don't know the exact stage it was cancelled at from just 'cancelled'. Usually it defaults to pending.
     const currentIndex = statusMap[currentStatus] !== undefined ? statusMap[currentStatus] : 0;
+
+    let cancelIndex = -1;
+    if (currentStatus === 'cancelled') {
+        if (order.prepared_at) cancelIndex = 2;
+        else if (order.kitchen_at) cancelIndex = 1;
+        else cancelIndex = 0;
+    }
 
     return this.STAGES.map((stage, index) => {
       let state = 'pending';
       let showTimestamp = false;
+      let isCancelledNode = false;
 
-      // Note: User says "collected is treated as a completed stage same as the rest"
-      // So if currentStatus === 'completed', we want step index 3 to be 'complete'.
-      // In the original code, index < currentIndex was 'complete', index === currentIndex was 'current'.
-      // If completed, index is 3. We want it to be fully complete.
       if (currentStatus === 'completed' || index < currentIndex) {
         state = 'complete';
         showTimestamp = true;
@@ -60,11 +61,20 @@ const HorizontalStepperRenderer = {
       }
 
       if (currentStatus === 'cancelled') {
-        state = 'pending'; // Inactive
-        showTimestamp = false;
+        if (index <= cancelIndex) {
+            state = 'complete';
+            showTimestamp = true;
+        } else if (index === 3) {
+            state = 'current'; 
+            isCancelledNode = true;
+            showTimestamp = true;
+        } else {
+            state = 'pending';
+            showTimestamp = false;
+        }
       }
 
-      return { stage, state, showTimestamp };
+      return { stage, state, showTimestamp, isCancelledNode };
     });
   },
 
@@ -75,7 +85,7 @@ const HorizontalStepperRenderer = {
    */
   renderStepper(order) {
     const currentStatus = order.status || 'pending';
-    const stepStates = this.calculateStepStates(currentStatus);
+    const stepStates = this.calculateStepStates(order);
 
     const formatTime = (dateStr) => {
       if (!dateStr) return '';
@@ -88,14 +98,22 @@ const HorizontalStepperRenderer = {
 
     const stepTimestamps = {
       'pending': order.created_at,
-      'kitchen': order.kitchen_at || order.created_at, // Fallback
+      'kitchen': order.kitchen_at || order.created_at,
       'prepared': order.prepared_at,
       'completed': order.completed_at
     };
 
     let stepsHTML = '';
+    
+    // Calculate the cancel index again to properly slice the dotted lines
+    let cancelIndex = -1;
+    if (currentStatus === 'cancelled') {
+        if (order.prepared_at) cancelIndex = 2;
+        else if (order.kitchen_at) cancelIndex = 1;
+        else cancelIndex = 0;
+    }
 
-    stepStates.forEach(({ stage, state, showTimestamp }, index) => {
+    stepStates.forEach(({ stage, state, showTimestamp, isCancelledNode }, index) => {
       const isComplete = state === 'complete';
       const isCurrent = state === 'current';
 
@@ -103,28 +121,36 @@ const HorizontalStepperRenderer = {
       if (isComplete) stepClass = 'stepper-step--complete';
       if (isCurrent) stepClass = 'stepper-step--current';
 
-      const timestamp = showTimestamp ? formatTime(stepTimestamps[stage.dbStatus]) : '';
+      let timestamp = showTimestamp ? formatTime(stepTimestamps[stage.dbStatus]) : '';
+      if (isCancelledNode && (order.cancelled_at || order.updated_at)) {
+          timestamp = formatTime(order.cancelled_at || order.updated_at);
+      }
 
       let connectorHTML = '';
       if (index < this.STAGES.length - 1) {
         let connectorClass = 'stepper-connector--pending';
-        if (isComplete) {
-          connectorClass = 'stepper-connector--complete';
+        
+        if (currentStatus === 'cancelled' && index >= cancelIndex) {
+            // Line starting from the cancellation point (or any node after) must be grey static.
+            connectorClass = 'stepper-connector--pending';
+        } else if (isComplete) {
+            connectorClass = 'stepper-connector--complete';
         } else if (isCurrent) {
-          connectorClass = 'stepper-connector--current';
+            connectorClass = 'stepper-connector--current';
         }
+        
         connectorHTML = `<div class="stepper-connector ${connectorClass}"></div>`;
       }
 
-      // Render X if cancelled
-      const iconSVG = currentStatus === 'cancelled' ? this.CANCELLED_SVG : stage.svg;
+      const iconSVG = isCancelledNode ? this.CANCELLED_SVG : stage.svg;
+      const displayName = isCancelledNode ? 'Cancelled' : stage.displayName;
 
       stepsHTML += `
         <div class="stepper-step ${stepClass}">
           <div class="stepper-icon">
              ${iconSVG}
           </div>
-          <span class="stepper-label">${currentStatus === 'cancelled' ? 'Cancelled' : stage.displayName}</span>
+          <span class="stepper-label">${displayName}</span>
           <span class="stepper-time">${timestamp}</span>
         </div>
         ${connectorHTML}
@@ -156,10 +182,27 @@ const HorizontalStepperRenderer = {
     }
 
     if (currentStatus === 'cancelled') {
+      let cancelReasonText = 'Order Cancelled';
+      // Calculate how long it was uncollected
+      if (order.prepared_at && (order.cancelled_at || order.updated_at)) {
+          const prepTime = new Date(order.prepared_at).getTime();
+          const cancelTime = new Date(order.cancelled_at || order.updated_at).getTime();
+          let waitedMins = Math.floor((cancelTime - prepTime) / 60000);
+          
+          if (isNaN(waitedMins)) {
+              cancelReasonText = "Your order was ready but went uncollected. Refunded as Spoon Coins - reorder anytime!";
+          } else {
+              if (waitedMins < 1) waitedMins = 1; // display at least 1 min to prevent '0 mins'
+              cancelReasonText = "Your order was ready for " + waitedMins + " mins but went uncollected. Refunded as Spoon Coins - reorder anytime!";
+          }
+      } else {
+          cancelReasonText = order.refund_amount ? "Rs " + order.refund_amount + " refunded to wallet as coins" : "Refund processed";
+      }
+
       return `
-        <div class="hero-section" style="background: #ffebee;">
-          <p class="hero-complete-message" style="color: #d32f2f;">Order Cancelled</p>
-          <p class="hero-complete-submessage" style="color: #c62828;">${order.refund_amount ? '₹' + order.refund_amount + ' refunded to wallet as coins' : 'Refund processed'}</p>
+        <div class="hero-section" style="background: #ffffff; text-align: center;">
+          <p class="hero-complete-message" style="color: #c62828;">Order Cancelled</p>
+          <p class="hero-complete-submessage" style="color: #555555; font-size: 14px; line-height: 1.4; margin-top: 10px;">${cancelReasonText}</p>
         </div>
       `;
     }
