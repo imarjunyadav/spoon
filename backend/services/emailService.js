@@ -108,21 +108,18 @@ function generateOrderReadyTemplate(trackingUrl) {
           Track & Collect Order
         </a>
       </div>
-      
+
       <div style="text-align: center; margin-bottom: 30px;">
         <p style="color: #666666; font-size: 14px; margin: 0 0 6px 0; font-weight: bold;">
           Reach the counter within 4 mins.
         </p>
         <p style="color: #999999; font-size: 14px; margin: 0 0 6px 0;">
-          We keep orders moving so everyone gets served fresh & fast.
-        </p>
-        <p style="color: #999999; font-size: 14px; margin: 0;">
-          Uncollected orders will be cancelled & refunded as Spoon Coins.
+          We keep orders moving so everyone gets served fresh & fast. Uncollected orders will be cancelled & refunded as Spoon Coins.
         </p>
       </div>
       
       <div style="text-align: center; margin-bottom: 20px;">
-        <p style="color: #999999; font-size: 13px; margin: 0;">
+        <p style="color: #999999; font-size: 11px; margin: 0;">
           Found a bug or facing an issue? Reach us at 9152116021.
         </p>
       </div>
