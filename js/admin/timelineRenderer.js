@@ -15,7 +15,7 @@ const HorizontalStepperRenderer = {
     { dbStatus: 'prepared', displayName: 'Ready', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5.5 11h13c.8 0 1.5.7 1.5 1.5V13c0 2.8-2.2 5-5 5H9c-2.8 0-5-2.2-5-5v-.5C4 11.7 4.7 11 5.5 11zM11 5c.6 0 1 .4 1 1v3c0 .6-.4 1-1 1s-1-.4-1-1V6c0-.6.4-1 1-1zm4 0c.6 0 1 .4 1 1v3c0 .6-.4 1-1 1s-1-.4-1-1V6c0-.6.4-1 1-1zm-8 0c.6 0 1 .4 1 1v3c0 .6-.4 1-1 1s-1-.4-1-1V6c0-.6.4-1 1-1z"/></svg>' },
     { dbStatus: 'completed', displayName: 'Collected', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>' }
   ],
-  
+
   CANCELLED_SVG: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>',
 
   COLORS: {
@@ -36,7 +36,7 @@ const HorizontalStepperRenderer = {
       'completed': 3,
       'cancelled': -1
     };
-    
+
     // Determine the index to stop at. For cancelled, we still show the flow up to where it stopped. 
     // If it was cancelled immediately, index is 0. But actually, "cancelled" is a terminal state.
     // The user wants: "If order is cancelled, animation stops immediately after the last reached stage and all remaining segments show static grey dots."
@@ -60,8 +60,8 @@ const HorizontalStepperRenderer = {
       }
 
       if (currentStatus === 'cancelled') {
-         state = 'pending'; // Inactive
-         showTimestamp = false;
+        state = 'pending'; // Inactive
+        showTimestamp = false;
       }
 
       return { stage, state, showTimestamp };
@@ -156,7 +156,7 @@ const HorizontalStepperRenderer = {
     }
 
     if (currentStatus === 'cancelled') {
-       return `
+      return `
         <div class="hero-section" style="background: #ffebee;">
           <p class="hero-complete-message" style="color: #d32f2f;">Order Cancelled</p>
           <p class="hero-complete-submessage" style="color: #c62828;">${order.refund_amount ? '₹' + order.refund_amount + ' refunded to wallet as coins' : 'Refund processed'}</p>
@@ -180,17 +180,17 @@ const HorizontalStepperRenderer = {
           <!-- Screen 1: Walk to counter -->
           <div id="arrive-screen-1" class="hero-section hero-section--ready" style="text-align:center;">
             <p class="hero-complete-message" style="margin-bottom: 12px; font-size: 18px;">Your food is ready!</p>
-            <p class="hero-instruction" style="margin-bottom: 20px; font-size: 14px; font-weight: normal; color:#666;">Walk to the counter first,<br>then tap the button below.</p>
+            <p class="hero-instruction" style="margin-bottom: 20px; font-size: 14px; font-weight: normal; color:#666;">Walk to the counter first, then tap the button below.</p>
             <button onclick="document.getElementById('arrive-screen-1').style.display='none'; document.getElementById('arrive-screen-2').style.display='block';" style="background:var(--brand-primary); color:white; border:none; padding:14px 24px; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer; width:100%; box-shadow:0 4px 12px rgba(235, 23, 0, 0.2);">
                I'm at the counter, reveal my slot
             </button>
-            <p style="margin-top: 16px; font-size: 11px; color: #888; line-height: 1.4;">Reach the counter within 4 mins. we keep orders moving so everyone gets served fresh & fast. Uncollected orders will be cancelled & refunded as Spoon Coins.</p>
+            <p style="margin-top: 16px; font-size: 12px; color: #888; line-height: 1.4;">Reach the counter within 4 mins. We keep orders moving so everyone gets served fresh & fast. Uncollected orders will be cancelled & refunded as Spoon Coins.</p>
           </div>
 
           <!-- Screen 2: Confirmation -->
           <div id="arrive-screen-2" class="hero-section hero-section--ready" style="text-align:center; display:none; background:white;">
-            <p class="hero-complete-message" style="margin-bottom: 12px; font-size: 16px; color:#c62828;">Are you standing right in front of the counter?</p>
-            <p class="hero-instruction" style="margin-bottom: 24px; font-size: 12px; color:#555;">Slot will be revealed only once.<br>Do not tap unless you are there.</p>
+            <p class="hero-complete-message" style="margin-bottom: 12px; font-size: 16px;">Are you standing right in front of the counter?</p>
+            <p class="hero-instruction" style="margin-bottom: 24px; font-size: 12px; color:#555;">Slot will be revealed only once. Do not tap unless you are there.</p>
             <div style="display:flex; gap:12px;">
                 <button id="btn-arrive" onclick="window.markArrived()" style="background:var(--brand-primary); color:white; border:none; padding:12px 10px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; flex: 1; box-shadow:0 2px 8px rgba(235, 23, 0, 0.2);">
                     Yes, I'm right here
