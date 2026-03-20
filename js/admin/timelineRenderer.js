@@ -192,8 +192,8 @@ const HorizontalStepperRenderer = {
 
           <!-- Screen 2: Confirmation -->
           <div id="arrive-screen-2" class="hero-section hero-section--ready" style="text-align:center; display:none; background:white;">
-            <p class="hero-complete-message" style="margin-bottom: 12px; font-size: 16px;">Are you standing right in front of the counter?</p>
-            <p class="hero-instruction" style="margin-bottom: 24px; font-size: 12px; color:#555;">Slot will be revealed only once. Do not tap unless you are there.</p>
+            <p class="hero-complete-message" style="margin-bottom: 12px; font-size: 15px;">Are you standing right in front of the counter?</p>
+            <p class="hero-instruction" style="margin-bottom: 24px; font-size: 11px; color:#555;">Slot will be revealed only once. Do not tap unless you are there.</p>
             <div style="display:flex; gap:12px;">
                 <button id="btn-arrive" onclick="window.markArrived()" style="background:var(--brand-primary); color:white; border:none; padding:12px 10px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; flex: 1; box-shadow:0 2px 8px rgba(235, 23, 0, 0.2);">
                     Yes, I'm right here
