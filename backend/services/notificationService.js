@@ -122,6 +122,7 @@ async function sendTelegramMessage(message) {
 }
 
 const webPushService = require('./webPushService');
+const emailService = require('./emailService');
 
 // ========================================
 // PUBLIC API
@@ -164,13 +165,18 @@ async function notifyOrderPrepared(order) {
     try {
         if (!order.customer_email) return;
         
+        // 1. Send Web Push
         const payload = {
             title: `🍽️ Order Ready!`,
             body: `Your order #${(order.id || '').substring(0, 8)} is hot and ready. Tap "I am available to collect" at the counter to reveal your slot.`,
             url: `/pages/user/orders.html`
         };
+        await webPushService.sendPushToUser(order.customer_email, payload).catch(err => console.error('Push error:', err));
+
+        // 2. Send Order Tracking Email
+        const trackingUrl = `${process.env.FRONTEND_URL || 'https://spoon.tcetswb.org'}/order-status.html?id=${order.id}`;
+        await emailService.sendOrderReadyEmail(order.customer_email, order.id, trackingUrl).catch(err => console.error('Email error:', err));
         
-        await webPushService.sendPushToUser(order.customer_email, payload);
     } catch (error) {
         console.error('⚠️ notifyOrderPrepared failed:', error.message);
     }

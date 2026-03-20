@@ -184,14 +184,15 @@ const HorizontalStepperRenderer = {
             <button onclick="document.getElementById('arrive-screen-1').style.display='none'; document.getElementById('arrive-screen-2').style.display='block';" style="background:var(--brand-primary); color:white; border:none; padding:14px 24px; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer; width:100%; box-shadow:0 4px 12px rgba(235, 23, 0, 0.2);">
                I'm at the counter, reveal my slot
             </button>
+            <p style="margin-top: 16px; font-size: 11px; color: #888; line-height: 1.4;">Reach the counter within 4 mins. we keep orders moving so everyone gets served fresh & fast. Uncollected orders will be cancelled & refunded as Spoon Coins.</p>
           </div>
 
           <!-- Screen 2: Confirmation -->
-          <div id="arrive-screen-2" class="hero-section hero-section--ready" style="text-align:center; display:none; background:#fff8f6; border: 1px solid #ffccbc;">
+          <div id="arrive-screen-2" class="hero-section hero-section--ready" style="text-align:center; display:none; background:white;">
             <p class="hero-complete-message" style="margin-bottom: 12px; font-size: 16px; color:#c62828;">Are you standing right in front of the counter?</p>
             <p class="hero-instruction" style="margin-bottom: 24px; font-size: 12px; color:#555;">Slot will be revealed only once.<br>Do not tap unless you are there.</p>
             <div style="display:flex; gap:12px;">
-                <button id="btn-arrive" onclick="window.markArrived()" style="background:#2E7D32; color:white; border:none; padding:12px 10px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; flex: 1; box-shadow:0 2px 8px rgba(46, 125, 50, 0.2);">
+                <button id="btn-arrive" onclick="window.markArrived()" style="background:var(--brand-primary); color:white; border:none; padding:12px 10px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; flex: 1; box-shadow:0 2px 8px rgba(235, 23, 0, 0.2);">
                     Yes, I'm right here
                 </button>
                 <button onclick="document.getElementById('arrive-screen-2').style.display='none'; document.getElementById('arrive-screen-1').style.display='block';" style="background:#e0e0e0; color:#333; border:none; padding:12px 10px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; flex: 1;">
@@ -206,8 +207,8 @@ const HorizontalStepperRenderer = {
     // Pending / Kitchen
     return `
       <div class="hero-section hero-section--waiting">
-        <p class="hero-message">${currentStatus === 'kitchen' ? 'Your order is being cooked' : 'Your order is in the queue'}</p>
-        <p class="hero-submessage">We'll notify you when it's ready for collection</p>
+        <p class="hero-message">${currentStatus === 'kitchen' ? "Your order is being cooked" : "We've got your order!"}</p>
+        <p class="hero-submessage">${currentStatus === 'kitchen' ? "We'll notify you when it's ready for collection" : "Sit back, we'll mail you when it's ready."}</p>
       </div>
     `;
   },
