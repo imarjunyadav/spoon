@@ -174,8 +174,8 @@ async function notifyOrderPrepared(order) {
         await webPushService.sendPushToUser(order.customer_email, payload).catch(err => console.error('Push error:', err));
 
         // 2. Send Order Tracking Email
-        const trackingUrl = `${process.env.FRONTEND_URL || 'https://spoon.tcetswb.org'}/order-status.html?id=${order.id}`;
-        await emailService.sendOrderReadyEmail(order.customer_email, order.id, trackingUrl).catch(err => console.error('Email error:', err));
+        const trackingUrl = `${process.env.FRONTEND_URL || 'https://spoon.tcetswb.org'}/pages/user/orders.html`;
+        await emailService.sendOrderReadyEmail(order.customer_email, trackingUrl).catch(err => console.error('Email error:', err));
         
     } catch (error) {
         console.error('⚠️ notifyOrderPrepared failed:', error.message);

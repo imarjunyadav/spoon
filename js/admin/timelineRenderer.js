@@ -207,8 +207,8 @@ const HorizontalStepperRenderer = {
     // Pending / Kitchen
     return `
       <div class="hero-section hero-section--waiting">
-        <p class="hero-message">${currentStatus === 'kitchen' ? "Your order is being cooked" : "We've got your order!"}</p>
-        <p class="hero-submessage">${currentStatus === 'kitchen' ? "We'll notify you when it's ready for collection" : "Sit back, we'll mail you when it's ready."}</p>
+        <p class="hero-message">${currentStatus === 'kitchen' ? "We're cooking your order!" : "We've got your order!"}</p>
+        <p class="hero-submessage">${currentStatus === 'kitchen' ? "We'll send you an email when it's ready." : "Sit back, we'll mail you when it's ready."}</p>
       </div>
     `;
   },

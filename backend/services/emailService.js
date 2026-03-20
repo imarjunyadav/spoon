@@ -91,44 +91,50 @@ async function sendOTPEmail(email, otp) {
 /**
  * Generate HTML email template for Order Ready notification.
  * 
- * @param {string} orderId - Order ID
  * @param {string} trackingUrl - URL to track the order
  * @returns {string} HTML email content
  */
-function generateOrderReadyTemplate(orderId, trackingUrl) {
-  const displayId = orderId ? orderId.slice(-8).toUpperCase() : 'UNKNOWN';
+function generateOrderReadyTemplate(trackingUrl) {
   return `
-    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
-      <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="color: #eb1700; margin: 0; font-size: 24px;">SPOON Canteen</h1>
-        <p style="color: #666; margin: 5px 0 0 0; font-size: 14px;">Order Ready for Collection</p>
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px; background-color: #ffffff;">
+      <div style="text-align: center; margin-bottom: 40px;">
+        <h1 style="color: #eb1700; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 1px;">SPOON Canteen</h1>
+        <p style="color: #666666; margin: 8px 0 0 0; font-size: 16px;">Time to collect!</p>
       </div>
       
-      <div style="background-color: #f8f9fa; border-radius: 8px; padding: 30px; text-align: center;">
-        <p style="color: #333; font-size: 18px; font-weight: bold; margin: 0 0 10px 0;">
-          Your food is hot and ready!
+      <div style="text-align: center; margin-bottom: 40px;">
+        <p style="color: #000000; font-size: 22px; font-weight: bold; margin: 0 0 8px 0;">
+          Your food is ready!
         </p>
-        <p style="color: #666; font-size: 15px; margin: 0 0 24px 0;">
-          Order #${displayId}
+        <p style="color: #666666; font-size: 16px; margin: 0;">
+          Head to the counter now.
         </p>
-        
-        <a href="${trackingUrl}" style="display: inline-block; background-color: #eb1700; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold; padding: 14px 28px; border-radius: 8px; margin-bottom: 24px;">
+      </div>
+      
+      <div style="text-align: center; margin-bottom: 40px;">
+        <a href="${trackingUrl}" style="display: block; width: 100%; box-sizing: border-box; background-color: #eb1700; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold; padding: 16px 20px; border-radius: 8px; text-align: center;">
           Track & Collect Order
         </a>
-        
-        <div style="background-color: #fff3f0; border-left: 4px solid #eb1700; padding: 12px; text-align: left;">
-          <p style="color: #c62828; font-size: 13px; margin: 0; line-height: 1.5;">
-            <strong>Reach the counter within 4 mins</strong> — we keep orders moving so everyone gets served fresh & fast. Uncollected orders will be cancelled & refunded as Spoon Coins.
-          </p>
-        </div>
       </div>
       
-      <div style="margin-top: 30px; text-align: center;">
-        <p style="color: #666; font-size: 13px; margin: 0;">
-          If you have any issues, please contact the counter staff.
+      <div style="text-align: center; margin-bottom: 40px;">
+        <p style="color: #666666; font-size: 14px; margin: 0 0 6px 0; font-weight: bold;">
+          Reach the counter within 4 mins.
         </p>
-        <p style="color: #999; font-size: 12px; margin: 15px 0 0 0;">
-          © SPOON Canteen
+        <p style="color: #666666; font-size: 14px; margin: 0 0 6px 0;">
+          We keep orders moving so everyone gets served fresh & fast.
+        </p>
+        <p style="color: #666666; font-size: 14px; margin: 0;">
+          Uncollected orders will be cancelled & refunded as Spoon Coins.
+        </p>
+      </div>
+      
+      <div style="margin-top: 40px; text-align: center; border-top: 1px solid #eeeeee; padding-top: 20px;">
+        <p style="color: #999999; font-size: 12px; margin: 0 0 8px 0;">
+          9152116021
+        </p>
+        <p style="color: #999999; font-size: 12px; margin: 0;">
+          @SPOON
         </p>
       </div>
     </div>
@@ -139,18 +145,17 @@ function generateOrderReadyTemplate(orderId, trackingUrl) {
  * Send 'Order Ready' email notification without OTP.
  * 
  * @param {string} email - Recipient email address
- * @param {string} orderId - Order ID
  * @param {string} trackingUrl - Tracking URL
  * @returns {Promise<{success: boolean, error?: string}>}
  */
-async function sendOrderReadyEmail(email, orderId, trackingUrl) {
+async function sendOrderReadyEmail(email, trackingUrl) {
   try {
-    const htmlContent = generateOrderReadyTemplate(orderId, trackingUrl);
+    const htmlContent = generateOrderReadyTemplate(trackingUrl);
 
     const info = await transporter.sendMail({
       from: `"SPOON Canteen" <${process.env.SMTP_EMAIL}>`,
       to: email,
-      subject: '🍽️ Your Spoon Order is Ready!',
+      subject: 'Your order is ready — head to the counter now!',
       html: htmlContent
     });
 
