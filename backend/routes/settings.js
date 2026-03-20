@@ -65,6 +65,13 @@ router.put('/:key', requireAdminSession, async (req, res) => {
       }
     }
 
+    // Specific validation for is_break_time
+    if (key === 'is_break_time') {
+      if (value !== 'true' && value !== 'false') {
+         return res.status(400).json({ success: false, error: 'is_break_time must be "true" or "false"' });
+      }
+    }
+
     const { data, error } = await supabase
       .from('system_settings')
       .update({ value })
