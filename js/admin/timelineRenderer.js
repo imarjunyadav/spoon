@@ -180,11 +180,14 @@ const HorizontalStepperRenderer = {
           <!-- Screen 1: Walk to counter -->
           <div id="arrive-screen-1" class="hero-section hero-section--ready" style="text-align:center;">
             <p class="hero-complete-message" style="margin-bottom: 12px; font-size: 18px;">Your food is ready!</p>
-            <p class="hero-instruction" style="margin-bottom: 20px; font-size: 14px; font-weight: normal; color:#666;">Walk to the counter first, then tap the button below.</p>
+            <p class="hero-instruction" style="margin-bottom: 20px; font-size: 13px; font-weight: normal; color:#666;">Walk to the counter first, then tap the button below.</p>
             <button onclick="document.getElementById('arrive-screen-1').style.display='none'; document.getElementById('arrive-screen-2').style.display='block';" style="background:var(--brand-primary); color:white; border:none; padding:14px 24px; border-radius:12px; font-size:16px; font-weight:600; cursor:pointer; width:100%; box-shadow:0 4px 12px rgba(235, 23, 0, 0.2);">
                I'm at the counter, reveal my slot
             </button>
-            <p style="margin-top: 16px; font-size: 12px; color: #888; line-height: 1.4;">Reach the counter within 4 mins. We keep orders moving so everyone gets served fresh & fast. Uncollected orders will be cancelled & refunded as Spoon Coins.</p>
+            <p style="margin-top: 16px; font-size: 12px; color: #888; line-height: 1.4; text-align: center;">
+              <span style="display: block; font-weight: bold;">Reach the counter within 4 mins.</span>
+              We keep orders moving so everyone gets served fresh & fast. Uncollected orders will be cancelled & refunded as Spoon Coins.
+            </p>
           </div>
 
           <!-- Screen 2: Confirmation -->
