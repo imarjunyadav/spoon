@@ -28,6 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const subtotalValueEl = document.getElementById('subtotal-value');
   const cartBadge = document.getElementById('cart-badge');
   const modalOverlay = document.getElementById('modal-overlay');
+  const confirmOrderModal = document.getElementById('confirm-order-modal');
+  const modalOrderSummary = document.getElementById('modal-order-summary');
   const modalTotalValue = document.getElementById('modal-total-value');
   const userPhoneNumber = localStorage.getItem("spoon-user-phone");
 
