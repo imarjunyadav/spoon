@@ -96,6 +96,23 @@ router.post('/pay', async (req, res) => {
             });
         }
 
+        // ========================================
+        // BREAK TIME VALIDATION (SERVER ENFORCED)
+        // ========================================
+        const { data: breakSetting, error: breakErr } = await supabase
+            .from('system_settings')
+            .select('value')
+            .eq('key', 'is_break_time')
+            .single();
+
+        if (!breakErr && breakSetting && breakSetting.value === 'true') {
+            console.warn(`🛑 Wallet Payment blocked: Canteen is on break. User: ${email}`);
+            return res.status(400).json({
+                success: false,
+                error: 'Canteen staff is on a break, try later.'
+            });
+        }
+
         // --- SERVER-SIDE PRICE VALIDATION ---
         // Never trust client-sent prices. Fetch real prices from menu_items table.
         let serverTotal = 0;
