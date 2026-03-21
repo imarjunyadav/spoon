@@ -44,6 +44,67 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- State Variables ---
   let walletBalance = 0;
   let selectedPaymentMethod = 'razorpay'; // 'razorpay' or 'wallet'
+  let isBreakTime = false;
+
+  /**
+   * Toggles the global break banner and locks UI interaction.
+   */
+  function updateBreakTimeUI(isActive) {
+      let banner = document.getElementById('break-time-banner');
+      if (isActive) {
+          if (!banner) {
+              banner = document.createElement('div');
+              banner.id = 'break-time-banner';
+              banner.style.cssText = 'background: var(--danger-color); color: white; padding: 12px; text-align: center; position: sticky; top: 0; z-index: 1000; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width: 100%;';
+              banner.textContent = 'Canteen staff is on a break, try later.';
+              document.body.prepend(banner);
+          }
+      } else {
+          if (banner) banner.remove();
+      }
+  }
+
+  /**
+   * Fetches top-level system settings like break time.
+   */
+  async function fetchSystemSettings() {
+      try {
+          const { data, error } = await supabase
+              .from('system_settings')
+              .select('value')
+              .eq('key', 'is_break_time')
+              .single();
+          
+          if (!error && data) {
+              isBreakTime = data.value === 'true';
+              updateBreakTimeUI(isBreakTime);
+          }
+      } catch (err) {
+          console.error('Failed to load system settings', err);
+      }
+  }
+
+  /**
+   * Subscribe to realtime backend settings.
+   */
+  function subscribeToRealtimeSync() {
+      if (!supabase) return;
+
+      supabase
+          .channel('cart-realtime-sync')
+          .on('postgres_changes', {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'system_settings',
+              filter: 'key=eq.is_break_time'
+          }, (payload) => {
+              if (payload.new) {
+                  isBreakTime = payload.new.value === 'true';
+                  updateBreakTimeUI(isBreakTime);
+              }
+          })
+          .subscribe();
+  }
 
   // --- Cart Helper Functions ---
 
@@ -323,6 +384,11 @@ document.addEventListener('DOMContentLoaded', () => {
   finalConfirmBtn.addEventListener("click", async () => {
     if (finalConfirmBtn.disabled) return;
 
+    if (isBreakTime) {
+      alert("Canteen staff is on a break, try later.");
+      return;
+    }
+
     const cart = getCart();
     if (cart.length === 0) {
       alert("Your cart is empty!");
@@ -491,6 +557,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (checkoutBtn) {
     checkoutBtn.addEventListener('click', (e) => {
       e.preventDefault();
+      
+      if (isBreakTime) {
+        alert("Canteen staff is on a break, try later.");
+        return;
+      }
+
       populateConfirmModal();
       openModal(confirmOrderModal);
     });
@@ -499,9 +571,11 @@ document.addEventListener('DOMContentLoaded', () => {
   cartItemsContainer.addEventListener('click', handleQuantityChange);
 
   // Wait for config then render & fetch balance
-  window.waitForConfig().then(() => {
+  window.waitForConfig().then(async () => {
     supabase = window.getSupabaseClient();
     renderCart();
+    await fetchSystemSettings();
+    subscribeToRealtimeSync();
     fetchWalletBalance();
   });
 

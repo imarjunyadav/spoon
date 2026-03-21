@@ -99,6 +99,18 @@
                     <p style="margin: 0 0 8px 0; font-size:12px; color:var(--text-secondary);">Minutes to wait before a prepared order is marked as no-show and can be cancelled.</p>
                     <input type="number" id="setting-timeout" placeholder="10" min="1" max="300" style="padding:10px 12px; width:100%; border:1px solid var(--border-color); border-radius:8px; font-size:15px;">
                 </div>
+
+                <div style="padding-top: 12px; border-top: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <div style="text-align:left;">
+                        <div style="font-weight:600; font-size:14px; margin-bottom:4px; color: var(--danger-color);">Canteen Break Time</div>
+                        <div style="font-size:12px; color:var(--text-secondary);">Stop accepting new orders. Existing orders continue normally.</div>
+                    </div>
+                    <label class="stock-toggle">
+                        <input type="checkbox" id="setting-break-time">
+                        <span class="toggle-track"></span>
+                        <span class="toggle-knob"></span>
+                    </label>
+                </div>
                 
                 <button class="hdr-btn" id="btn-save-settings" style="background:var(--brand-primary); color:white; border:none; width: 100%; margin-top: 8px; font-size: 15px; padding: 12px; border-radius: 8px;">SAVE SETTINGS</button>
             </div>

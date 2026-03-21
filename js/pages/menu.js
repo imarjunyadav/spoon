@@ -57,6 +57,25 @@ document.addEventListener('DOMContentLoaded', () => {
     let menuData = {
         categories: []
     };
+    let isBreakTime = false;
+
+    /**
+     * Toggles the global break banner and locks UI interaction.
+     */
+    function updateBreakTimeUI(isActive) {
+        let banner = document.getElementById('break-time-banner');
+        if (isActive) {
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = 'break-time-banner';
+                banner.style.cssText = 'background: var(--danger-color); color: white; padding: 12px; text-align: center; position: sticky; top: 0; z-index: 1000; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width: 100%;';
+                banner.textContent = 'Canteen staff is on a break, try later.';
+                document.body.prepend(banner);
+            }
+        } else {
+            if (banner) banner.remove();
+        }
+    }
 
     const CATEGORY_MAP = {
         'sandwich': 'SANDWICH',
@@ -111,6 +130,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Fetches top-level system settings like break time.
+     */
+    async function fetchSystemSettings() {
+        try {
+            const { data, error } = await supabase
+                .from('system_settings')
+                .select('value')
+                .eq('key', 'is_break_time')
+                .single();
+            
+            if (!error && data) {
+                isBreakTime = data.value === 'true';
+                updateBreakTimeUI(isBreakTime);
+            }
+        } catch (err) {
+            console.error('Failed to load system settings', err);
+        }
+    }
 
     // --- DOM References ---
 
@@ -248,6 +286,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!addButton) return;
         if (addButton.disabled) return;
 
+        if (isBreakTime) {
+            showToast('Canteen staff is on a break, try later.', 'error');
+            return;
+        }
+
         const { id, title, price } = addButton.dataset;
         const itemId = parseInt(id);
 
@@ -338,14 +381,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Subscribe to realtime stock changes on menu_items.
-     * When admin toggles an item off, all connected menu pages instantly update.
+     * Subscribe to realtime database changes.
      */
-    function subscribeToStockChanges() {
+    function subscribeToRealtimeSync() {
         if (!supabase) return;
 
         supabase
-            .channel('menu-stock-changes')
+            .channel('menu-realtime-sync')
             .on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
@@ -384,6 +426,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         btn.classList.add('disabled');
                         btn.disabled = true;
                     }
+                }
+            })
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'system_settings',
+                filter: 'key=eq.is_break_time'
+            }, (payload) => {
+                if (payload.new) {
+                    isBreakTime = payload.new.value === 'true';
+                    updateBreakTimeUI(isBreakTime);
                 }
             })
             .subscribe();
@@ -500,6 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
         greetingTaglineEl.textContent = randomTagline;
 
         await fetchMenuItems();
+        await fetchSystemSettings();
 
         if (menuData.categories.length > 0) {
             currentCategory = menuData.categories[0].id;
@@ -516,7 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupPromoCardHandler();
 
         // Start realtime stock sync
-        subscribeToStockChanges();
+        subscribeToRealtimeSync();
     }
 
     init();

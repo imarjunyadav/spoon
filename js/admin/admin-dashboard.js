@@ -10,7 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let stockItemsList = [];
     let systemSettings = {
         max_prepared_slots: 10,
-        no_show_timeout_minutes: 10
+        no_show_timeout_minutes: 10,
+        is_break_time: false
     };
     
     // Auth Token for our API
@@ -51,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalStock: document.getElementById('modal-stock'),
         inputMaxSlots: document.getElementById('setting-max-slots'),
         inputTimeout: document.getElementById('setting-timeout'),
+        inputBreakTime: document.getElementById('setting-break-time'),
         indicator: document.getElementById('live-indicator'),
         stockItemsList: document.getElementById('stock-items-list'),
         stockSearch: document.getElementById('stock-search'),
@@ -283,9 +285,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 json.settings.forEach(s => {
                     if (s.key === 'max_prepared_slots' && systemSettings.max_prepared_slots !== Number(s.value)) { systemSettings.max_prepared_slots = Number(s.value); changed = true; }
                     if (s.key === 'no_show_timeout_minutes' && systemSettings.no_show_timeout_minutes !== Number(s.value)) { systemSettings.no_show_timeout_minutes = Number(s.value); changed = true; }
+                    if (s.key === 'is_break_time' && systemSettings.is_break_time !== (s.value === 'true')) { systemSettings.is_break_time = (s.value === 'true'); changed = true; }
                 });
                 dom.inputMaxSlots.value = systemSettings.max_prepared_slots;
                 dom.inputTimeout.value = systemSettings.no_show_timeout_minutes;
+                dom.inputBreakTime.checked = systemSettings.is_break_time;
                 if (changed) render();
             }
         } catch (err) {
@@ -778,6 +782,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-save-settings').addEventListener('click', async (e) => {
         const slots = dom.inputMaxSlots.value;
         const timeo = dom.inputTimeout.value;
+        const breakTime = dom.inputBreakTime.checked ? 'true' : 'false';
         const btn = e.target;
         
         const originalText = btn.innerText;
@@ -787,7 +792,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             // Run both updates in parallel
-            const [slotsRes, timeoRes] = await Promise.all([
+            const [slotsRes, timeoRes, breakRes] = await Promise.all([
                 fetch(`${config.apiUrl}/settings/max_prepared_slots`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -797,14 +802,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({ value: timeo })
+                }),
+                fetch(`${config.apiUrl}/settings/is_break_time`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ value: breakTime })
                 })
             ]);
             
             const slotsData = await slotsRes.json();
             const timeoData = await timeoRes.json();
+            const breakData = await breakRes.json();
             
             if (!slotsRes.ok || !slotsData.success) throw new Error(slotsData.error || 'Failed to update slots');
             if (!timeoRes.ok || !timeoData.success) throw new Error(timeoData.error || 'Failed to update timeout');
+            if (!breakRes.ok || !breakData.success) throw new Error(breakData.error || 'Failed to update break time');
             
             showToast('Settings saved successfully', 'success');
             await fetchSettings();

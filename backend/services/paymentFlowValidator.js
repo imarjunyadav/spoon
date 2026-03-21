@@ -68,6 +68,23 @@ class PaymentFlowValidator {
     }
 
     // ========================================
+    // BREAK TIME VALIDATION (SERVER ENFORCED)
+    // ========================================
+    const { data: breakSetting, error: breakErr } = await getSupabase()
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'is_break_time')
+      .single();
+
+    if (!breakErr && breakSetting && breakSetting.value === 'true') {
+      console.warn(`🛑 Payment blocked: Canteen is on break. User: ${userEmail}`);
+      return {
+        valid: false,
+        error: 'Canteen staff is on a break, try later.'
+      };
+    }
+
+    // ========================================
     // SERVER-SIDE PRICE VALIDATION
     // ========================================
     // Fetch actual prices from database to prevent price manipulation
