@@ -411,4 +411,81 @@ router.get('/:orderId', requireAuth, async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------
+// DELETE /api/orders/batch (User view - bulk delete history)
+// ---------------------------------------------------------
+router.delete('/batch', requireAuth, async (req, res) => {
+  try {
+    const email = req.user.email;
+    const { orderIds } = req.body;
+
+    // --- Input Validation ---
+    if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'orderIds must be a non-empty array' });
+    }
+
+    if (orderIds.length > 50) {
+      return res.status(400).json({ success: false, error: 'Cannot delete more than 50 orders at once' });
+    }
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const invalidIds = orderIds.filter(id => !uuidRegex.test(id));
+    if (invalidIds.length > 0) {
+      return res.status(400).json({ success: false, error: 'Invalid order ID format detected' });
+    }
+
+    // --- Fetch orders to determine which are deletable ---
+    const { data: orders, error: fetchErr } = await supabase
+      .from('orders')
+      .select('id, status')
+      .in('id', orderIds)
+      .eq('customer_email', email);
+
+    if (fetchErr) throw fetchErr;
+
+    const deletableStatuses = ['completed', 'cancelled'];
+    const deletableIds = [];
+    const skippedIds = [];
+
+    (orders || []).forEach(order => {
+      if (deletableStatuses.includes(order.status)) {
+        deletableIds.push(order.id);
+      } else {
+        skippedIds.push(order.id);
+      }
+    });
+
+    // Log skipped orders for debugging
+    if (skippedIds.length > 0) {
+      console.warn(`⚠️ Batch delete skipped ${skippedIds.length} active orders for ${email}:`, skippedIds);
+    }
+
+    // --- Delete only safe orders ---
+    let deletedCount = 0;
+    if (deletableIds.length > 0) {
+      const { data: deleted, error: deleteErr } = await supabase
+        .from('orders')
+        .delete()
+        .in('id', deletableIds)
+        .eq('customer_email', email)
+        .select('id');
+
+      if (deleteErr) throw deleteErr;
+      deletedCount = deleted ? deleted.length : 0;
+    }
+
+    console.log(`🗑️ Batch delete: ${deletedCount} deleted, ${skippedIds.length} skipped for ${email}`);
+
+    res.json({
+      success: true,
+      deletedCount,
+      skippedIds
+    });
+  } catch (error) {
+    console.error('batch delete error:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete orders', code: 'DB_ERROR' });
+  }
+});
+
 module.exports = router;

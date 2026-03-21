@@ -23,6 +23,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   const emptyOrdersView = document.getElementById('empty-orders-view');
   const toastNotification = document.getElementById('toast-notification');
   const cartBadge = document.getElementById('cart-badge');
+  const btnDeleteMode = document.getElementById('btn-delete-mode');
+  const deleteActionBar = document.getElementById('delete-action-bar');
+  const selectAllCheckbox = document.getElementById('select-all-checkbox');
+  const btnDeleteConfirm = document.getElementById('btn-delete-confirm');
+  const deleteCountEl = document.getElementById('delete-count');
+
+  // --- Selection Mode State ---
+  let isSelectMode = false;
+  let selectedOrderIds = new Set();
+  const DELETABLE_STATUSES = ['completed', 'cancelled'];
+  let allOrders = []; // Cache for current orders data
 
   // User Data
   const userData = JSON.parse(localStorage.getItem('spoon-user') || '{}');
@@ -152,6 +163,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   function createOrderCard(order) {
     const card = document.createElement('div');
     card.className = 'order-card';
+    card.dataset.orderId = order.id;
+    card.dataset.status = order.status;
+
+    const isDeletable = DELETABLE_STATUSES.includes(order.status);
+    if (!isDeletable) {
+      card.classList.add('non-deletable');
+    }
 
     const totalItems = order.items ? order.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
     const orderDate = formatDate(order.created_at);
@@ -162,6 +180,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const displayId = order.id ? order.id.slice(-8).toUpperCase() : 'UNKNOWN';
 
     card.innerHTML = `
+      <input type="checkbox" class="order-card__checkbox" data-order-id="${order.id}" ${!isDeletable ? 'disabled' : ''}>
       <div class="order-card__header">
         <div class="order-card__header-left">
           <span class="order-card__id">#${displayId}</span>
@@ -195,8 +214,36 @@ document.addEventListener('DOMContentLoaded', async () => {
       ` : ''}
     `;
 
+    // Checkbox interaction
+    const checkbox = card.querySelector('.order-card__checkbox');
+    if (isDeletable) {
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          selectedOrderIds.add(order.id);
+          card.classList.add('selected');
+        } else {
+          selectedOrderIds.delete(order.id);
+          card.classList.remove('selected');
+        }
+        updateDeleteUI();
+      });
+
+      // Card click toggles checkbox in select mode
+      card.addEventListener('click', (e) => {
+        if (!isSelectMode) return;
+        if (e.target.matches('.btn--view-details') || e.target.closest('.btn--view-details')) return;
+        if (e.target === checkbox) return; // Don't double-toggle
+        checkbox.checked = !checkbox.checked;
+        checkbox.dispatchEvent(new Event('change'));
+      });
+    }
+
     const viewDetailsBtn = card.querySelector('.btn--view-details');
-    viewDetailsBtn.addEventListener('click', () => {
+    viewDetailsBtn.addEventListener('click', (e) => {
+      if (isSelectMode) {
+        e.stopPropagation();
+        return;
+      }
       window.location.href = `order-status.html?id=${order.id}`;
     });
 
@@ -243,7 +290,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         return order;
       });
 
+      allOrders = normalizedData;
       renderOrders(normalizedData);
+
+      // Show delete button only if there are deletable orders
+      const hasDeletable = normalizedData.some(o => DELETABLE_STATUSES.includes(o.status));
+      if (btnDeleteMode) {
+        btnDeleteMode.classList.toggle('hidden', !hasDeletable);
+      }
 
     } catch (error) {
       console.error('❌ Unexpected error:', error);
@@ -251,6 +305,142 @@ document.addEventListener('DOMContentLoaded', async () => {
       ordersListContainer.classList.add('hidden');
       emptyOrdersView.classList.remove('hidden');
     }
+  }
+
+  // --- Selection Mode ---
+
+  function toggleSelectMode() {
+    isSelectMode = !isSelectMode;
+    selectedOrderIds.clear();
+
+    ordersListContainer.classList.toggle('select-mode', isSelectMode);
+    btnDeleteMode.classList.toggle('active', isSelectMode);
+    deleteActionBar.classList.toggle('hidden', !isSelectMode);
+
+    // Reset all checkboxes
+    document.querySelectorAll('.order-card__checkbox').forEach(cb => {
+      cb.checked = false;
+    });
+    document.querySelectorAll('.order-card.selected').forEach(card => {
+      card.classList.remove('selected');
+    });
+    selectAllCheckbox.checked = false;
+
+    updateDeleteUI();
+
+    // Pause/resume polling
+    if (isSelectMode) {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+    } else {
+      pollingInterval = setInterval(loadOrders, 10000);
+    }
+  }
+
+  function updateDeleteUI() {
+    const count = selectedOrderIds.size;
+    deleteCountEl.textContent = count;
+    btnDeleteConfirm.disabled = count === 0;
+
+    // Update Select All checkbox state
+    const deletableCards = document.querySelectorAll('.order-card:not(.non-deletable)');
+    selectAllCheckbox.checked = deletableCards.length > 0 && count === deletableCards.length;
+  }
+
+  async function handleBatchDelete() {
+    const ids = Array.from(selectedOrderIds);
+    if (ids.length === 0) return;
+
+    btnDeleteConfirm.disabled = true;
+    btnDeleteConfirm.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Deleting...</span>';
+
+    try {
+      const apiBaseUrl = window.SPOON_CONFIG?.API_BASE_URL || '';
+      const sessionToken = localStorage.getItem('spoon-session-token');
+
+      const res = await fetch(`${apiBaseUrl}/api/orders/batch`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-email': userEmail,
+          'x-session-token': sessionToken
+        },
+        body: JSON.stringify({ orderIds: ids })
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        // Remove deleted cards from DOM
+        ids.forEach(id => {
+          const card = document.querySelector(`.order-card[data-order-id="${id}"]`);
+          if (card) {
+            card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            card.style.opacity = '0';
+            card.style.transform = 'translateX(-20px)';
+            setTimeout(() => card.remove(), 300);
+          }
+        });
+
+        if (result.skippedIds && result.skippedIds.length > 0) {
+          window.showToast(`${result.deletedCount} deleted, ${result.skippedIds.length} active orders skipped`, 'info');
+        } else {
+          window.showToast(`${result.deletedCount} order${result.deletedCount !== 1 ? 's' : ''} deleted`, 'success');
+        }
+
+        // Exit select mode after short delay for animation
+        setTimeout(() => {
+          toggleSelectMode();
+
+          // Check if list is now empty
+          const remaining = document.querySelectorAll('.order-card');
+          if (remaining.length === 0) {
+            ordersListContainer.classList.add('hidden');
+            emptyOrdersView.classList.remove('hidden');
+            btnDeleteMode.classList.add('hidden');
+          }
+        }, 400);
+      } else {
+        window.showAlertModal('Delete Failed', result.error || 'Failed to delete orders.');
+        btnDeleteConfirm.disabled = false;
+        btnDeleteConfirm.innerHTML = '<i class="fa-solid fa-trash-can"></i> <span>Delete (<span id="delete-count">' + ids.length + '</span>)</span>';
+      }
+    } catch (error) {
+      console.error('Batch delete error:', error);
+      window.showAlertModal('Network Error', 'Failed to delete orders. Please try again.');
+      btnDeleteConfirm.disabled = false;
+      btnDeleteConfirm.innerHTML = '<i class="fa-solid fa-trash-can"></i> <span>Delete (<span id="delete-count">' + ids.length + '</span>)</span>';
+    }
+  }
+
+  // --- Event Listeners ---
+
+  if (btnDeleteMode) {
+    btnDeleteMode.addEventListener('click', toggleSelectMode);
+  }
+
+  if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener('change', () => {
+      const deletableCheckboxes = document.querySelectorAll('.order-card:not(.non-deletable) .order-card__checkbox');
+      deletableCheckboxes.forEach(cb => {
+        cb.checked = selectAllCheckbox.checked;
+        cb.dispatchEvent(new Event('change'));
+      });
+    });
+  }
+
+  if (btnDeleteConfirm) {
+    btnDeleteConfirm.addEventListener('click', () => {
+      const count = selectedOrderIds.size;
+      window.showAlertModal(
+        'Delete Orders',
+        `Are you sure you want to permanently delete ${count} order${count !== 1 ? 's' : ''}? This cannot be undone.`,
+        'fa-trash-can',
+        handleBatchDelete
+      );
+    });
   }
 
   // --- Initialization ---

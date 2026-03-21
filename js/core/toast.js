@@ -100,18 +100,18 @@ function showAlertModal(title, message, iconClass = 'fa-circle-exclamation', onD
     `;
     document.body.appendChild(modal);
 
-    const closeAlert = () => {
+    const dismissModal = (fireCallback) => {
       overlay.classList.remove('visible');
       modal.classList.remove('visible');
       setTimeout(() => {
         overlay.classList.add('hidden');
         modal.classList.add('hidden');
-        if (modal._onDismiss) modal._onDismiss();
+        if (fireCallback && modal._onDismiss) modal._onDismiss();
       }, 300);
     };
 
-    document.getElementById('btn-global-alert-ok').addEventListener('click', closeAlert);
-    overlay.addEventListener('click', closeAlert);
+    document.getElementById('btn-global-alert-ok').addEventListener('click', () => dismissModal(true));
+    overlay.addEventListener('click', () => dismissModal(false));
   }
 
   // Update content
