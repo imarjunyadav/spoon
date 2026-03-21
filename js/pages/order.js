@@ -423,11 +423,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (selectAllCheckbox) {
     selectAllCheckbox.addEventListener('change', () => {
-      const deletableCheckboxes = document.querySelectorAll('.order-card:not(.non-deletable) .order-card__checkbox');
-      deletableCheckboxes.forEach(cb => {
-        cb.checked = selectAllCheckbox.checked;
-        cb.dispatchEvent(new Event('change'));
+      const isChecked = selectAllCheckbox.checked;
+      const deletableCards = document.querySelectorAll('.order-card:not(.non-deletable)');
+
+      deletableCards.forEach(card => {
+        const cb = card.querySelector('.order-card__checkbox');
+        const orderId = card.dataset.orderId;
+        if (!cb || !orderId) return;
+
+        cb.checked = isChecked;
+        if (isChecked) {
+          selectedOrderIds.add(orderId);
+          card.classList.add('selected');
+        } else {
+          selectedOrderIds.delete(orderId);
+          card.classList.remove('selected');
+        }
       });
+
+      // Update count badge once after all cards processed
+      deleteCountEl.textContent = selectedOrderIds.size;
+      btnDeleteConfirm.disabled = selectedOrderIds.size === 0;
     });
   }
 

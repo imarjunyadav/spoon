@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
               .from('system_settings')
               .select('value')
               .eq('key', 'is_break_time')
-              .single();
+              .maybeSingle();
           
           if (!error && data) {
               isBreakTime = data.value === 'true';

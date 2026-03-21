@@ -311,31 +311,29 @@
 
 
 /* ====================
-   6. HEADER ACTION BUTTON (Delete Mode Toggle)
+   6. HEADER CLEAR HISTORY BUTTON
    ==================== */
-.cart-header__action-btn {
+.cart-header__clear-btn {
+    position: absolute;
+    right: var(--spacing-md);
     background: none;
     border: none;
-    color: var(--text-secondary);
-    font-size: 18px;
-    padding: 8px;
+    color: var(--brand-primary);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 0;
     cursor: pointer;
-    border-radius: 50%;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-left: auto;
+    transition: opacity 0.2s ease;
+    white-space: nowrap;
+    font-family: var(--font-family-main);
 }
 
-.cart-header__action-btn:hover {
-    color: var(--brand-primary);
-    background: rgba(235, 23, 0, 0.06);
+.cart-header__clear-btn:hover {
+    opacity: 0.7;
 }
 
-.cart-header__action-btn.active {
-    color: var(--brand-primary);
-    background: rgba(235, 23, 0, 0.1);
+.cart-header__clear-btn.active {
+    text-decoration: underline;
 }
 
 

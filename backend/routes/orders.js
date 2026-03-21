@@ -428,9 +428,9 @@ router.delete('/batch', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Cannot delete more than 50 orders at once' });
     }
 
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const invalidIds = orderIds.filter(id => !uuidRegex.test(id));
+    // Validate ID format (supports UUIDs and wallet_* / order_* formats)
+    const idFormatRegex = /^[a-zA-Z0-9_-]{10,60}$/;
+    const invalidIds = orderIds.filter(id => typeof id !== 'string' || !idFormatRegex.test(id));
     if (invalidIds.length > 0) {
       return res.status(400).json({ success: false, error: 'Invalid order ID format detected' });
     }
