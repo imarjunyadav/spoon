@@ -28,8 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const subtotalValueEl = document.getElementById('subtotal-value');
   const cartBadge = document.getElementById('cart-badge');
   const modalOverlay = document.getElementById('modal-overlay');
-  const confirmOrderModal = document.getElementById('confirm-order-modal');
-  const modalOrderSummary = document.getElementById('modal-order-summary');
   const modalTotalValue = document.getElementById('modal-total-value');
   const userPhoneNumber = localStorage.getItem("spoon-user-phone");
 
@@ -385,13 +383,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (finalConfirmBtn.disabled) return;
 
     if (isBreakTime) {
-      alert("Canteen staff is on a break, try later.");
+      closeModal(confirmOrderModal);
+      window.showAlertModal("Counter staff is on a break", "We're not accepting new orders right now. Please try again later.", "fa-clock");
       return;
     }
 
     const cart = getCart();
     if (cart.length === 0) {
-      alert("Your cart is empty!");
+      window.showAlertModal("Empty Cart", "Your cart is empty!");
       return;
     }
 
@@ -399,13 +398,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Safety Check
     if (typeof subtotal !== 'number' || subtotal <= 0 || isNaN(subtotal)) {
-      alert("Invalid subtotal. Cannot proceed with payment.");
+      window.showAlertModal("Invalid Amount", "Invalid subtotal. Cannot proceed with payment.");
       return;
     }
 
     // Double check wallet balance
     if (selectedPaymentMethod === 'wallet' && walletBalance < subtotal) {
-      alert('Insufficient wallet balance. Please select Online Payment.');
+      window.showAlertModal("Insufficient Balance", "Insufficient wallet balance. Please select Online Payment.", "fa-wallet");
       return;
     }
 
@@ -415,8 +414,9 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const userEmail = getUserEmail();
       if (!userEmail) {
-        alert("Please log in again to place your order.");
-        window.location.href = "login.html";
+        window.showAlertModal("Session Expired", "Please log in again to place your order.", "fa-user-lock", () => {
+          window.location.href = "login.html";
+        });
         return;
       }
 
@@ -447,7 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
           window.location.href = `order-status.html?id=${result.orderId}&payment_success=true`;
         } else {
           // Failure
-          alert(`Wallet payment failed: ${result.error || 'Unknown error'}`);
+          window.showAlertModal("Payment Failed", `Wallet payment failed: ${result.error || 'Unknown error'}`);
           finalConfirmBtn.classList.remove('loading');
           finalConfirmBtn.disabled = false;
         }
@@ -510,14 +510,16 @@ document.addEventListener('DOMContentLoaded', () => {
               // Redirect to order status
               window.location.href = `order-status.html?id=${verifyData.orderId}&payment_success=true`;
             } else {
-              alert(`Payment verification failed: ${verifyData.error}`);
-              window.location.reload();
+              window.showAlertModal("Verification Failed", `Payment verification failed: ${verifyData.error}`, "fa-triangle-exclamation", () => {
+                window.location.reload();
+              });
             }
 
           } catch (error) {
             console.error("Error verifying payment:", error);
-            alert("Payment recorded, but verification failed. Please contact support if money was deducted.");
-            window.location.reload();
+            window.showAlertModal("Pending Verification", "Payment recorded, but verification failed. Please contact support if money was deducted.", "fa-info-circle", () => {
+              window.location.reload();
+            });
           }
         },
         prefill: {
@@ -538,7 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const rzp1 = new Razorpay(options);
       rzp1.on('payment.failed', function (response) {
-        alert("Payment Failed: " + response.error.description);
+        window.showAlertModal("Payment Failed", response.error.description);
         finalConfirmBtn.classList.remove('loading');
         finalConfirmBtn.disabled = false;
       });
@@ -546,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (error) {
       console.error("Error creating order:", error);
-      alert(error.message || "Failed to initiate payment. Please try again.");
+      window.showAlertModal("Payment Error", error.message || "Failed to initiate payment. Please try again.");
       finalConfirmBtn.classList.remove('loading');
       finalConfirmBtn.disabled = false;
     }
@@ -559,7 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       
       if (isBreakTime) {
-        alert("Canteen staff is on a break, try later.");
+        window.showAlertModal("Counter staff is on a break", "We're not accepting new orders right now. Please try again later.", "fa-clock");
         return;
       }
 

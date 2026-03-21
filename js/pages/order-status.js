@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (!supabase) {
         console.error('❌ Supabase client not initialized');
-        alert('Failed to connect to database. Please refresh.');
+        window.showAlertModal("Connection Error", "Failed to connect to database. Please refresh.");
         return;
     }
 
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Adjusting polling interval because it's now 'arrived'
                 startAdaptivePolling();
             } else {
-                alert(result.error || 'Failed to notify staff. Please try again or go to the counter.');
+                window.showAlertModal("Error", result.error || 'Failed to notify staff. Please try again or go to the counter.');
                 if (btn) {
                     btn.disabled = false;
                     btn.textContent = 'I am available to collect';
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (error) {
             console.error('Arrive action failed:', error);
-            alert('Network error. Please try again.');
+            window.showAlertModal("Network Error", "Network error. Please try again.");
         }
     };
 
@@ -236,16 +236,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const orderId = params.get('id');
 
         if (!orderId) {
-            alert('Order ID not found.');
-            window.location.href = 'orders.html';
+            window.showAlertModal("Error", "Order ID not found.", "fa-circle-xmark", () => {
+                window.location.href = 'orders.html';
+            });
             return;
         }
 
         currentOrder = await getOrderById(orderId);
 
         if (!currentOrder) {
-            alert('Order not found.');
-            window.location.href = 'orders.html';
+            window.showAlertModal("Error", "Order not found.", "fa-circle-xmark", () => {
+                window.location.href = 'orders.html';
+            });
             return;
         }
 

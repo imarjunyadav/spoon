@@ -160,6 +160,16 @@
 
     <!-- Preorder modals removed in v2 -->
 
+    <!-- === Break Time Warning Modal === -->
+    <div class="modal hidden" id="break-time-modal" style="text-align: center; padding: 32px 24px;">
+        <div style="font-size: 48px; color: var(--brand-color); margin-bottom: 16px;">
+            <i class="fa-solid fa-clock"></i>
+        </div>
+        <h2 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px;">Counter staff is on a break</h2>
+        <p style="font-size: 15px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 24px;">We're not accepting new orders right now. Please try again later.</p>
+        <button class="btn--primary" id="btn-break-time-ok" style="width: 100%;">Got it</button>
+    </div>
+
     <!-- Toast notification utility -->
     <script src="../js/core/toast.js"></script>
     <!-- Centralized configuration (must load before other scripts) -->
