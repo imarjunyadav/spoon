@@ -437,8 +437,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // RENDER LOGIC
     // ---------------------------------------------------------
     function generateItemsHTML(items) {
-        if (!items || !items.length) return '<span>1× Unknown</span>';
-        return items.map(item => `<span>${item.quantity}× ${item.name || item.title}</span>`).join('');
+        if (!items || !items.length) return '<div class="item-line"><span class="item-qty">1×</span><span class="item-name">Unknown</span></div>';
+        return items.map(item => `
+            <div class="item-line">
+                <span class="item-qty">${item.quantity}×</span>
+                <span class="item-name">${item.name || item.title}</span>
+            </div>
+        `).join('');
     }
 
     function renderPending(order) {
@@ -447,8 +452,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const isKitchen = order.status === 'kitchen';
         const displayTime = timeAgo(order.created_at);
         const actionBtn = isKitchen 
-            ? `<button class="btn-ready" onclick="window.markPrepared('${order.id}')">ready</button>`
-            : `<button class="btn-plus" onclick="window.sendToKitchen('${order.id}')"><i class="fas fa-plus"></i></button>`;
+            ? `<button class="btn-action btn-ready" onclick="window.markPrepared('${order.id}')">READY</button>`
+            : `<button class="btn-action btn-add" onclick="window.sendToKitchen('${order.id}')">ADD</button>`;
 
         // Add highlight class if this order is currently triggering the alarm
         const highlightClass = alarmPlayingForIds.has(order.id) ? 'new-order-highlight' : '';
@@ -459,8 +464,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${generateItemsHTML(order.items)}
                 </div>
                 <div class="order-meta">
-                    <span class="time-elapsed">${displayTime}</span>
                     ${!isFcSelectMode ? actionBtn : ''}
+                    <span class="time-elapsed">${displayTime}</span>
                 </div>
             </div>
         `;
@@ -476,13 +481,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let actionBtn;
         if (isTimedOut) {
-            actionBtn = `<button class="slot-badge btn-cancel" onclick="window.cancelNoShow('${order.id}')" title="Cancel Timeout"><i class="fas fa-times"></i></button>`;
+            actionBtn = `<button class="btn-action btn-cancel" onclick="window.cancelNoShow('${order.id}')" title="Cancel Timeout">X</button>`;
         } else if (!order.arrived_at) {
             // User hasn't clicked "I am available". Hide slot number and show nothing.
-            actionBtn = ``;
+            actionBtn = `<div style="width: 90px; height: 48px;"></div>`; 
         } else {
             // User has arrived! Show slot number (e.g. "1") and handle completion
-            actionBtn = `<button class="slot-badge" style="background:#4caf50; color:#fff;" onclick="window.completeOrder('${order.id}')" title="Slot ${order.slot_number} - Complete Order">${order.slot_number}</button>`;
+            actionBtn = `<button class="slot-badge" onclick="window.completeOrder('${order.id}')" title="Slot ${order.slot_number} - Complete Order">${order.slot_number}</button>`;
         }
 
         return `
@@ -491,8 +496,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${generateItemsHTML(order.items)}
                 </div>
                 <div class="order-meta">
-                    <span class="time-elapsed">${timeAgo(order.prepared_at)}</span>
                     ${!isFcSelectMode ? actionBtn : ''}
+                    <span class="time-elapsed">${timeAgo(order.prepared_at)}</span>
                 </div>
             </div>
         `;

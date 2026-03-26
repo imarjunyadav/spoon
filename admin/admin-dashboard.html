@@ -35,14 +35,14 @@
         <!-- HEADER -->
         <header class="admin-header">
             <div class="brand-title">SPOON ADMIN <span id="live-indicator" style="font-size:10px; color:var(--text-secondary);">●</span></div>
-            <div class="header-actions">
+            <div class="header-nav-main" style="display: flex; gap: 12px; margin-left: 32px; flex: 1;">
+                <button class="hdr-btn primary-nav" id="btn-stock">STOCKS</button>
+                <button class="hdr-btn" id="btn-settings">SETTINGS</button>
                 <button class="hdr-btn" id="btn-cancelled">REFUNDS</button>
-                <button class="hdr-btn" id="btn-stock">STOCK</button>
-                <button class="hdr-btn" id="btn-settings">SETTING</button>
+            </div>
+            <div class="header-actions" style="display: flex; gap: 16px;">
                 <button class="hdr-btn hdr-btn--danger" id="btn-force-cancel">FORCE CANCEL</button>
-                <button class="profile-btn" id="btn-profile" title="Sign Out">
-                    <i class="fas fa-user"></i>
-                </button>
+                <button class="hdr-btn" id="btn-profile" title="Account">ACCOUNT</button>
             </div>
         </header>
 
