@@ -297,6 +297,93 @@ router.post('/:orderId/cancel-no-show', requireAdminSession, async (req, res) =>
 });
 
 // ---------------------------------------------------------
+// POST /api/orders/:orderId/force-cancel (Admin — cancel any active order)
+// ---------------------------------------------------------
+router.post('/:orderId/force-cancel', requireAdminSession, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const adminEmail = req.user.email;
+
+    const { data: order, error: fetchErr } = await supabase
+      .from('orders')
+      .select('id, status, total, customer_email')
+      .eq('id', orderId)
+      .single();
+
+    if (fetchErr || !order) {
+      return res.status(404).json({ success: false, error: 'Order not found', code: 'NOT_FOUND' });
+    }
+
+    const activeStatuses = ['pending', 'kitchen', 'prepared'];
+    if (!activeStatuses.includes(order.status)) {
+      return res.status(400).json({ success: false, error: `Cannot cancel order with status "${order.status}"`, code: 'STATE_CONFLICT' });
+    }
+
+    const previousStatus = order.status;
+    const refundAmount = Math.round(Number(order.total));
+    if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
+      return res.status(500).json({ success: false, error: 'Invalid refund amount', code: 'INVALID_AMOUNT' });
+    }
+
+    // Atomic cancel — only if status hasn't changed
+    const { data: cancelledData, error: cancelErr } = await supabase
+      .from('orders')
+      .update({
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: adminEmail,
+        cancel_reason: 'admin_force',
+        refund_amount: refundAmount
+      })
+      .eq('id', orderId)
+      .eq('status', previousStatus)
+      .select();
+
+    if (cancelErr) throw cancelErr;
+    if (!cancelledData || cancelledData.length === 0) {
+      return res.status(409).json({ success: false, error: 'Order state changed during cancel', code: 'STATE_CONFLICT' });
+    }
+
+    // Credit wallet
+    const creditResult = await walletService.creditCoins(
+      order.customer_email,
+      refundAmount,
+      'REFUND',
+      orderId,
+      'Refund: order cancelled by staff'
+    );
+
+    if (!creditResult.success) {
+      // Rollback
+      await supabase
+        .from('orders')
+        .update({
+          status: previousStatus,
+          cancelled_at: null,
+          cancelled_by: null,
+          cancel_reason: null,
+          refund_amount: null
+        })
+        .eq('id', orderId)
+        .eq('status', 'cancelled');
+
+      return res.status(500).json({ success: false, error: 'Wallet refund failed, cancel rolled back.', code: 'WALLET_CREDIT_FAILED' });
+    }
+
+    console.log(`🚫 Force cancel: order ${orderId} (was ${previousStatus}) by ${adminEmail}, refund ₹${refundAmount}`);
+
+    if (notificationService.notifyOrderCancelledNoShow) {
+      notificationService.notifyOrderCancelledNoShow(order, refundAmount).catch(err => console.error(err));
+    }
+
+    res.json({ success: true, refundAmount });
+  } catch (error) {
+    console.error('force-cancel error:', error);
+    res.status(500).json({ success: false, error: 'Failed to cancel order', code: 'DB_ERROR' });
+  }
+});
+
+// ---------------------------------------------------------
 // POST /api/orders/:orderId/arrive (User view)
 // ---------------------------------------------------------
 router.post('/:orderId/arrive', requireAuth, async (req, res) => {

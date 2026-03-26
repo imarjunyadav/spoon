@@ -39,6 +39,7 @@
                 <button class="hdr-btn" id="btn-cancelled">CANCELLED</button>
                 <button class="hdr-btn" id="btn-stock">STOCK</button>
                 <button class="hdr-btn" id="btn-settings">SETTING</button>
+                <button class="hdr-btn hdr-btn--danger" id="btn-force-cancel">FORCE CANCEL</button>
                 <button class="profile-btn" id="btn-profile" title="Sign Out">
                     <i class="fas fa-user"></i>
                 </button>
@@ -181,6 +182,18 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Force Cancel Action Bar (hidden by default) -->
+    <div class="force-cancel-bar hidden" id="force-cancel-bar">
+        <label class="fc-select-all">
+            <input type="checkbox" id="fc-select-all-checkbox">
+            <span>Select All</span>
+        </label>
+        <button class="fc-confirm-btn" id="fc-confirm-btn" disabled>
+            <i class="fas fa-ban"></i>
+            <span>Cancel Selected (<span id="fc-count">0</span>)</span>
+        </button>
     </div>
 
     <!-- Toast container for notifications -->

@@ -414,3 +414,130 @@ body {
 .stock-tab.active .oos-badge {
     background: rgba(255,255,255,0.3);
 }
+
+/* ====================
+   FORCE CANCEL FEATURE
+   ==================== */
+
+/* Danger header button */
+.hdr-btn--danger {
+    background: #fff5f5;
+    color: var(--brand-primary);
+    border-color: #ffc2c2;
+}
+.hdr-btn--danger:hover {
+    background: #ffe0e0;
+}
+.hdr-btn--danger.active {
+    background: var(--brand-primary);
+    color: white;
+    border-color: var(--brand-primary);
+}
+
+/* Select mode — checkbox overlay on cards */
+.order-card.fc-selectable {
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.2s, background 0.2s;
+}
+.order-card.fc-selectable::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    background: white;
+    transition: all 0.15s;
+}
+.order-card.fc-selectable.fc-selected::before {
+    background: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+.order-card.fc-selectable.fc-selected::after {
+    content: '✓';
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    z-index: 1;
+}
+.order-card.fc-selectable {
+    padding-left: 42px;
+}
+.order-card.fc-selected {
+    border-color: var(--brand-primary);
+    background: #fff5f5;
+}
+
+/* Long-press visual feedback */
+.order-card.long-press-active {
+    transform: scale(0.97);
+    border-color: var(--brand-primary);
+    transition: transform 0.15s, border-color 0.15s;
+}
+
+/* Floating cancel action bar */
+.force-cancel-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--background-white);
+    border-top: 2px solid var(--brand-primary);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 999;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
+}
+.force-cancel-bar.hidden { display: none !important; }
+
+.fc-select-all {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+}
+.fc-select-all input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--brand-primary);
+    cursor: pointer;
+}
+
+.fc-confirm-btn {
+    background: var(--brand-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+.fc-confirm-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+.fc-confirm-btn:not(:disabled):hover {
+    background: var(--brand-primary-dark);
+}
+.fc-confirm-btn:not(:disabled):active {
+    transform: scale(0.96);
+}

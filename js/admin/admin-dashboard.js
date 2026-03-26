@@ -61,7 +61,13 @@ document.addEventListener('DOMContentLoaded', () => {
         modalProfile: document.getElementById('modal-profile'),
         profileEmail: document.getElementById('admin-profile-email'),
         btnLogoutConfirm: document.getElementById('btn-logout-confirm'),
-        audioToggle: document.getElementById('toggle-audio-notifications')
+        audioToggle: document.getElementById('toggle-audio-notifications'),
+        // Force Cancel elements
+        btnForceCancel: document.getElementById('btn-force-cancel'),
+        forceCancelBar: document.getElementById('force-cancel-bar'),
+        fcSelectAllCheckbox: document.getElementById('fc-select-all-checkbox'),
+        fcConfirmBtn: document.getElementById('fc-confirm-btn'),
+        fcCountEl: document.getElementById('fc-count')
     };
 
     // Audio & Highlight State
@@ -448,13 +454,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const highlightClass = alarmPlayingForIds.has(order.id) ? 'new-order-highlight' : '';
 
         return `
-            <div class="order-card ${highlightClass}" data-id="${order.id}">
+            <div class="order-card ${highlightClass}${isFcSelectMode ? ' fc-selectable' : ''}${fcSelectedIds.has(order.id) ? ' fc-selected' : ''}" data-id="${order.id}">
                 <div class="order-items">
                     ${generateItemsHTML(order.items)}
                 </div>
                 <div class="order-meta">
                     <span class="time-elapsed">${displayTime}</span>
-                    ${actionBtn}
+                    ${!isFcSelectMode ? actionBtn : ''}
                 </div>
             </div>
         `;
@@ -480,13 +486,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         return `
-             <div class="order-card" data-id="${order.id}" style="${order.arrived_at ? 'border-color: #2196F3; border-width: 2px;' : ''}">
+             <div class="order-card${isFcSelectMode ? ' fc-selectable' : ''}${fcSelectedIds.has(order.id) ? ' fc-selected' : ''}" data-id="${order.id}" style="${order.arrived_at ? 'border-color: #2196F3; border-width: 2px;' : ''}">
                 <div class="order-items">
                     ${generateItemsHTML(order.items)}
                 </div>
                 <div class="order-meta">
                     <span class="time-elapsed">${timeAgo(order.prepared_at)}</span>
-                    ${actionBtn}
+                    ${!isFcSelectMode ? actionBtn : ''}
                 </div>
             </div>
         `;
@@ -556,6 +562,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         lastVisiblePendingIds = currentVisiblePendingIds;
         isInitialLoad = false;
+
+        // Re-attach long-press and click handlers for force cancel
+        if (isFcSelectMode) {
+            attachFcSelectHandlers();
+        } else {
+            attachLongPressHandlers();
+        }
     }
 
     // Interval to refresh timestamps and check timeouts
@@ -832,6 +845,180 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = false;
         }
     });
+
+    // ---------------------------------------------------------
+    // FORCE CANCEL LOGIC
+    // ---------------------------------------------------------
+    let isFcSelectMode = false;
+    let fcSelectedIds = new Set();
+    let longPressTimer = null;
+
+    // --- Long Press (single cancel) ---
+    function attachLongPressHandlers() {
+        document.querySelectorAll('.order-card[data-id]').forEach(card => {
+            let timer = null;
+
+            const startPress = (e) => {
+                if (isFcSelectMode) return;
+                timer = setTimeout(() => {
+                    card.classList.add('long-press-active');
+                    const orderId = card.dataset.id;
+                    setTimeout(() => card.classList.remove('long-press-active'), 300);
+
+                    if (confirm('Force cancel this order and refund the user?')) {
+                        forceCancelSingle(orderId);
+                    }
+                }, 700);
+            };
+
+            const cancelPress = () => {
+                if (timer) { clearTimeout(timer); timer = null; }
+                card.classList.remove('long-press-active');
+            };
+
+            card.addEventListener('mousedown', startPress);
+            card.addEventListener('mouseup', cancelPress);
+            card.addEventListener('mouseleave', cancelPress);
+            card.addEventListener('touchstart', startPress, { passive: true });
+            card.addEventListener('touchend', cancelPress);
+            card.addEventListener('touchcancel', cancelPress);
+        });
+    }
+
+    async function forceCancelSingle(orderId) {
+        // Optimistic removal
+        const idx = ordersList.findIndex(o => o.id === orderId);
+        let backup = null;
+        if (idx > -1) {
+            backup = { ...ordersList[idx] };
+            ordersList.splice(idx, 1);
+            render();
+        }
+
+        try {
+            const res = await fetch(`${config.apiUrl}/orders/${orderId}/force-cancel`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.error || 'Cancel failed');
+            showToast(`Order cancelled, ₹${data.refundAmount} refunded`, 'success');
+            fetchOrders();
+        } catch (err) {
+            showToast(err.message || 'Force cancel failed', 'error');
+            if (backup) {
+                ordersList.splice(idx, 0, backup);
+                render();
+            }
+            fetchOrders();
+        }
+    }
+
+    // --- Multi-select mode ---
+    function toggleFcSelectMode() {
+        isFcSelectMode = !isFcSelectMode;
+        fcSelectedIds.clear();
+
+        dom.btnForceCancel.classList.toggle('active', isFcSelectMode);
+        dom.forceCancelBar.classList.toggle('hidden', !isFcSelectMode);
+        dom.fcSelectAllCheckbox.checked = false;
+        updateFcUI();
+        render();
+    }
+
+    function attachFcSelectHandlers() {
+        document.querySelectorAll('.order-card.fc-selectable').forEach(card => {
+            card.addEventListener('click', () => {
+                const id = card.dataset.id;
+                if (fcSelectedIds.has(id)) {
+                    fcSelectedIds.delete(id);
+                    card.classList.remove('fc-selected');
+                } else {
+                    fcSelectedIds.add(id);
+                    card.classList.add('fc-selected');
+                }
+                updateFcUI();
+            });
+        });
+    }
+
+    function updateFcUI() {
+        const count = fcSelectedIds.size;
+        dom.fcCountEl.textContent = count;
+        dom.fcConfirmBtn.disabled = count === 0;
+
+        const totalCards = document.querySelectorAll('.order-card.fc-selectable').length;
+        dom.fcSelectAllCheckbox.checked = totalCards > 0 && count === totalCards;
+    }
+
+    async function forceCancelBatch() {
+        const ids = Array.from(fcSelectedIds);
+        if (ids.length === 0) return;
+
+        dom.fcConfirmBtn.disabled = true;
+        dom.fcConfirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Cancelling...</span>';
+
+        let successCount = 0;
+        let failCount = 0;
+        let totalRefund = 0;
+
+        for (const orderId of ids) {
+            try {
+                const res = await fetch(`${config.apiUrl}/orders/${orderId}/force-cancel`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    successCount++;
+                    totalRefund += data.refundAmount || 0;
+                    // Remove from local list
+                    const idx = ordersList.findIndex(o => o.id === orderId);
+                    if (idx > -1) ordersList.splice(idx, 1);
+                } else {
+                    failCount++;
+                }
+            } catch {
+                failCount++;
+            }
+        }
+
+        if (successCount > 0) {
+            showToast(`${successCount} order${successCount > 1 ? 's' : ''} cancelled, ₹${totalRefund} refunded`, 'success');
+        }
+        if (failCount > 0) {
+            showToast(`${failCount} order${failCount > 1 ? 's' : ''} failed to cancel`, 'error');
+        }
+
+        toggleFcSelectMode();
+        fetchOrders();
+    }
+
+    // Event listeners
+    dom.btnForceCancel.addEventListener('click', toggleFcSelectMode);
+
+    dom.fcSelectAllCheckbox.addEventListener('change', () => {
+        const isChecked = dom.fcSelectAllCheckbox.checked;
+        document.querySelectorAll('.order-card.fc-selectable').forEach(card => {
+            const id = card.dataset.id;
+            if (isChecked) {
+                fcSelectedIds.add(id);
+                card.classList.add('fc-selected');
+            } else {
+                fcSelectedIds.delete(id);
+                card.classList.remove('fc-selected');
+            }
+        });
+        updateFcUI();
+    });
+
+    dom.fcConfirmBtn.addEventListener('click', () => {
+        const count = fcSelectedIds.size;
+        if (confirm(`Force cancel ${count} order${count > 1 ? 's' : ''} and refund users?`)) {
+            forceCancelBatch();
+        }
+    });
+
 
     // ---------------------------------------------------------
     // REALTIME SUBSCRIPTION
