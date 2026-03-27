@@ -318,6 +318,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (actionPath === 'send-to-kitchen') {
                 ordersList[orderIndex].status = 'kitchen';
             } else if (actionPath === 'mark-prepared') {
+                const limit = systemSettings.max_prepared_slots || 10;
+                const preparedCount = ordersList.filter(o => o.status === 'prepared').length;
+                if (preparedCount >= limit) {
+                    showToast('All pickup slots are currently full', 'error');
+                    window.isActionInFlight = false;
+                    document.body.style.pointerEvents = 'auto';
+                    document.body.style.opacity = '1';
+                    return; // Abort entirely!
+                }
+                
                 ordersList[orderIndex].status = 'prepared';
                 ordersList[orderIndex].prepared_at = new Date().toISOString();
                 ordersList[orderIndex].slot_number = 999; // temporary until background fetch syncs it
@@ -561,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Seed the notified list so pre-existing orders don't scream on first real-time update
             currentVisiblePendingIds.forEach(id => notifiedOrderIds.add(id));
             isInitialLoad = false;
-        } else if (window.audioEnabled !== false) {
+        } else if (window.audioEnabled !== false && !window.isActionInFlight) {
             let hasNewVisibleOrder = false;
             
             currentVisiblePendingIds.forEach(id => {
