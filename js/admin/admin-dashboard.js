@@ -508,26 +508,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const pendings = ordersList.filter(o => o.status === 'pending' || o.status === 'kitchen');
         const prepared = ordersList.filter(o => o.status === 'prepared').sort((a,b) => a.slot_number - b.slot_number);
 
-        // Populate PENDING column (max 16, or flex to max_prepared_slots)
+        // Populate PENDING column
         dom.pendingList.innerHTML = '';
         dom.queueList.innerHTML = '';
-        const limit = Math.max(16, systemSettings.max_prepared_slots || 10);
+        const limit = systemSettings.max_prepared_slots || 10;
         
+        let remainingOrders = [];
+
         if (pendings.length === 0) {
             dom.pendingList.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding: 24px;">No active orders</div>';
-            dom.btnQueue.classList.add('hidden');
         } else {
             pendings.slice(0, limit).forEach(o => dom.pendingList.insertAdjacentHTML('beforeend', renderPending(o)));
-            
-            // Populate QUEUE (remaining)
-            const remaining = pendings.slice(limit);
-            if (remaining.length > 0) {
-                dom.btnQueue.classList.remove('hidden');
-                dom.btnQueue.innerText = `QUEUE (${remaining.length}) ...`;
-                remaining.forEach(o => dom.queueList.insertAdjacentHTML('beforeend', renderPending(o)));
-            } else {
-                dom.btnQueue.classList.add('hidden');
-            }
+            remainingOrders.push(...pendings.slice(limit).map(o => ({...o, type: 'pending'})));
         }
 
         // Populate PREPARED column
@@ -535,7 +527,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (prepared.length === 0) {
             dom.preparedList.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding: 24px;">No prepared orders</div>';
         } else {
-            prepared.forEach(o => dom.preparedList.insertAdjacentHTML('beforeend', renderPrepared(o)));
+            prepared.slice(0, limit).forEach(o => dom.preparedList.insertAdjacentHTML('beforeend', renderPrepared(o)));
+            remainingOrders.push(...prepared.slice(limit).map(o => ({...o, type: 'prepared'})));
+        }
+
+        // Handle QUEUE overflow logic
+        if (remainingOrders.length > 0) {
+            dom.btnQueue.classList.remove('hidden');
+            dom.btnQueue.innerText = `QUEUE (${remainingOrders.length}) ...`;
+            remainingOrders.forEach(o => {
+                if (o.type === 'pending') dom.queueList.insertAdjacentHTML('beforeend', renderPending(o));
+                if (o.type === 'prepared') dom.queueList.insertAdjacentHTML('beforeend', renderPrepared(o));
+            });
+        } else {
+            dom.btnQueue.classList.add('hidden');
         }
 
         // --- AUDIO ALARM LOGIC (Diffing Visible Pending) ---
