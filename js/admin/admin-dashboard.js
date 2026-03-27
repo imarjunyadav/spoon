@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Audio & Highlight State
     if (typeof window.audioEnabled === 'undefined') window.audioEnabled = true;
 
-    let lastVisiblePendingIds = new Set();
+    let notifiedOrderIds = new Set();
     let isInitialLoad = true;
     let alarmPlayingForIds = new Set();
     let freezeAcknowledgeUntil = 0;
@@ -554,17 +554,22 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.btnQueue.classList.add('hidden');
         }
 
-        // --- AUDIO ALARM LOGIC (Diffing Visible Pending) ---
+        // --- AUDIO ALARM LOGIC (Persistent Notification Tracking) ---
         const currentVisiblePendingIds = new Set(pendings.slice(0, limit).map(o => o.id));
         
-        if (!isInitialLoad && window.audioEnabled !== false) {
+        if (isInitialLoad) {
+            // Seed the notified list so pre-existing orders don't scream on first real-time update
+            currentVisiblePendingIds.forEach(id => notifiedOrderIds.add(id));
+            isInitialLoad = false;
+        } else if (window.audioEnabled !== false) {
             let hasNewVisibleOrder = false;
             
             currentVisiblePendingIds.forEach(id => {
-                // If it's a newly visible order (not in last render's visible list)
-                if (!lastVisiblePendingIds.has(id)) {
+                // Trigger sound exclusively once in an order's lifecycle when entering Pending column
+                if (!notifiedOrderIds.has(id)) {
                     hasNewVisibleOrder = true;
                     alarmPlayingForIds.add(id);
+                    notifiedOrderIds.add(id);
                 }
             });
 
@@ -580,9 +585,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         }
-        
-        lastVisiblePendingIds = currentVisiblePendingIds;
-        isInitialLoad = false;
 
         // Re-attach long-press and click handlers for force cancel
         if (isFcSelectMode) {
