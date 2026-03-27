@@ -508,10 +508,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const pendings = ordersList.filter(o => o.status === 'pending' || o.status === 'kitchen');
         const prepared = ordersList.filter(o => o.status === 'prepared').sort((a,b) => a.slot_number - b.slot_number);
 
-        // Populate PENDING column (max 10, or max_prepared_slots default)
+        // Populate PENDING column (max 16, or flex to max_prepared_slots)
         dom.pendingList.innerHTML = '';
         dom.queueList.innerHTML = '';
-        const limit = systemSettings.max_prepared_slots;
+        const limit = Math.max(16, systemSettings.max_prepared_slots || 10);
         
         if (pendings.length === 0) {
             dom.pendingList.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding: 24px;">No active orders</div>';

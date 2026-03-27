@@ -138,8 +138,10 @@ body {
 .order-list {
     flex: 1;
     overflow-y: auto;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-content: start;
     padding-bottom: 24px;
     padding-right: 8px; /* For scrollbar ease */
 }
@@ -162,7 +164,6 @@ body {
     display: flex;
     justify-content: space-between;
     background: var(--background-white);
-    margin-bottom: 20px; 
 }
 
 .order-items {
