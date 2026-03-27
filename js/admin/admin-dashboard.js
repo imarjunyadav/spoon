@@ -504,34 +504,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function render() {
-        // Separate orders
-        const pendings = ordersList.filter(o => o.status === 'pending' || o.status === 'kitchen');
-        const prepared = ordersList.filter(o => o.status === 'prepared').sort((a,b) => a.slot_number - b.slot_number);
+        // Separate and sort orders
+        const pendings = ordersList
+            .filter(o => o.status === 'pending' || o.status === 'kitchen')
+            .sort((a, b) => new Date(a.created_at) - new Date(b.created_at)); // Oldest / priority first
+            
+        const prepared = ordersList
+            .filter(o => o.status === 'prepared')
+            .sort((a, b) => a.slot_number - b.slot_number);
 
-        // Populate PENDING column
-        dom.pendingList.innerHTML = '';
-        dom.queueList.innerHTML = '';
         const limit = systemSettings.max_prepared_slots || 10;
-        
         let remainingOrders = [];
 
+        // --- PENDING COLUMN ---
+        dom.pendingList.innerHTML = '';
+        dom.queueList.innerHTML = '';
+        
         if (pendings.length === 0) {
             dom.pendingList.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding: 24px;">No active orders</div>';
         } else {
+            // Strictly capacity-enforced Pending
             pendings.slice(0, limit).forEach(o => dom.pendingList.insertAdjacentHTML('beforeend', renderPending(o)));
+            // Overflow moves to Queue
             remainingOrders.push(...pendings.slice(limit).map(o => ({...o, type: 'pending'})));
         }
 
-        // Populate PREPARED column
+        // --- PREPARED COLUMN ---
         dom.preparedList.innerHTML = '';
         if (prepared.length === 0) {
             dom.preparedList.innerHTML = '<div style="color:var(--text-secondary); text-align:center; padding: 24px;">No prepared orders</div>';
         } else {
+            // Strictly capacity-enforced Prepared
             prepared.slice(0, limit).forEach(o => dom.preparedList.insertAdjacentHTML('beforeend', renderPrepared(o)));
+            // Overflow (if any) moves to Queue
             remainingOrders.push(...prepared.slice(limit).map(o => ({...o, type: 'prepared'})));
         }
 
-        // Handle QUEUE overflow logic
+        // --- QUEUE ROUTING ---
+        // When a Pending slot frees (e.g. order moves to Prepared or is cancelled),
+        // the next render automatically shifts the first 'pending' Queue item into the Pending column UI.
         if (remainingOrders.length > 0) {
             dom.btnQueue.classList.remove('hidden');
             dom.btnQueue.innerText = `QUEUE (${remainingOrders.length}) ...`;
