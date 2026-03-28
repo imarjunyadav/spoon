@@ -555,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // the next render automatically shifts the first 'pending' Queue item into the Pending column UI.
         if (remainingOrders.length > 0) {
             dom.btnQueue.classList.remove('hidden');
-            dom.btnQueue.innerHTML = `<span style="font-size: 16px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">QUEUE <span style="font-size:11px; opacity:0.6; margin-left:2px;">(Q)</span></span><span style="font-size: 26px; font-weight: 900; color: var(--brand-primary);">${remainingOrders.length}</span>`;
+            dom.btnQueue.innerHTML = `<span style="font-size: 15px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">QUEUE <span style="font-size: 18px; font-weight: 800; color: var(--text-primary); margin-left: 4px;">x${remainingOrders.length}</span></span>`;
             remainingOrders.forEach(o => {
                 if (o.type === 'pending') dom.queueList.insertAdjacentHTML('beforeend', renderPending(o));
                 if (o.type === 'prepared') dom.queueList.insertAdjacentHTML('beforeend', renderPrepared(o));
