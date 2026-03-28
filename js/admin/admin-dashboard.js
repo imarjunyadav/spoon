@@ -555,7 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // the next render automatically shifts the first 'pending' Queue item into the Pending column UI.
         if (remainingOrders.length > 0) {
             dom.btnQueue.classList.remove('hidden');
-            dom.btnQueue.innerText = `QUEUE (${remainingOrders.length}) ...`;
+            dom.btnQueue.innerHTML = `<span style="font-size: 16px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">QUEUE <span style="font-size:11px; opacity:0.6; margin-left:2px;">(Q)</span></span><span style="font-size: 26px; font-weight: 900; color: var(--brand-primary);">${remainingOrders.length}</span>`;
             remainingOrders.forEach(o => {
                 if (o.type === 'pending') dom.queueList.insertAdjacentHTML('beforeend', renderPending(o));
                 if (o.type === 'prepared') dom.queueList.insertAdjacentHTML('beforeend', renderPrepared(o));
@@ -1146,6 +1146,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
     }
+
+    // ---------------------------------------------------------
+    // KEYBOARD SHORTCUTS
+    // ---------------------------------------------------------
+    document.addEventListener('keydown', (e) => {
+        // Ignore if typing in an input
+        if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+        
+        if (e.key === 'q' || e.key === 'Q') {
+            const btnQueue = document.getElementById('btn-queue');
+            if (btnQueue && !btnQueue.classList.contains('hidden')) {
+                btnQueue.click();
+            }
+        }
+    });
 
     // ---------------------------------------------------------
     // IGNITION
