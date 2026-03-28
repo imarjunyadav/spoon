@@ -35,13 +35,11 @@
         <!-- HEADER -->
         <header class="admin-header">
             <div class="brand-title">SPOON ADMIN <span id="live-indicator" style="font-size:10px; color:var(--text-secondary);">●</span></div>
-            <div class="header-nav-main" style="display: flex; gap: 12px; margin-left: 32px; flex: 1;">
-                <button class="hdr-btn primary-nav" id="btn-stock">STOCKS</button>
-                <button class="hdr-btn" id="btn-settings">SETTINGS</button>
+            <div class="header-actions" style="display: flex; gap: 32px; align-items: baseline; flex: 1; justify-content: flex-end;">
+                <button class="hdr-btn" id="btn-stock" title="Press S to view Stocks">STOCKS</button>
                 <button class="hdr-btn" id="btn-cancelled">REFUNDS</button>
-            </div>
-            <div class="header-actions" style="display: flex; gap: 16px;">
-                <button class="hdr-btn hdr-btn--danger" id="btn-force-cancel">FORCE CANCEL</button>
+                <button class="hdr-btn" id="btn-force-cancel">FORCE CANCEL</button>
+                <button class="hdr-btn" id="btn-settings">SETTINGS</button>
                 <button class="hdr-btn" id="btn-profile" title="Account">ACCOUNT</button>
             </div>
         </header>

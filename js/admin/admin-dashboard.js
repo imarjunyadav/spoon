@@ -1160,6 +1160,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnQueue.click();
             }
         }
+        
+        if (e.key === 's' || e.key === 'S') {
+            const btnStock = document.getElementById('btn-stock');
+            if (btnStock) btnStock.click();
+        }
     });
 
     // ---------------------------------------------------------
