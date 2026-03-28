@@ -50,11 +50,13 @@
         <main class="workspace">
             <!-- PENDING COLUMN -->
             <div class="column">
-                <h2 class="col-title">PENDING</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h2 class="col-title" style="margin-bottom: 0;">PENDING</h2>
+                    <button class="queue-trigger hidden" id="btn-queue" style="margin-top: 0; padding: 6px 16px; font-size: 14px;">QUEUE...</button>
+                </div>
                 <div class="order-list" id="pending-list">
                     <!-- Cards injected here -->
                 </div>
-                <button class="queue-trigger" id="btn-queue">QUEUE...</button>
             </div>
 
             <!-- PREPARED COLUMN -->
