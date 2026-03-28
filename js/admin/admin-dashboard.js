@@ -596,11 +596,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Re-attach long-press and click handlers for force cancel
+        // Re-attach click handlers for force cancel
         if (isFcSelectMode) {
             attachFcSelectHandlers();
-        } else {
-            attachLongPressHandlers();
         }
     }
 
@@ -884,68 +882,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------------------------------------------------------
     let isFcSelectMode = false;
     let fcSelectedIds = new Set();
-    let longPressTimer = null;
-
-    // --- Long Press (single cancel) ---
-    function attachLongPressHandlers() {
-        document.querySelectorAll('.order-card[data-id]').forEach(card => {
-            let timer = null;
-
-            const startPress = (e) => {
-                if (isFcSelectMode) return;
-                timer = setTimeout(() => {
-                    card.classList.add('long-press-active');
-                    const orderId = card.dataset.id;
-                    setTimeout(() => card.classList.remove('long-press-active'), 300);
-
-                    if (confirm('Force cancel this order and refund the user?')) {
-                        forceCancelSingle(orderId);
-                    }
-                }, 700);
-            };
-
-            const cancelPress = () => {
-                if (timer) { clearTimeout(timer); timer = null; }
-                card.classList.remove('long-press-active');
-            };
-
-            card.addEventListener('mousedown', startPress);
-            card.addEventListener('mouseup', cancelPress);
-            card.addEventListener('mouseleave', cancelPress);
-            card.addEventListener('touchstart', startPress, { passive: true });
-            card.addEventListener('touchend', cancelPress);
-            card.addEventListener('touchcancel', cancelPress);
-        });
-    }
-
-    async function forceCancelSingle(orderId) {
-        // Optimistic removal
-        const idx = ordersList.findIndex(o => o.id === orderId);
-        let backup = null;
-        if (idx > -1) {
-            backup = { ...ordersList[idx] };
-            ordersList.splice(idx, 1);
-            render();
-        }
-
-        try {
-            const res = await fetch(`${config.apiUrl}/orders/${orderId}/force-cancel`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (!res.ok || !data.success) throw new Error(data.error || 'Cancel failed');
-            showToast(`Order cancelled, ₹${data.refundAmount} refunded`, 'success');
-            fetchOrders();
-        } catch (err) {
-            showToast(err.message || 'Force cancel failed', 'error');
-            if (backup) {
-                ordersList.splice(idx, 0, backup);
-                render();
-            }
-            fetchOrders();
-        }
-    }
 
     // --- Multi-select mode ---
     function toggleFcSelectMode() {
