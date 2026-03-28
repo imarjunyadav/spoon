@@ -11,9 +11,10 @@
     --text-on-brand: #FFFFFF;
     --background-light: #F8F9FA;
     --background-white: #FFFFFF;
-    --border-color: #666666; /* Darker border matching wireframe stroke style */
+    --border-color: #666666;
+    /* Darker border matching wireframe stroke style */
     --inactive-grey: #F1F1F1;
-    --success-green: #2E7D32;
+    --success-green: #4cd964;
     --warning-yellow: #FBC02D;
     --font-family-main: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     --shadow-card: 0px 4px 12px rgba(0, 0, 0, 0.08);
@@ -114,6 +115,7 @@ body {
     color: white;
     border-color: var(--text-primary);
 }
+
 .primary-nav:hover {
     background: var(--border-color);
 }
@@ -152,12 +154,14 @@ body {
     gap: 16px;
     align-content: start;
     padding-bottom: 24px;
-    padding-right: 8px; /* For scrollbar ease */
+    padding-right: 8px;
+    /* For scrollbar ease */
 }
 
 .order-list::-webkit-scrollbar {
     width: 6px;
 }
+
 .order-list::-webkit-scrollbar-thumb {
     background-color: var(--border-color);
     border-radius: 10px;
@@ -213,7 +217,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 8px; 
+    gap: 8px;
     min-width: 90px;
 }
 
@@ -240,19 +244,29 @@ body {
     justify-content: center;
     letter-spacing: 0.5px;
 }
-.btn-action:active, .slot-badge:active { transform: scale(0.95); }
+
+.btn-action:active,
+.slot-badge:active {
+    transform: scale(0.95);
+}
 
 .btn-add {
     background: var(--brand-primary);
     color: white;
 }
-.btn-add:hover { background: var(--brand-primary-dark); }
+
+.btn-add:hover {
+    background: var(--brand-primary-dark);
+}
 
 .btn-ready {
     background: #FFD54F;
     color: #000;
 }
-.btn-ready:hover { background: #FFCA28; }
+
+.btn-ready:hover {
+    background: #FFCA28;
+}
 
 .btn-cancel {
     background: var(--background-light);
@@ -260,7 +274,10 @@ body {
     border: 2px solid var(--brand-primary);
     font-size: 22px;
 }
-.btn-cancel:hover { background: #ffe0e0; }
+
+.btn-cancel:hover {
+    background: #ffe0e0;
+}
 
 .slot-badge {
     width: 90px;
@@ -277,7 +294,10 @@ body {
     cursor: pointer;
     transition: transform 0.1s;
 }
-.slot-badge:hover { background: #388E3C; }
+
+.slot-badge:hover {
+    background: #388E3C;
+}
 
 /* ====================
    QUEUE SECTION
@@ -304,13 +324,18 @@ body {
 }
 
 /* Utilities */
-.hidden { display: none !important; }
+.hidden {
+    display: none !important;
+}
 
 /* MODALS (Simplified for now) */
 .modal-overlay {
     position: fixed;
-    top:0; left:0; width:100%; height:100%;
-    background: rgba(0,0,0,0.5);
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -367,13 +392,16 @@ body {
 
 .stock-toggle .toggle-track {
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background-color: #e0e0e0;
     border-radius: 28px;
     transition: background-color 0.3s;
 }
 
-.stock-toggle input:checked + .toggle-track {
+.stock-toggle input:checked+.toggle-track {
     background-color: #4cd964;
 }
 
@@ -386,10 +414,10 @@ body {
     background-color: white;
     border-radius: 50%;
     transition: left 0.3s;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.stock-toggle input:checked ~ .toggle-knob {
+.stock-toggle input:checked~.toggle-knob {
     left: 28px;
 }
 
@@ -447,7 +475,7 @@ body {
 }
 
 .stock-tab.active .oos-badge {
-    background: rgba(255,255,255,0.3);
+    background: rgba(255, 255, 255, 0.3);
 }
 
 /* ====================
@@ -460,9 +488,11 @@ body {
     color: var(--brand-primary);
     border-color: #ffc2c2;
 }
+
 .hdr-btn--danger:hover {
     background: #ffe0e0;
 }
+
 .hdr-btn--danger.active {
     background: var(--brand-primary);
     color: white;
@@ -475,6 +505,7 @@ body {
     position: relative;
     transition: border-color 0.2s, background 0.2s;
 }
+
 .order-card.fc-selectable::before {
     content: '';
     position: absolute;
@@ -488,10 +519,12 @@ body {
     background: white;
     transition: all 0.15s;
 }
+
 .order-card.fc-selectable.fc-selected::before {
     background: var(--brand-primary);
     border-color: var(--brand-primary);
 }
+
 .order-card.fc-selectable.fc-selected::after {
     content: '✓';
     position: absolute;
@@ -503,9 +536,11 @@ body {
     font-weight: 700;
     z-index: 1;
 }
+
 .order-card.fc-selectable {
     padding-left: 42px;
 }
+
 .order-card.fc-selected {
     border-color: var(--brand-primary);
     background: #fff5f5;
@@ -533,7 +568,10 @@ body {
     z-index: 999;
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
 }
-.force-cancel-bar.hidden { display: none !important; }
+
+.force-cancel-bar.hidden {
+    display: none !important;
+}
 
 .fc-select-all {
     display: flex;
@@ -545,6 +583,7 @@ body {
     cursor: pointer;
     user-select: none;
 }
+
 .fc-select-all input[type="checkbox"] {
     width: 20px;
     height: 20px;
@@ -566,13 +605,16 @@ body {
     gap: 8px;
     transition: all 0.2s;
 }
+
 .fc-confirm-btn:disabled {
     background: #ccc;
     cursor: not-allowed;
 }
+
 .fc-confirm-btn:not(:disabled):hover {
     background: var(--brand-primary-dark);
 }
+
 .fc-confirm-btn:not(:disabled):active {
     transform: scale(0.96);
 }
