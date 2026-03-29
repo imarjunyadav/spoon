@@ -1022,7 +1022,9 @@ document.addEventListener('DOMContentLoaded', () => {
             currentChannel = null;
         }
 
+        // Production-gated logging: set window.SPOON_DEBUG = true in DevTools to enable verbose tracing
         function logDebug(context, msg, data = '') {
+            if (!window.SPOON_DEBUG) return;
             console.debug(`[${context}]`, msg, data);
         }
 
@@ -1065,9 +1067,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (idx > -1) {
                     const localOrder = ordersList[idx];
                     
-                    // Out-of-order prevention: Prevent stale WS updates from overriding local state
-                    if (lifecycle[newOrder.status] < lifecycle[localOrder.status]) {
-                        logDebug('Realtime Safety', `Ignored older status event: ${newOrder.status} < ${localOrder.status}`);
+                    // Out-of-order prevention: block stale WS payloads from rolling back state
+                    // EXCEPTION: 'cancelled' is ALWAYS allowed from any state (force-cancel, admin cancel, etc.)
+                    const isCancellation = newOrder.status === 'cancelled';
+                    if (!isCancellation && lifecycle[newOrder.status] < lifecycle[localOrder.status]) {
+                        logDebug('Realtime Safety', `Dropped stale event: ${newOrder.status} < local ${localOrder.status}`);
                         return;
                     }
 
@@ -1079,22 +1083,41 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     ordersList[idx] = { ...localOrder, ...newOrder };
 
-                    // Fast path: Update targeted DOM node without destroying parent text selections / scrolling
-                    if (structurallySame) {
+                    // Fast path: targeted DOM update to avoid full innerHTML rebuild
+                    // SKIP targeted patching during FC select mode — outerHTML destroys addEventListener bindings
+                    if (structurallySame && !isFcSelectMode) {
                         const card = document.querySelector(`.order-card[data-id="${newOrder.id}"]`);
                         if (card) {
-                           if (newOrder.status === 'prepared') card.outerHTML = renderPrepared(ordersList[idx]);
-                           else card.outerHTML = renderPending(ordersList[idx]); 
+                           // Safe innerHTML swap: replace inner content only, preserving the card element and its listeners
+                           const temp = document.createElement('div');
+                           temp.innerHTML = newOrder.status === 'prepared' ? renderPrepared(ordersList[idx]) : renderPending(ordersList[idx]);
+                           const newCard = temp.firstElementChild;
+                           if (newCard) {
+                               card.className = newCard.className;
+                               card.style.cssText = newCard.style.cssText;
+                               card.innerHTML = newCard.innerHTML;
+                           }
                            needsStructuralRender = false;
-                           logDebug('Realtime DOM', `Targeted patch for card ${newOrder.id} isolated successfully`);
+                           logDebug('Realtime DOM', `Safe innerHTML patch for ${newOrder.id}`);
                         }
                     }
-                } else if (newOrder.status === 'pending') {
+                } else if (newOrder.status === 'pending' || newOrder.status === 'kitchen') {
+                    // Order not in local list — add it if it's an active status
                     ordersList.unshift(newOrder);
+                    logDebug('Realtime Sync', `Added missing order ${newOrder.id} (status: ${newOrder.status})`);
+                } else {
+                    // Order not found locally and not an active status — log it rather than silently drop
+                    logDebug('Realtime Drop', `UPDATE for unknown order ${newOrder.id} (status: ${newOrder.status}) — likely already removed by optimistic splice`);
+                    needsStructuralRender = false;
                 }
             } else if (eventType === 'DELETE') {
                 const idx = ordersList.findIndex(o => o.id === oldOrder.id);
-                if (idx > -1) ordersList.splice(idx, 1);
+                if (idx > -1) {
+                    ordersList.splice(idx, 1);
+                } else {
+                    logDebug('Realtime Drop', `DELETE for unknown order ${oldOrder.id} — already removed`);
+                    needsStructuralRender = false;
+                }
             }
             
             if (needsStructuralRender) {
