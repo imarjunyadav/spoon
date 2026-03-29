@@ -325,6 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.isActionInFlight = false;
                     document.body.style.pointerEvents = 'auto';
                     document.body.style.opacity = '1';
+                    window.flushRealtimeQueue();
                     return; // Abort entirely!
                 }
                 
@@ -355,8 +356,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(data.error || 'Action failed');
             }
             
-            // Silent background sync to get correct slot numbers, etc.
-            fetchOrders(); 
+            // Reconcile optimistic update with ground-truth DB data immediately without fetching everything
+            if (data.order) {
+                const idx = ordersList.findIndex(o => o.id === orderId);
+                if (idx > -1) {
+                    ordersList[idx] = { ...ordersList[idx], ...data.order };
+                    render();
+                }
+            }
         } catch (err) {
             console.error('API action error:', err);
             showToast(err.message || 'Network error', 'error');
@@ -371,11 +378,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 render();
             }
-            await fetchOrders(); // Force sync
         } finally {
             window.isActionInFlight = false;
             document.body.style.pointerEvents = 'auto';
             document.body.style.opacity = '1';
+            window.flushRealtimeQueue();
         }
     }
 
@@ -924,6 +931,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ids = Array.from(fcSelectedIds);
         if (ids.length === 0) return;
 
+        window.isActionInFlight = true;
         dom.fcConfirmBtn.disabled = true;
         dom.fcConfirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Cancelling...</span>';
 
@@ -960,7 +968,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         toggleFcSelectMode();
-        fetchOrders();
+        window.isActionInFlight = false;
+        window.flushRealtimeQueue();
     }
 
     // Event listeners
@@ -1013,38 +1022,61 @@ document.addEventListener('DOMContentLoaded', () => {
             currentChannel = null;
         }
 
+        window.realtimeEventQueue = window.realtimeEventQueue || [];
+        
+        window.flushRealtimeQueue = function() {
+            if (window.realtimeEventQueue.length === 0) return;
+            // Prevent recursive enqueuing while flushing
+            const events = [...window.realtimeEventQueue];
+            window.realtimeEventQueue = [];
+            
+            // Force state to false specifically for parsing payloads without infinite loops
+            const originalState = window.isActionInFlight;
+            window.isActionInFlight = false; 
+            events.forEach(payload => processRealtimePayload(payload));
+            window.isActionInFlight = originalState;
+        };
+
+        function processRealtimePayload(payload) {
+            const eventType = payload.eventType;
+            const newOrder = payload.new;
+            const oldOrder = payload.old;
+
+            if (eventType === 'INSERT') {
+                if (!ordersList.find(o => o.id === newOrder.id)) {
+                    ordersList.unshift(newOrder); 
+                    if (newOrder.status === 'pending') {
+                        alarmPlayingForIds.add(newOrder.id);
+                        startAlarmLoop();
+                    }
+                }
+            } else if (eventType === 'UPDATE') {
+                const idx = ordersList.findIndex(o => o.id === newOrder.id);
+                if (idx > -1) {
+                    if (!newOrder.items && ordersList[idx].items) {
+                        newOrder.items = ordersList[idx].items;
+                    }
+                    ordersList[idx] = { ...ordersList[idx], ...newOrder };
+                } else if (newOrder.status === 'pending') {
+                    ordersList.unshift(newOrder);
+                }
+            } else if (eventType === 'DELETE') {
+                const idx = ordersList.findIndex(o => o.id === oldOrder.id);
+                if (idx > -1) ordersList.splice(idx, 1);
+            }
+            render(); 
+        }
+
         // Authenticate the WebSocket for RLS (documented v2 pattern)
         supabase.realtime.setAuth(token);
 
         currentChannel = supabase.channel('admin-orders-' + Date.now())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-                const eventType = payload.eventType;
-                const newOrder = payload.new;
-                const oldOrder = payload.old;
-
-                if (eventType === 'INSERT') {
-                    if (!ordersList.find(o => o.id === newOrder.id)) {
-                        ordersList.unshift(newOrder); 
-                        if (newOrder.status === 'pending') {
-                            alarmPlayingForIds.add(newOrder.id);
-                            startAlarmLoop();
-                        }
-                    }
-                } else if (eventType === 'UPDATE') {
-                    const idx = ordersList.findIndex(o => o.id === newOrder.id);
-                    if (idx > -1) {
-                        if (!newOrder.items && ordersList[idx].items) {
-                            newOrder.items = ordersList[idx].items;
-                        }
-                        ordersList[idx] = { ...ordersList[idx], ...newOrder };
-                    } else if (newOrder.status === 'pending') {
-                        ordersList.unshift(newOrder);
-                    }
-                } else if (eventType === 'DELETE') {
-                    const idx = ordersList.findIndex(o => o.id === oldOrder.id);
-                    if (idx > -1) ordersList.splice(idx, 1);
+                if (window.isActionInFlight) {
+                    window.realtimeEventQueue.push(payload);
+                    return;
                 }
-                render(); 
+                processRealtimePayload(payload);
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'system_settings' }, () => {
                 fetchSettings();

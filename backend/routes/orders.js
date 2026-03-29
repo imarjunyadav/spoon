@@ -111,46 +111,24 @@ router.post('/:orderId/mark-prepared', requireAdminSession, async (req, res) => 
     const maxCapacity = await getNumericSetting('max_prepared_slots', 10);
     const now = new Date().toISOString();
     
-    let assignedSlot = null;
-    let preparedOrder = null;
+    // ---------------------------------------------------------
+    // ATOMIC SLOT ASSIGNMENT (Single RPC Call)
+    // Guaranteed to yield lowest available slot without JS looping
+    // ---------------------------------------------------------
+    const { data: rpcData, error } = await supabase.rpc('assign_prepared_slot_atomic', {
+      p_order_id: orderId,
+      p_max_slots: maxCapacity,
+      p_admin_email: adminEmail
+    });
 
-    // Atomic slot assignment loop
-    for (let slot = 1; slot <= maxCapacity; slot++) {
-      const { data, error } = await supabase
-        .from('orders')
-        .update({
-          status: 'prepared',
-          prepared_at: now,
-          prepared_by: adminEmail,
-          slot_number: slot
-        })
-        .eq('id', orderId)
-        .eq('status', 'kitchen')
-        .select();
+    if (error) throw error;
 
-      if (data && data.length > 0) {
-        assignedSlot = slot;
-        preparedOrder = data[0];
-        break; // Successfully assigned slot!
-      }
-      
-      // If error is unique violation (23505), this slot is taken. Try next.
-      if (error && error.code === '23505') {
-        continue;
-      }
-      
-      // If no error but no rows updated, it means the order wasn't in 'kitchen' state
-      if (!error && (!data || data.length === 0)) {
-        return res.status(409).json({ success: false, error: 'Order not in kitchen state', code: 'STATE_CONFLICT' });
-      }
-
-      // Any other DB error
-      if (error) throw error;
+    if (!rpcData.success) {
+      return res.status(409).json({ success: false, error: rpcData.error, code: rpcData.code });
     }
 
-    if (!assignedSlot) {
-      return res.status(409).json({ success: false, error: 'All pickup slots are currently full', code: 'SLOTS_FULL' });
-    }
+    const preparedOrder = rpcData.order;
+    const assignedSlot = rpcData.slot;
 
     // Fire-and-forget notification
     if (notificationService.notifyOrderPrepared) {
