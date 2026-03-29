@@ -10,6 +10,12 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
 
+    // --- Authentication Check ---
+    if (localStorage.getItem('spoon-is-logged-in') !== 'true') {
+        window.location.replace('login.html');
+        return;
+    }
+
     // Wait for config to load from backend API
     await window.waitForConfig();
 

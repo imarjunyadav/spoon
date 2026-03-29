@@ -330,12 +330,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Pause/resume polling
     if (isSelectMode) {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-      }
+      stopPolling();
     } else {
-      pollingInterval = setInterval(loadOrders, 10000);
+      startPolling();
     }
   }
 
@@ -459,9 +456,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // --- Initialization ---
-
+  // --- Polling Control ---
   let pollingInterval = null;
+  const POLL_INTERVAL = 30000; // 30 seconds (reduced from 10s to cut peak-hour load)
+
+  function startPolling() {
+    if (pollingInterval) return;
+    pollingInterval = setInterval(loadOrders, POLL_INTERVAL);
+  }
+
+  function stopPolling() {
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      pollingInterval = null;
+    }
+  }
 
   async function init() {
     await window.waitForConfig();
@@ -475,10 +484,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     updateCartBadge();
     await loadOrders();
-
-    // Start polling for real-time status updates every 10 seconds
-    pollingInterval = setInterval(loadOrders, 10000);
+    startPolling();
   }
+
+  // Visibility-aware polling: pause when hidden, immediate refresh on return
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopPolling();
+    } else {
+      // Immediate re-fetch when user returns to tab
+      loadOrders();
+      if (!isSelectMode) startPolling();
+    }
+  });
 
   // Cross-tab sync
   window.addEventListener('storage', (e) => {
@@ -489,7 +507,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Cleanup polling
   window.addEventListener('beforeunload', () => {
-    if (pollingInterval) clearInterval(pollingInterval);
+    stopPolling();
   });
 
   init();

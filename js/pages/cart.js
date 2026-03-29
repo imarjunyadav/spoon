@@ -148,6 +148,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }
 
+  /** Escape HTML to prevent XSS from DB-sourced strings */
+  function esc(str) {
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
   // --- UI Rendering Functions ---
 
   /**
@@ -176,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
       itemElement.className = 'cart-item-card';
       itemElement.innerHTML = `
         <div class="cart-item-card__details">
-          <h3 class="cart-item-card__title">${item.title}</h3>
+          <h3 class="cart-item-card__title">${esc(item.title)}</h3>
           <p class="cart-item-card__price">₹${item.price}</p>
         </div>
         <div class="quantity-stepper">
@@ -324,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const summaryItem = document.createElement('div');
       summaryItem.className = 'order-summary-item';
       summaryItem.innerHTML = `
-        <span class="order-summary-item__name">${item.title} (x${item.quantity})</span>
+        <span class="order-summary-item__name">${esc(item.title)} (x${item.quantity})</span>
         <span class="order-summary-item__price">₹${item.price * item.quantity}</span>
       `;
       modalOrderSummary.appendChild(summaryItem);

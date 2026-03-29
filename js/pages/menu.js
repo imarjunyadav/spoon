@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const { data, error } = await supabase
                 .from('menu_items')
-                .select('*')
+                .select('id, name, price, category, category_id, is_available')
                 .order('name', { ascending: true });
 
             if (error) {
@@ -179,6 +179,13 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('spoon-cart', JSON.stringify(cartData));
     }
 
+    /** Escape HTML to prevent XSS from DB-sourced strings */
+    function esc(str) {
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
 
     // --- UI Rendering ---
 
@@ -233,11 +240,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             card.innerHTML = `
                 <div class="product-card__info">
-                    <h4>${item.name}</h4>
+                    <h4>${esc(item.name)}</h4>
                     <p>₹${item.price}</p>
                     ${outOfStockLabel}
                 </div>
-                <button class="${buttonClass}" data-id="${item.id}" data-title="${item.name}" data-price="${item.price}" ${buttonDisabled}>
+                <button class="${buttonClass}" data-id="${item.id}" data-title="${esc(item.name)}" data-price="${item.price}" ${buttonDisabled}>
                     <i class="fa-solid fa-plus"></i>
                 </button>`;
 
@@ -490,13 +497,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.innerHTML = `
                     <div class="product-card__info">
                         <div class="product-card__header">
-                            <h4>${item.name}</h4>
-                            <span class="product-card__category-badge">${item.categoryName}</span>
+                            <h4>${esc(item.name)}</h4>
+                            <span class="product-card__category-badge">${esc(item.categoryName)}</span>
                         </div>
                         <p>₹${item.price}</p>
                         ${outOfStockLabel}
                     </div>
-                    <button class="${buttonClass}" data-id="${item.id}" data-title="${item.name}" data-price="${item.price}" ${buttonDisabled}>
+                    <button class="${buttonClass}" data-id="${item.id}" data-title="${esc(item.name)}" data-price="${item.price}" ${buttonDisabled}>
                         <i class="fa-solid fa-plus"></i>
                     </button>`;
                 productsGrid.appendChild(card);

@@ -47,9 +47,11 @@ const requireAuth = async (req, res, next) => {
         }
 
         // Attach user context to request
-        // This is safer than reading from body/query in the route handler
+        // SECURITY: email is safe to trust because validateSession() checks
+        // the exact email+token pair in DB. Spoofed email + valid token for
+        // a different account will fail validation above.
         req.user = {
-            email: email,
+            email: email.toLowerCase().trim(),
             token: token
         };
 

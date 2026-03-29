@@ -17,9 +17,11 @@ const Razorpay = require("razorpay");
 const axios = require("axios");
 const https = require("https");
 const paymentFlowValidator = require("../services/paymentFlowValidator");
+const requireAuth = require('../middleware/userAuth');
 
 // Create router instance
 const router = express.Router();
+const isProd = process.env.NODE_ENV === 'production';
 
 // Load environment variables (API keys)
 require("dotenv").config();
@@ -33,7 +35,8 @@ require("dotenv").config();
  * rejectUnauthorized: false disables SSL certificate verification.
  * Needed for development; ensures requests don't fail on self-signed certs.
  */
-const agent = new https.Agent({ rejectUnauthorized: false });
+// Only disable cert verification in development (local self-signed certs)
+const agent = isProd ? undefined : new https.Agent({ rejectUnauthorized: false });
 
 // ========================================
 // ENDPOINT: Create Order
@@ -48,10 +51,10 @@ const agent = new https.Agent({ rejectUnauthorized: false });
  * 
  * @returns {object} Razorpay order details
  */
-router.post("/create-order", async (req, res) => {
+router.post("/create-order", requireAuth, async (req, res) => {
   try {
     // Step 1: Extract and Validate Request
-    console.log('🔍 Debug: /create-order request body:', JSON.stringify(req.body, null, 2));
+    if (!isProd) console.log('🔍 Debug: /create-order request body:', JSON.stringify(req.body, null, 2));
 
     const { amount, userEmail, items } = req.body;
 
@@ -67,7 +70,7 @@ router.post("/create-order", async (req, res) => {
       return res.status(400).json({ error: validation.error });
     }
 
-    console.log(`✅ Payment validation passed for ${userEmail}`);
+    if (!isProd) console.log(`✅ Payment validation passed for ${userEmail}`);
 
     // Step 2: Prepare Order Data
     const orderPayload = {
@@ -82,11 +85,7 @@ router.post("/create-order", async (req, res) => {
       }
     };
 
-    console.log("🔧 Creating Razorpay order:", {
-      amount: orderPayload.amount,
-      currency: orderPayload.currency,
-      userEmail: userEmail
-    });
+    if (!isProd) console.log("🔧 Creating Razorpay order:", { amount: orderPayload.amount, currency: orderPayload.currency });
 
     // Step 3: Authentication Credentials
     const auth = {
@@ -95,19 +94,16 @@ router.post("/create-order", async (req, res) => {
     };
 
     // Step 4: Call Razorpay API
+    const axiosConfig = { auth };
+    if (agent) axiosConfig.httpsAgent = agent;
+
     const response = await axios.post(
       "https://api.razorpay.com/v1/orders",
       orderPayload,
-      {
-        auth,
-        httpsAgent: agent
-      }
+      axiosConfig
     );
 
     console.log(`✅ Razorpay order created: ${response.data.id}`);
-
-    // Log payment initiation event
-    console.log(`📝 Payment initiated: Order ${response.data.id}, Amount ${amount}, User ${userEmail}`);
 
     return res.status(200).json(response.data);
 
@@ -139,11 +135,11 @@ router.post("/create-order", async (req, res) => {
  * Path: /api/payment/verify-payment
  * Request Body: { razorpay_payment_id, razorpay_order_id, razorpay_signature }
  */
-router.post("/verify-payment", async (req, res) => {
+router.post("/verify-payment", requireAuth, async (req, res) => {
   try {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
 
-    console.log(`🔍 Verifying payment from client: ${razorpay_payment_id}`);
+    if (!isProd) console.log(`🔍 Verifying payment from client: ${razorpay_payment_id}`);
 
     // Verify signature using the secret key (same as webhook verification logic)
     const crypto = require("crypto");
@@ -156,7 +152,7 @@ router.post("/verify-payment", async (req, res) => {
       return res.status(400).json({ error: "Invalid payment signature" });
     }
 
-    console.log("✅ Client payment signature verified");
+    if (!isProd) console.log("✅ Client payment signature verified");
 
     // Fetch payment details from Razorpay to get amount and notes
     // We cannot trust client-provided notes/amount for order creation
@@ -165,9 +161,12 @@ router.post("/verify-payment", async (req, res) => {
       password: process.env.RAZORPAY_SECRET
     };
 
+    const verifyConfig = { auth };
+    if (agent) verifyConfig.httpsAgent = agent;
+
     const paymentDetails = await axios.get(
       `https://api.razorpay.com/v1/payments/${razorpay_payment_id}`,
-      { auth, httpsAgent: agent }
+      verifyConfig
     );
 
     const payment = paymentDetails.data;
