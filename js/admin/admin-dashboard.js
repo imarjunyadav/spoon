@@ -1022,17 +1022,20 @@ document.addEventListener('DOMContentLoaded', () => {
             currentChannel = null;
         }
 
+        function logDebug(context, msg, data = '') {
+            console.debug(`[${context}]`, msg, data);
+        }
+
         window.realtimeEventQueue = window.realtimeEventQueue || [];
         
         window.flushRealtimeQueue = function() {
             if (window.realtimeEventQueue.length === 0) return;
-            // Prevent recursive enqueuing while flushing
             const events = [...window.realtimeEventQueue];
             window.realtimeEventQueue = [];
             
-            // Force state to false specifically for parsing payloads without infinite loops
             const originalState = window.isActionInFlight;
             window.isActionInFlight = false; 
+            logDebug('Realtime Queue', `Flushing ${events.length} buffered events`);
             events.forEach(payload => processRealtimePayload(payload));
             window.isActionInFlight = originalState;
         };
@@ -1041,6 +1044,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const eventType = payload.eventType;
             const newOrder = payload.new;
             const oldOrder = payload.old;
+            
+            logDebug('Realtime Payload', `Processing ${eventType}`, newOrder || oldOrder);
+
+            const lifecycle = { 'pending': 1, 'kitchen': 2, 'prepared': 3, 'completed': 4, 'cancelled': 4 };
+            let needsStructuralRender = true;
 
             if (eventType === 'INSERT') {
                 if (!ordersList.find(o => o.id === newOrder.id)) {
@@ -1049,14 +1057,38 @@ document.addEventListener('DOMContentLoaded', () => {
                         alarmPlayingForIds.add(newOrder.id);
                         startAlarmLoop();
                     }
+                } else {
+                    needsStructuralRender = false;
                 }
             } else if (eventType === 'UPDATE') {
                 const idx = ordersList.findIndex(o => o.id === newOrder.id);
                 if (idx > -1) {
-                    if (!newOrder.items && ordersList[idx].items) {
-                        newOrder.items = ordersList[idx].items;
+                    const localOrder = ordersList[idx];
+                    
+                    // Out-of-order prevention: Prevent stale WS updates from overriding local state
+                    if (lifecycle[newOrder.status] < lifecycle[localOrder.status]) {
+                        logDebug('Realtime Safety', `Ignored older status event: ${newOrder.status} < ${localOrder.status}`);
+                        return;
                     }
-                    ordersList[idx] = { ...ordersList[idx], ...newOrder };
+
+                    // Check if the update changes the UI structure (moves column / alters slots)
+                    const structurallySame = localOrder.status === newOrder.status && localOrder.slot_number === newOrder.slot_number;
+
+                    if (!newOrder.items && localOrder.items) {
+                        newOrder.items = localOrder.items;
+                    }
+                    ordersList[idx] = { ...localOrder, ...newOrder };
+
+                    // Fast path: Update targeted DOM node without destroying parent text selections / scrolling
+                    if (structurallySame) {
+                        const card = document.querySelector(`.order-card[data-id="${newOrder.id}"]`);
+                        if (card) {
+                           if (newOrder.status === 'prepared') card.outerHTML = renderPrepared(ordersList[idx]);
+                           else card.outerHTML = renderPending(ordersList[idx]); 
+                           needsStructuralRender = false;
+                           logDebug('Realtime DOM', `Targeted patch for card ${newOrder.id} isolated successfully`);
+                        }
+                    }
                 } else if (newOrder.status === 'pending') {
                     ordersList.unshift(newOrder);
                 }
@@ -1064,7 +1096,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const idx = ordersList.findIndex(o => o.id === oldOrder.id);
                 if (idx > -1) ordersList.splice(idx, 1);
             }
-            render(); 
+            
+            if (needsStructuralRender) {
+                render(); 
+            }
         }
 
         // Authenticate the WebSocket for RLS (documented v2 pattern)
@@ -1091,6 +1126,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (status === 'SUBSCRIBED') {
                     console.log('[Realtime] ✅ Connected successfully');
+                    
+                    // Offline catch-up sync: If we just reconnected after a drop, pull hard truth to catch missing WS packets
+                    if (realtimeRetryCount > 0) {
+                        logDebug('Realtime System', `Recovering state after network drop with rapid fetchOrders()`);
+                        fetchOrders();
+                    }
+                    
                     dom.indicator.style.color = 'var(--success-green)';
                     realtimeRetryCount = 0;
                 } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
