@@ -468,9 +468,14 @@ document.addEventListener('DOMContentLoaded', () => {
       // --- BRANCH: RAZORPAY PAYMENT ---
 
       // 1. Create Order on Backend
+      const sessionToken = localStorage.getItem('spoon-session-token');
       const res = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/payment/create-order`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-email": userEmail,
+          "x-session-token": sessionToken
+        },
         body: JSON.stringify({
           amount: subtotal,
           userEmail: userEmail,
@@ -500,9 +505,14 @@ document.addEventListener('DOMContentLoaded', () => {
           // 3. Verify Payment
           try {
             // Client-side verification for faster UX
+            const sessionToken = localStorage.getItem('spoon-session-token');
             const verifyRes = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/payment/verify-payment`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: { 
+                "Content-Type": "application/json",
+                "x-user-email": userEmail,
+                "x-session-token": sessionToken
+              },
               body: JSON.stringify({
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_order_id: response.razorpay_order_id,
