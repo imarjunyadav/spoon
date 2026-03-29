@@ -109,7 +109,6 @@ router.post('/:orderId/mark-prepared', requireAdminSession, async (req, res) => 
     const adminEmail = req.user.email;
 
     const maxCapacity = await getNumericSetting('max_prepared_slots', 10);
-    const now = new Date().toISOString();
     
     // ---------------------------------------------------------
     // ATOMIC SLOT ASSIGNMENT (Single RPC Call)
