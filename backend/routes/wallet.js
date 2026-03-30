@@ -86,7 +86,7 @@ router.get('/transactions', async (req, res) => {
 router.post('/pay', async (req, res) => {
     try {
         const email = req.user.email;
-        const { items, phoneNumber } = req.body;
+        const { items, phoneNumber, idempotencyKey } = req.body;
 
         // --- Input Validation ---
         if (!items || !Array.isArray(items) || items.length === 0 || items.length > 20) {
@@ -178,8 +178,9 @@ router.post('/pay', async (req, res) => {
             });
         }
 
-        // --- Generate order ID and verification code ---
-        const orderId = `wallet_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+        // --- Use Atomic RPC for checkout ---
+        // Generates fallback idempotency if legacy client didn't send one
+        const orderId = idempotencyKey || `wallet_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         let verificationCode = '';
@@ -187,78 +188,57 @@ router.post('/pay', async (req, res) => {
             verificationCode += chars.charAt(Math.floor(Math.random() * chars.length));
         }
 
-        // --- Debit coins ---
-        const debitResult = await walletService.debitCoins(
-            email,
-            serverTotal,
-            'PURCHASE',
-            orderId,
-            `Order payment: -${serverTotal} coins`
-        );
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('checkout_with_wallet', {
+            p_order_id: orderId,
+            p_email: email,
+            p_amount: serverTotal,
+            p_items: items,
+            p_phone: phoneNumber || null,
+            p_verification_code: verificationCode
+        });
 
-        if (!debitResult.success) {
-            if (debitResult.error === 'INSUFFICIENT_BALANCE') {
+        if (rpcError) {
+            console.error('❌ Wallet RPC checkout failed:', rpcError);
+            if (rpcError.message.includes('INSUFFICIENT_BALANCE')) {
                 return res.status(400).json({
                     success: false,
-                    error: 'INSUFFICIENT_BALANCE',
-                    balance: debitResult.balance
+                    error: 'INSUFFICIENT_BALANCE'
                 });
             }
-            if (debitResult.error === 'CONCURRENT_MODIFICATION') {
-                return res.status(409).json({
+            if (rpcError.message.includes('WALLET_NOT_FOUND')) {
+                return res.status(400).json({
                     success: false,
-                    error: 'Please try again (concurrent request detected)'
+                    error: 'Wallet not found'
                 });
             }
-            return res.status(500).json({ success: false, error: debitResult.error });
+            // Unique violation on orders table manually handled by RPC `duplicate: true`,
+            // but if something else fails natively, we catch it here natively.
+            return res.status(500).json({ success: false, error: 'Transaction failed. Please try again.' });
         }
 
-        // --- Create order ---
-        const { data: order, error: orderError } = await supabase
-            .from('orders')
-            .insert([{
-                id: orderId,
-                customer_email: email,
-                total: serverTotal,
-                items: items,
-                status: 'pending',
-                preorder_time: null,
-                phone_number: phoneNumber || null,
-                payment_method: 'WALLET',
-                verification_code: verificationCode,
-                created_at: new Date().toISOString()
-            }])
-            .select()
-            .single();
-
-        if (orderError) {
-            console.error('❌ Wallet order creation failed:', orderError);
-            // Rollback: re-credit the coins
-            await walletService.creditCoins(
-                email,
-                serverTotal,
-                'REFUND',
-                `${orderId}_rollback`,
-                'Rollback: Order creation failed'
-            );
-            return res.status(500).json({
+        if (rpcResult && rpcResult.duplicate) {
+            console.log(`⚡ Duplicate wallet checkout rejected cleanly for ${orderId}`);
+            return res.status(409).json({
                 success: false,
-                error: 'Order creation failed. Coins have been refunded.'
+                error: 'Order already processing. Please wait.'
             });
         }
 
         console.log(`✅ Wallet order ${orderId}: ${serverTotal} coins from ${email}`);
 
         // Fire-and-forget: Notify admins (Telegram + Web Push)
-        notificationService.notifyNewOrder(order).catch(err =>
-            console.error('⚠️ Wallet order notification failed (non-blocking):', err.message)
-        );
+        // Fetch full order for notification payload
+        supabase.from('orders').select('*').eq('id', orderId).single().then(({ data: order }) => {
+            if (order) notificationService.notifyNewOrder(order).catch(err => 
+                console.error('⚠️ Wallet notification failed:', err.message)
+            );
+        });
 
         return res.json({
             success: true,
             orderId: orderId,
             coinsUsed: serverTotal,
-            remainingBalance: debitResult.balance,
+            remainingBalance: rpcResult.remainingBalance,
             verificationCode: verificationCode
         });
 

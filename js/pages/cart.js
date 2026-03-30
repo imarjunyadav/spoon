@@ -432,6 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // --- BRANCH: WALLET PAYMENT ---
       if (selectedPaymentMethod === 'wallet') {
+        const idempotencyKey = 'wallet_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
         const sessionToken = localStorage.getItem('spoon-session-token');
         const res = await fetch(`${window.SPOON_CONFIG.API_BASE_URL}/api/wallet/pay`, {
           method: 'POST',
@@ -444,7 +445,8 @@ document.addEventListener('DOMContentLoaded', () => {
             amount: subtotal,
             email: userEmail,
             items: cart,
-            phoneNumber: userPhoneNumber
+            phoneNumber: userPhoneNumber,
+            idempotencyKey: idempotencyKey
           })
         });
 

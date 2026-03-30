@@ -125,6 +125,7 @@ async function getBalance(email) {
 }
 
 // ========================================
+// ========================================
 // CREDIT COINS (Refund / Admin Credit)
 // ========================================
 
@@ -136,77 +137,26 @@ async function creditCoins(email, amount, reason, orderId = null, description = 
     if (!isValidCoinAmount(amount)) return { success: false, error: 'Amount must be a positive integer (max 100000)' };
 
     try {
-        // Idempotency: prevent double-refund for same order
-        if (reason === 'REFUND' && orderId) {
-            const { data: existingTxn } = await client
-                .from('wallet_transactions')
-                .select('id')
-                .eq('reference_order_id', orderId)
-                .eq('reason', 'REFUND')
-                .maybeSingle();  // Use maybeSingle to avoid error on 0 rows
+        const { data: result, error: rpcError } = await client.rpc('wallet_credit_coins', {
+            p_email: normalizedEmail,
+            p_amount: amount,
+            p_reason: reason,
+            p_order_id: orderId,
+            p_description: description
+        });
 
-            if (existingTxn) {
-                console.log(`⚡ Refund already processed for order ${orderId}`);
-                const balResult = await getBalance(normalizedEmail);
-                return {
-                    success: true,
-                    duplicate: true,
-                    balance: balResult.success ? balResult.balance : 0
-                };
-            }
+        if (rpcError) {
+            console.error('❌ Wallet RPC credit failed:', rpcError);
+            return { success: false, error: rpcError.message };
         }
 
-        // Get or create wallet
-        const walletResult = await getOrCreateWallet(normalizedEmail);
-        if (!walletResult.success) return walletResult;
-
-        const wallet = walletResult.wallet;
-        const newBalance = wallet.balance + amount;
-
-        // OPTIMISTIC LOCK: Only update if balance hasn't changed since we read it
-        // This prevents concurrent credits from corrupting the balance
-        const { data: updated, error: updateError } = await client
-            .from('wallets')
-            .update({ balance: newBalance, updated_at: new Date().toISOString() })
-            .eq('id', wallet.id)
-            .eq('balance', wallet.balance)  // Optimistic lock
-            .select();
-
-        if (updateError) {
-            console.error('❌ Wallet credit update failed:', updateError);
-            return { success: false, error: updateError.message };
+        if (result && result.duplicate) {
+            console.log(`⚡ Refund already processed for order ${orderId}`);
+        } else {
+            console.log(`✅ Credited ${amount} coins to ${normalizedEmail}. New balance: ${result.balance}`);
         }
 
-        if (!updated || updated.length === 0) {
-            // Balance changed between read and write — retry once
-            console.warn('⚠️ Optimistic lock failed on credit, retrying...');
-            return creditCoins(email, amount, reason, orderId, description);
-        }
-
-        // Record transaction in ledger
-        const { error: txnError } = await client
-            .from('wallet_transactions')
-            .insert([{
-                wallet_id: wallet.id,
-                type: 'CREDIT',
-                amount: amount,
-                reason: reason,
-                reference_order_id: orderId,
-                description: description || `${reason}: +${amount} coins`,
-                balance_after: newBalance
-            }]);
-
-        if (txnError) {
-            console.error('❌ Wallet transaction record failed:', txnError);
-            // Rollback balance to original
-            await client.from('wallets')
-                .update({ balance: wallet.balance, updated_at: new Date().toISOString() })
-                .eq('id', wallet.id);
-            return { success: false, error: txnError.message };
-        }
-
-        console.log(`✅ Credited ${amount} coins to ${normalizedEmail}. New balance: ${newBalance}`);
-        return { success: true, balance: newBalance, duplicate: false };
+        return result;
 
     } catch (err) {
         console.error('❌ creditCoins exception:', err);
