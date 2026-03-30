@@ -130,12 +130,15 @@ router.post("/create-order", requireAuth, async (req, res) => {
 /**
  * Allow client-side verification of payment to triggering order creation.
  * Essential for environments where webhooks are unreliable or delayed (e.g. localhost).
+ * Auth is intentionally omitted here because the razorpay_signature provides
+ * unforgeable cryptographic proof of validity. We don't want to fail if the JWT
+ * expired while the user was typing their OTP.
  * 
  * Method: POST
  * Path: /api/payment/verify-payment
  * Request Body: { razorpay_payment_id, razorpay_order_id, razorpay_signature }
  */
-router.post("/verify-payment", requireAuth, async (req, res) => {
+router.post("/verify-payment", async (req, res) => {
   try {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
 
@@ -300,10 +303,16 @@ async function handlePaymentSuccess(payment, webhookBody) {
       }
     } else {
       console.error(`❌ Payment processing failed: ${result.error}`);
+      // CRITICAL: We must throw here so the /webhook route catch block
+      // captures it and returns a 500 Internal Server Error.
+      // This tells Razorpay "we failed to save this, please retry the webhook later."
+      throw new Error(`Payment processing failed: ${result.error}`);
     }
 
   } catch (error) {
     console.error("❌ Error handling payment success:", error);
+    // Re-throw so the webhook route returns 500
+    throw error;
   }
 }
 

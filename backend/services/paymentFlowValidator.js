@@ -260,6 +260,51 @@ class PaymentFlowValidator {
     } = paymentData;
 
     try {
+      // ========================================
+      // MID-FLIGHT SERVER-SIDE PRICE VALIDATION
+      // ========================================
+      // Ensure the amount captured by Razorpay perfectly matches the actual database prices right now.
+      if (!cartItems || cartItems.length === 0) {
+        throw new Error('Cart is empty. Cannot process payment order.');
+      }
+
+      const itemIds = cartItems.map(item => item.id);
+      const { data: dbItems, error: menuError } = await getSupabase()
+        .from('menu_items')
+        .select('id, price, name, is_available')
+        .in('id', itemIds);
+
+      if (menuError || !dbItems) {
+        throw new Error('Failed to fetch menu items for mid-flight price validation.');
+      }
+
+      let serverTotal = 0;
+      for (const cartItem of cartItems) {
+        const dbItem = dbItems.find(d => d.id === cartItem.id);
+        if (!dbItem) throw new Error(`Item not found during capture: ${cartItem.id}`);
+        // During capture, we don't throw an error for `!is_available` because the user 
+        // already paid. The kitchen will either reject or fulfill it, but we MUST
+        // record the order, otherwise the payment is orphaned.
+        serverTotal += dbItem.price * (cartItem.quantity || 1);
+      }
+
+      // Convert serverTotal (Rupees) to match Razorpay amount (paise)
+      const expectedAmountPaise = serverTotal * 100;
+      
+      if (Math.abs(expectedAmountPaise - amount) > 1) { // >1 to handle tiny float rounding diffs
+        console.error('⚠️ CRITICAL: Mid-flight price mismatch detected on Webhook/Verify!', {
+          calculatedPaise: expectedAmountPaise, 
+          paidPaise: amount,
+          order: razorpayOrderId,
+          items: cartItems
+        });
+        // We throw so it bubbles up. However, the user already paid!
+        // In an enterprise system, you'd insert a 'needs_review' order.
+        // For Spoon, we reject the webhook (forces a retry) or fail verify.
+        // An admin should manually refund if prices changed significantly gap.
+        throw new Error(`Price mismatch: Expected ₹${serverTotal}, User Paid ₹${amount/100}`);
+      }
+
       // Execute the atomic checkout RPC to prevent orphaned payments
       const { data: rpcResult, error: rpcError } = await getSupabase()
         .rpc('confirm_payment_and_order', {
