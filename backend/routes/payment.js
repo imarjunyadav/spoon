@@ -226,9 +226,14 @@ router.post("/webhook", async (req, res) => {
       return res.status(400).json({ error: "Signature missing" });
     }
 
-    // Step 2: Verify webhook signature
+    if (!req.rawBody) {
+      console.error("❌ Webhook raw body missing from middleware");
+      return res.status(400).json({ error: "Raw body missing" });
+    }
+
+    // Step 2: Verify webhook signature using pure string buffer
     const isValid = await paymentFlowValidator.validateWebhookSignature(
-      req.body,
+      req.rawBody,
       signature
     );
 

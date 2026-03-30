@@ -162,11 +162,11 @@ class PaymentFlowValidator {
   /**
    * Verify Razorpay webhook signature to prevent replay attacks.
    * 
-   * @param {Object} payload - Webhook payload from Razorpay
+   * @param {string} rawBody - Raw unparsed webhook payload string from express
    * @param {string} signature - Razorpay signature from webhook header
    * @returns {Promise<boolean>} True if signature is valid
    */
-  async validateWebhookSignature(payload, signature) {
+  async validateWebhookSignature(rawBody, signature) {
     try {
       const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
@@ -175,10 +175,10 @@ class PaymentFlowValidator {
         return false;
       }
 
-      // Generate expected signature
+      // Generate expected signature purely from the string buffer
       const expectedSignature = crypto
         .createHmac('sha256', secret)
-        .update(JSON.stringify(payload))
+        .update(rawBody)
         .digest('hex');
 
       // Compare signatures using timing-safe comparison

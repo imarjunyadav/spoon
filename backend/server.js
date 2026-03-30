@@ -97,10 +97,19 @@ app.use(cors({
 
 /**
  * JSON Parser Middleware
- * Automatically parses JSON data from request body
- * Makes req.body available in routes
+ * Automatically parses JSON data from request body.
+ * SECURITY FIX: We save the raw buffer exactly as received into `req.rawBody`
+ * solely for the /api/payment/webhook route. Razorpay's HMAC signature validation
+ * structurally requires the pure byte-string. If we use Node's `JSON.stringify()`, 
+ * the object-key reordering will break the cryptographic hash.
  */
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    if (req.originalUrl.includes('/api/payment/webhook')) {
+      req.rawBody = buf.toString();
+    }
+  }
+}));
 
 // ========================================
 // SECTION 4: RATE LIMITING (SECURITY FIX)
