@@ -83,6 +83,7 @@ body {
     margin: 0 auto;
     background-color: var(--background-white);
     min-height: 100vh;
+    min-height: 100dvh;
     position: relative;
     box-shadow: 0 0 24px rgba(0, 0, 0, 0.1);
 }
