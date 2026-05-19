@@ -136,25 +136,74 @@
 
 /**
  * TEAM CARD AVATAR
- * Soft red gradient matching Spoon branding
- * Clean, modern circular design
+ * Polished, minimal silhouette design inspired by modern team pages
+ * Solid person icon on soft colored background
+ * Clean, professional aesthetic
  */
 .team-card__avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, rgba(235, 23, 0, 0.08) 0%, rgba(235, 23, 0, 0.12) 100%);
+    width: 120px;
+    height: 120px;
+    border-radius: var(--radius-medium);
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
     flex-shrink: 0;
+    overflow: hidden;
+    position: relative;
 }
 
+/* Founder 1 - Soft Blue Background */
+.team-card:nth-child(1) .team-card__avatar {
+    background: linear-gradient(180deg, #a8d5e2 0%, #8ec5d6 100%);
+}
+
+/* Founder 2 - Soft Purple Background */
+.team-card:nth-child(2) .team-card__avatar {
+    background: linear-gradient(180deg, #c5b3d5 0%, #b39fc9 100%);
+}
+
+/**
+ * AVATAR SILHOUETTE
+ * Solid, minimal person icon
+ * Positioned at bottom for realistic profile feel
+ */
 .team-card__avatar i {
-    font-size: 32px;
-    color: var(--brand-primary);
-    opacity: 0.7;
+    font-size: 72px;
+    color: #6b7280;
+    opacity: 1;
+    position: relative;
+    bottom: -8px;
+}
+
+/* Alternative: Use pseudo-element for custom silhouette shape */
+.team-card__avatar::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 85px;
+    height: 85px;
+    background: #6b7280;
+    border-radius: 50% 50% 0 0;
+}
+
+.team-card__avatar::after {
+    content: '';
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 38px;
+    height: 38px;
+    background: #6b7280;
+    border-radius: 50%;
+}
+
+/* Hide FontAwesome icon when using pseudo-elements */
+.team-card__avatar i {
+    display: none;
 }
 
 /**
@@ -213,12 +262,19 @@
     }
 
     .team-card__avatar {
-        width: 96px;
-        height: 96px;
-        margin-bottom: 20px;
+        width: 140px;
+        height: 140px;
+        margin-bottom: 24px;
     }
 
-    .team-card__avatar i {
-        font-size: 40px;
+    .team-card__avatar::before {
+        width: 100px;
+        height: 100px;
+    }
+
+    .team-card__avatar::after {
+        bottom: 70px;
+        width: 44px;
+        height: 44px;
     }
 }
