@@ -203,7 +203,7 @@
 /**
  * TEAM CARD INFO
  * Clear typographic hierarchy
- * Name → Role → Bio
+ * Name → Role → Bio → Link
  */
 .team-card__info {
     display: flex;
@@ -231,6 +231,33 @@
     font-weight: 400;
     color: var(--text-secondary);
     line-height: 1.5;
+}
+
+/**
+ * TEAM CARD LINK
+ * Subtle connect/contact link
+ * Appears below bio for founders with external links
+ */
+.team-card__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--brand-primary);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    align-self: center;
+}
+
+.team-card__link:hover {
+    gap: 8px;
+    opacity: 0.8;
+}
+
+.team-card__link i {
+    font-size: 12px;
 }
 
 
