@@ -19,68 +19,53 @@
  * Native ad card with subtle, calm design
  * Clearly labeled and visually integrated
  */
-.sponsored-ad-section {
-    margin-bottom: var(--spacing-md);
+.ad-section {
+    margin-bottom: var(--spacing-lg);
 }
 
-.sponsored-ad-card {
-    position: relative;
-    background: #fafafa;
+.ad-card {
+    background: var(--background-light);
     border-radius: var(--radius-medium);
-    border: 1px solid var(--border-color);
     padding: var(--spacing-md);
-    overflow: hidden;
+    position: relative;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
 }
 
-.sponsored-ad-card__badge {
+.ad-card__label {
     position: absolute;
-    top: var(--spacing-xs);
-    right: var(--spacing-xs);
-    background: rgba(255, 255, 255, 0.85);
-    color: #aaa;
-    font-size: 9px;
-    font-weight: 600;
+    top: var(--spacing-sm);
+    right: var(--spacing-sm);
+    font-size: 10px;
+    font-weight: 500;
+    color: #999;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 3px 7px;
-    border-radius: var(--radius-pill);
 }
 
-.sponsored-ad-card__content {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-}
-
-.sponsored-ad-card__icon {
-    width: 44px;
-    height: 44px;
-    background: rgba(235, 23, 0, 0.06);
-    border-radius: 50%;
+.ad-card__content {
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
 }
 
-.sponsored-ad-card__icon i {
-    font-size: 18px;
-    color: var(--brand-primary);
-    opacity: 0.5;
+.ad-card__placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: #bbb;
 }
 
-.sponsored-ad-card__text h4 {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 2px;
-    letter-spacing: -0.1px;
+.ad-card__placeholder i {
+    font-size: 28px;
 }
 
-.sponsored-ad-card__text p {
+.ad-card__placeholder span {
     font-size: 12px;
-    color: var(--text-secondary);
-    font-weight: 400;
+    font-weight: 500;
 }
 
 .orders-list-container {
