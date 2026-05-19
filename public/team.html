@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>Team - Spoon</title>
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="../css/team.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+</head>
+
+<body>
+
+    <!-- Main container for the app -->
+    <div class="app-container">
+
+        <!-- ============== HEADER ============== -->
+        <header class="cart-header">
+            <a href="account.html" class="cart-header__back-btn" aria-label="Back to account">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <h1 class="cart-header__title">Team</h1>
+        </header>
+
+        <!-- ============== MAIN CONTENT ============== -->
+        <main class="team-content">
+
+            <!-- Mission Statement -->
+            <section class="mission-section">
+                <h1 class="mission-title">Built to reduce waiting, not student time.</h1>
+                <p class="mission-subtitle">Spoon is a real-time campus ordering and virtual queue system designed to reduce crowding, simplify canteen operations, and let students spend less time waiting and more time enjoying their break.</p>
+            </section>
+
+            <!-- Team Members -->
+            <section class="team-section">
+                <h2 class="team-section-title">Founders</h2>
+                
+                <div class="team-grid">
+                    <!-- Founder 1 -->
+                    <div class="team-card">
+                        <div class="team-card__avatar">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <div class="team-card__info">
+                            <h3 class="team-card__name">Arjun Yadav</h3>
+                            <p class="team-card__role">Founder</p>
+                            <p class="team-card__bio">Full-stack developer</p>
+                        </div>
+                    </div>
+
+                    <!-- Founder 2 -->
+                    <div class="team-card">
+                        <div class="team-card__avatar">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <div class="team-card__info">
+                            <h3 class="team-card__name">Harsh Shukla</h3>
+                            <p class="team-card__role">Co-Founder</p>
+                            <p class="team-card__bio">Backend developer</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- ============== BOTTOM NAVIGATION ============== -->
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item">
+                <i class="fa-solid fa-utensils nav-item__icon"></i>
+                <span class="nav-item__label">Menu</span>
+            </a>
+            <a href="cart.html" class="nav-item">
+                <i class="fa-solid fa-basket-shopping nav-item__icon"></i>
+                <span class="nav-item__label">Cart</span>
+                <span class="nav-item__badge" id="cart-badge">0</span>
+            </a>
+            <a href="orders.html" class="nav-item">
+                <i class="fa-solid fa-receipt nav-item__icon"></i>
+                <span class="nav-item__label">Orders</span>
+            </a>
+            <a href="account.html" class="nav-item">
+                <i class="fa-solid fa-user nav-item__icon"></i>
+                <span class="nav-item__label">Account</span>
+            </a>
+        </nav>
+
+    </div>
+
+    <!-- Update cart badge -->
+    <script>
+        // Update cart badge
+        function updateCartBadge() {
+            const cart = JSON.parse(localStorage.getItem('spoon-cart')) || [];
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            const cartBadge = document.getElementById('cart-badge');
+            
+            if (totalItems > 0) {
+                cartBadge.textContent = totalItems;
+                cartBadge.classList.add('visible');
+            } else {
+                cartBadge.classList.remove('visible');
+            }
+        }
+        
+        updateCartBadge();
+        
+        // Cross-tab sync
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'spoon-cart') {
+                updateCartBadge();
+            }
+        });
+    </script>
+
+</body>
+
+</html>
