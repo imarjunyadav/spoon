@@ -20,6 +20,7 @@
  * Clearly labeled and visually integrated
  */
 .ad-section {
+    margin-top: var(--spacing-md);
     margin-bottom: var(--spacing-lg);
 }
 

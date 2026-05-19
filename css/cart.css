@@ -85,6 +85,7 @@
  * Reduced contrast when cart is empty
  */
 .ad-section {
+    margin-top: var(--spacing-md);
     margin-bottom: var(--spacing-lg);
 }
 
