@@ -136,20 +136,18 @@
 
 /**
  * TEAM CARD AVATAR
- * Clean, minimal human silhouette illustration
- * Inspired by modern startup team pages
- * Soft colored backgrounds with simple person shape
+ * Simple user icon matching bottom nav style
+ * Clean, minimal design with soft colored backgrounds
  */
 .team-card__avatar {
     width: 120px;
     height: 120px;
     border-radius: var(--radius-medium);
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
     margin-bottom: var(--spacing-lg);
     flex-shrink: 0;
-    overflow: hidden;
     position: relative;
 }
 
@@ -164,40 +162,14 @@
 }
 
 /**
- * CLEAN PERSON SILHOUETTE
- * Proper geometric shapes forming a minimal human figure
- * Matches reference design style
+ * USER ICON
+ * Same icon style as bottom navigation Account tab
+ * Simple, clean, and consistent with app UI
  */
-
-/* Shoulders and torso - large rounded bottom shape */
-.team-card__avatar::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 90px;
-    height: 90px;
-    background: #6b7280;
-    border-radius: 50% 50% 0 0;
-}
-
-/* Head - circular, positioned above shoulders */
-.team-card__avatar::after {
-    content: '';
-    position: absolute;
-    bottom: 70px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 40px;
-    height: 40px;
-    background: #6b7280;
-    border-radius: 50%;
-}
-
-/* Hide the FontAwesome icon */
 .team-card__avatar i {
-    display: none;
+    font-size: 48px;
+    color: #6b7280;
+    display: block;
 }
 
 /**
@@ -288,15 +260,8 @@
         margin-bottom: 24px;
     }
 
-    /* Scale up the silhouette proportionally for desktop */
-    .team-card__avatar::before {
-        width: 105px;
-        height: 105px;
-    }
-
-    .team-card__avatar::after {
-        bottom: 82px;
-        width: 46px;
-        height: 46px;
+    /* Scale up the icon proportionally for desktop */
+    .team-card__avatar i {
+        font-size: 56px;
     }
 }
