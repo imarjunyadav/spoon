@@ -19,6 +19,17 @@
     <!-- Main container for the app, providing a consistent frame -->
     <div class="app-container">
 
+        <!-- ============== ANNOUNCEMENT BANNER ============== -->
+        <div class="announcement-banner">
+            <div class="announcement-banner__content">
+                <span class="announcement-banner__text">Built by a student tired of canteen queues.</span>
+                <a href="team.html" class="announcement-banner__link">Team</a>
+            </div>
+            <button class="announcement-banner__close" id="close-announcement" aria-label="Close announcement">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+
         <!-- ============== HEADER ============== -->
         <header class="greeting-header">
             <div class="greeting-card">
@@ -48,20 +59,18 @@
         <!-- ============== MAIN CONTENT ============== -->
         <main class="main-content">
 
-            <!-- --- Spoon Team Spotlight --- -->
+            <!-- --- Native Ad Placeholder (AdSense Ready) --- -->
             <section class="ad-section">
-                <a href="team.html" class="ad-card ad-card--clickable">
-                    <span class="ad-card__label">Team</span>
+                <div class="ad-card" id="ad-placeholder">
+                    <span class="ad-card__label">Sponsored</span>
                     <div class="ad-card__content">
-                        <div class="ad-card__icon">
-                            <i class="fa-solid fa-user-group"></i>
-                        </div>
-                        <div class="ad-card__text">
-                            <h4>Built by TCET students tired of canteen queues.</h4>
-                            <p>Meet the builders.</p>
+                        <!-- AdSense or custom ad content goes here -->
+                        <div class="ad-card__placeholder">
+                            <i class="fa-solid fa-rectangle-ad"></i>
+                            <span>Ad Space</span>
                         </div>
                     </div>
-                </a>
+                </div>
             </section>
 
             <!-- --- Categories --- -->

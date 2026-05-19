@@ -103,6 +103,88 @@ body {
     scrollbar-width: none;
 }
 
+/* ====================
+   2a. ANNOUNCEMENT BANNER
+   ==================== */
+
+/**
+ * ANNOUNCEMENT BANNER
+ * Top notification bar inspired by Parallel AI style
+ * Subtle, dismissible, clean design
+ */
+.announcement-banner {
+    background: linear-gradient(135deg, #e3f2fd 0%, #f5f5f5 100%);
+    border-bottom: 1px solid #e0e0e0;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.announcement-banner.hidden {
+    display: none;
+}
+
+.announcement-banner__content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.announcement-banner__text {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-primary);
+    line-height: 1.4;
+    text-align: center;
+}
+
+.announcement-banner__link {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brand-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: opacity 0.2s ease;
+    white-space: nowrap;
+}
+
+.announcement-banner__link:hover {
+    opacity: 0.8;
+}
+
+.announcement-banner__close {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.announcement-banner__close:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-primary);
+}
+
+.announcement-banner__close:active {
+    transform: scale(0.95);
+}
+
 
 /* ====================
    3. HEADER & GREETING (HOME PAGE)
@@ -243,16 +325,11 @@ body {
     margin-bottom: var(--spacing-sm);
 }
 
-/* --- 5a. Sponsored Card / Team Spotlight --- */
+/* --- 5a. Native Ad Placeholder --- */
 .ad-section {
     margin-bottom: var(--spacing-lg);
 }
 
-/**
- * AD CARD
- * Original sponsored card design from Cart/Orders tabs
- * Subtle, premium, curiosity-driven
- */
 .ad-card {
     background: var(--background-light);
     border-radius: var(--radius-medium);
@@ -261,7 +338,6 @@ body {
     min-height: 100px;
     display: flex;
     flex-direction: column;
-    text-decoration: none;
 }
 
 .ad-card__label {
@@ -279,70 +355,9 @@ body {
     flex: 1;
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
-}
-
-.ad-card__icon {
-    width: 44px;
-    height: 44px;
-    background: rgba(235, 23, 0, 0.06);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
     justify-content: center;
-    flex-shrink: 0;
 }
 
-.ad-card__icon i {
-    font-size: 18px;
-    color: var(--brand-primary);
-    opacity: 0.5;
-}
-
-.ad-card__text {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.ad-card__text h4 {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 2px;
-    letter-spacing: -0.1px;
-    line-height: 1.3;
-}
-
-.ad-card__text p {
-    font-size: 12px;
-    color: var(--text-secondary);
-    font-weight: 400;
-}
-
-/**
- * CLICKABLE CARD ENHANCEMENT
- * Subtle hover state for interactive cards
- * Maintains premium, minimal feel
- */
-.ad-card--clickable {
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1px solid transparent;
-}
-
-.ad-card--clickable:hover {
-    background: #f5f5f5;
-    border-color: var(--border-color);
-    transform: translateY(-1px);
-}
-
-.ad-card--clickable:active {
-    transform: translateY(0);
-}
-
-/* Placeholder styles (kept for compatibility) */
 .ad-card__placeholder {
     display: flex;
     flex-direction: column;

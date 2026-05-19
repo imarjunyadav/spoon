@@ -9,6 +9,23 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
+    // --- Announcement Banner Close Handler ---
+    const closeAnnouncementBtn = document.getElementById('close-announcement');
+    const announcementBanner = document.querySelector('.announcement-banner');
+    
+    if (closeAnnouncementBtn && announcementBanner) {
+        // Check if banner was previously dismissed
+        const isDismissed = localStorage.getItem('spoon-announcement-dismissed') === 'true';
+        if (isDismissed) {
+            announcementBanner.classList.add('hidden');
+        }
+
+        closeAnnouncementBtn.addEventListener('click', () => {
+            announcementBanner.classList.add('hidden');
+            localStorage.setItem('spoon-announcement-dismissed', 'true');
+        });
+    }
+
     // --- Authentication & UI Setup ---
 
     /**
