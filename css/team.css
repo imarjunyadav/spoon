@@ -165,36 +165,34 @@
 
 /**
  * CLEAN PERSON SILHOUETTE
- * Simple geometric shapes forming a minimal human figure
- * Head (circle) + Shoulders/torso (rounded shape)
+ * Proper geometric shapes forming a minimal human figure
+ * Matches reference design style
  */
 
-/* Head - circular */
-.team-card__avatar::after {
-    content: '';
-    position: absolute;
-    top: 28px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 32px;
-    height: 32px;
-    background: #6b7280;
-    border-radius: 50%;
-    z-index: 2;
-}
-
-/* Shoulders and torso - rounded bottom */
+/* Shoulders and torso - large rounded bottom shape */
 .team-card__avatar::before {
     content: '';
     position: absolute;
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 75px;
-    height: 75px;
+    width: 90px;
+    height: 90px;
     background: #6b7280;
     border-radius: 50% 50% 0 0;
-    z-index: 1;
+}
+
+/* Head - circular, positioned above shoulders */
+.team-card__avatar::after {
+    content: '';
+    position: absolute;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    background: #6b7280;
+    border-radius: 50%;
 }
 
 /* Hide the FontAwesome icon */
@@ -263,15 +261,15 @@
         margin-bottom: 24px;
     }
 
-    /* Scale up the silhouette proportionally */
-    .team-card__avatar::after {
-        top: 32px;
-        width: 38px;
-        height: 38px;
+    /* Scale up the silhouette proportionally for desktop */
+    .team-card__avatar::before {
+        width: 105px;
+        height: 105px;
     }
 
-    .team-card__avatar::before {
-        width: 88px;
-        height: 88px;
+    .team-card__avatar::after {
+        bottom: 82px;
+        width: 46px;
+        height: 46px;
     }
 }
