@@ -136,9 +136,9 @@
 
 /**
  * TEAM CARD AVATAR
- * Polished, minimal silhouette design inspired by modern team pages
- * Solid person icon on soft colored background
- * Clean, professional aesthetic
+ * Clean, minimal human silhouette illustration
+ * Inspired by modern startup team pages
+ * Soft colored backgrounds with simple person shape
  */
 .team-card__avatar {
     width: 120px;
@@ -155,53 +155,49 @@
 
 /* Founder 1 - Soft Blue Background */
 .team-card:nth-child(1) .team-card__avatar {
-    background: linear-gradient(180deg, #a8d5e2 0%, #8ec5d6 100%);
+    background: #a8d5e2;
 }
 
 /* Founder 2 - Soft Purple Background */
 .team-card:nth-child(2) .team-card__avatar {
-    background: linear-gradient(180deg, #c5b3d5 0%, #b39fc9 100%);
+    background: #c5b3d5;
 }
 
 /**
- * AVATAR SILHOUETTE
- * Solid, minimal person icon
- * Positioned at bottom for realistic profile feel
+ * CLEAN PERSON SILHOUETTE
+ * Simple geometric shapes forming a minimal human figure
+ * Head (circle) + Shoulders/torso (rounded shape)
  */
-.team-card__avatar i {
-    font-size: 72px;
-    color: #6b7280;
-    opacity: 1;
-    position: relative;
-    bottom: -8px;
+
+/* Head - circular */
+.team-card__avatar::after {
+    content: '';
+    position: absolute;
+    top: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 32px;
+    background: #6b7280;
+    border-radius: 50%;
+    z-index: 2;
 }
 
-/* Alternative: Use pseudo-element for custom silhouette shape */
+/* Shoulders and torso - rounded bottom */
 .team-card__avatar::before {
     content: '';
     position: absolute;
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 85px;
-    height: 85px;
+    width: 75px;
+    height: 75px;
     background: #6b7280;
     border-radius: 50% 50% 0 0;
+    z-index: 1;
 }
 
-.team-card__avatar::after {
-    content: '';
-    position: absolute;
-    bottom: 60px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 38px;
-    height: 38px;
-    background: #6b7280;
-    border-radius: 50%;
-}
-
-/* Hide FontAwesome icon when using pseudo-elements */
+/* Hide the FontAwesome icon */
 .team-card__avatar i {
     display: none;
 }
@@ -267,14 +263,15 @@
         margin-bottom: 24px;
     }
 
-    .team-card__avatar::before {
-        width: 100px;
-        height: 100px;
+    /* Scale up the silhouette proportionally */
+    .team-card__avatar::after {
+        top: 32px;
+        width: 38px;
+        height: 38px;
     }
 
-    .team-card__avatar::after {
-        bottom: 70px;
-        width: 44px;
-        height: 44px;
+    .team-card__avatar::before {
+        width: 88px;
+        height: 88px;
     }
 }
