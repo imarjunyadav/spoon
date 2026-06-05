@@ -123,6 +123,7 @@ async function sendTelegramMessage(message) {
 
 const webPushService = require('./webPushService');
 const emailService = require('./emailService');
+const whatsappService = require('./whatsappService');
 
 // ========================================
 // PUBLIC API
@@ -176,6 +177,9 @@ async function notifyOrderPrepared(order) {
         // 2. Send Order Tracking Email
         const trackingUrl = `https://spoon-backend-122591058801.asia-south1.run.app/public/orders.html`;
         await emailService.sendOrderReadyEmail(order.customer_email, trackingUrl).catch(err => console.error('Email error:', err));
+        
+        // 3. Send WhatsApp
+        whatsappService.notifyOrderReadyWhatsApp(order).catch(err => console.error('WhatsApp error:', err));
         
     } catch (error) {
         console.error('⚠️ notifyOrderPrepared failed:', error.message);
