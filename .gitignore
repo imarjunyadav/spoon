@@ -53,3 +53,11 @@ temp/
 # Database dumps (auto-generated, don't commit)
 backend/schema_dump*.sql
 *.dump.sql
+
+# OpenWA Session Files (WhatsApp automation - local only)
+_IGNORE_session/
+.wwebjs_auth/
+.wwebjs_cache/
+**/open-wa-session*.json
+screenshot_session_*.png
+*.data.json
