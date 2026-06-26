@@ -9,15 +9,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yadav-arjun/spoonbytcet.git"
+    "url": "git+https://github.com/imarjunyadav/spoon.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/yadav-arjun/spoonbytcet/issues"
+    "url": "https://github.com/imarjunyadav/spoon/issues"
   },
-  "homepage": "https://github.com/yadav-arjun/spoonbytcet#readme",
+  "homepage": "https://github.com/imarjunyadav/spoon#readme",
   "dependencies": {
     "@supabase/supabase-js": "^2.87.0",
     "axios": "^1.10.0",
@@ -25,6 +25,7 @@
     "dotenv": "^17.0.0",
     "express": "^4.21.2",
     "express-rate-limit": "^8.2.1",
+    "helmet": "^8.2.0",
     "ioredis": "^5.8.2",
     "nodemailer": "^7.0.11",
     "path-to-regexp": "^6.3.0",

@@ -48,6 +48,9 @@ const express = require("express");
 // CORS: Allows frontend (different port) to call backend
 const cors = require("cors");
 
+// Helmet: Secure HTTP response headers
+const helmet = require("helmet");
+
 // ========================================
 // SECTION 2: CREATE EXPRESS APP
 // ========================================
@@ -60,6 +63,24 @@ const app = express();
 
 // SECURITY FIX: Trust Cloud Run proxy (required for rate limiting)
 app.set('trust proxy', 1);
+
+/**
+ * SECURITY: Helmet sets safe HTTP response headers (HSTS, X-Content-Type-Options,
+ * X-Frame-Options, Referrer-Policy, etc.).
+ *
+ * The three policies below are intentionally DISABLED because this single server
+ * also serves the static frontend + admin dashboard, which rely on:
+ *  - inline <script> tags and external CDNs (Razorpay checkout, Supabase) -> CSP off
+ *  - the Razorpay checkout popup/callback flow                            -> COOP off
+ *  - assets shared across the spoon.* and admin.spoon.* subdomains        -> CORP off
+ * Enabling any of them without first tailoring an allowlist would break the app.
+ */
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
 
 /**
  * Define port number
@@ -241,6 +262,28 @@ app.use(express.static(rootDir));
  */
 app.get("/", (req, res) => {
   res.redirect("/public/index.html");
+});
+
+// ========================================
+// GLOBAL ERROR HANDLER (must be after all routes)
+// ========================================
+
+/**
+ * Catches synchronous throws and explicit `next(err)` calls from routes.
+ * Existing route handlers all use their own try/catch and return their own
+ * responses, so this does NOT change any existing success/error behavior — it
+ * is purely a safety net for unexpected/unhandled errors that would otherwise
+ * fall through to Express's default HTML error page.
+ */
+app.use((err, req, res, next) => {
+  console.error("🧨 Unhandled error:", err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(err.status || 500).json({
+    success: false,
+    error: "Internal server error"
+  });
 });
 
 // ========================================

@@ -226,7 +226,7 @@ router.post('/pay', async (req, res) => {
 
         console.log(`✅ Wallet order ${orderId}: ${serverTotal} coins from ${email}`);
 
-        // Fire-and-forget: Notify admins (Telegram + Web Push)
+        // Fire-and-forget: Notify admins (Web Push)
         // Fetch full order for notification payload
         supabase.from('orders').select('*').eq('id', orderId).single().then(({ data: order }) => {
             if (order) notificationService.notifyNewOrder(order).catch(err => 
