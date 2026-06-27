@@ -336,7 +336,7 @@ class PaymentFlowValidator {
 
       console.log(`✅ Payment ${razorpayPaymentId} processed atomically, order ${razorpayPaymentId} created`);
 
-      // Fire-and-forget: Send Telegram notification to admin
+      // Fire-and-forget: Send admin notification (Web Push)
       notificationService.notifyNewOrder({
         id: razorpayPaymentId,
         customer_email: userEmail,

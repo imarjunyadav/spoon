@@ -150,7 +150,15 @@ router.post("/verify-payment", async (req, res) => {
     hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
     const generated_signature = hmac.digest("hex");
 
-    if (generated_signature !== razorpay_signature) {
+    // Timing-safe comparison: same accept/reject outcome as `!==`, but does not
+    // leak how many leading characters matched via response timing.
+    const expectedSig = Buffer.from(generated_signature, "utf8");
+    const receivedSig = Buffer.from(razorpay_signature || "", "utf8");
+    const signatureValid =
+      expectedSig.length === receivedSig.length &&
+      crypto.timingSafeEqual(expectedSig, receivedSig);
+
+    if (!signatureValid) {
       console.error("❌ Client payment verification failed: Invalid signature");
       return res.status(400).json({ error: "Invalid payment signature" });
     }
