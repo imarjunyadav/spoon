@@ -28,6 +28,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    // SECURITY: escape order-item values before injecting into innerHTML.
+    // Visually identical for normal item names; neutralizes any markup.
+    function escapeHtml(value) {
+        if (value === null || value === undefined) return '';
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     // --- DOM Elements ---
     const orderIdHeader = document.getElementById('status-order-id-header');
     const summaryItemList = document.getElementById('summary-item-list');
@@ -266,7 +278,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         summaryItemList.innerHTML = currentOrder.items.map(item =>
             `<div class="summary-item">
-                <span class="summary-item__name">${item.title} × ${item.quantity}</span>
+                <span class="summary-item__name">${escapeHtml(item.title)} × ${escapeHtml(item.quantity)}</span>
                 <span class="summary-item__price">₹${item.price * item.quantity}</span>
             </div>`
         ).join('');

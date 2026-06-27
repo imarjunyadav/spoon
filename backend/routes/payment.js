@@ -56,7 +56,13 @@ router.post("/create-order", requireAuth, async (req, res) => {
     // Step 1: Extract and Validate Request
     if (!isProd) console.log('🔍 Debug: /create-order request body:', JSON.stringify(req.body, null, 2));
 
-    const { amount, userEmail, items } = req.body;
+    const { amount, items } = req.body;
+
+    // SECURITY: Always attribute the order to the AUTHENTICATED user, never a
+    // client-supplied email. Legitimate clients already send their own email, so
+    // this is behavior-neutral — it just prevents a logged-in user from creating
+    // an order (and Razorpay notes) under someone else's identity.
+    const userEmail = req.user.email;
 
     // Validate using PaymentFlowValidator
     const validation = await paymentFlowValidator.validatePaymentInitiation({

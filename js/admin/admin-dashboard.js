@@ -264,7 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="padding:16px; border-bottom:1px solid #eee; display:flex; flex-direction:column; gap:8px;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                     <div>
-                        <div style="font-weight:600; font-size:15px; margin-bottom:4px;">${order.customer_email || 'Unknown User'}</div>
+                        <div style="font-weight:600; font-size:15px; margin-bottom:4px;">${escapeHtml(order.customer_email || 'Unknown User')}</div>
                         <div style="font-size:12px; color:#999;">${timeStr} ${reasonInfo}</div>
                     </div>
                     <div style="text-align:right;">
@@ -453,12 +453,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // ---------------------------------------------------------
     // RENDER LOGIC
     // ---------------------------------------------------------
+    // SECURITY: escape any value that originates from order data (item names,
+    // customer email) before injecting into innerHTML. Order item names and the
+    // customer email are client-influenced, so without escaping a crafted order
+    // could execute script in the staff dashboard (which holds the admin token).
+    // Escaping is visually identical for normal values.
+    function escapeHtml(value) {
+        if (value === null || value === undefined) return '';
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     function generateItemsHTML(items) {
         if (!items || !items.length) return '<div class="item-line"><span class="item-qty">1×</span><span class="item-name">Unknown</span></div>';
         return items.map(item => `
             <div class="item-line">
-                <span class="item-qty">${item.quantity}×</span>
-                <span class="item-name">${item.name || item.title}</span>
+                <span class="item-qty">${escapeHtml(item.quantity)}×</span>
+                <span class="item-name">${escapeHtml(item.name || item.title)}</span>
             </div>
         `).join('');
     }
