@@ -188,6 +188,15 @@ router.post("/verify-payment", async (req, res) => {
 
     const payment = paymentDetails.data;
 
+    // SECURITY (defense-in-depth): only create an order for a payment Razorpay has
+    // actually CAPTURED. Spoon's Razorpay account uses auto-capture, so legitimate
+    // payments are always 'captured' here — this guard is transparent today and only
+    // rejects an authorized-but-uncaptured / failed payment if capture settings ever change.
+    if (payment.status !== "captured") {
+      console.error(`❌ Client payment verification failed: payment ${payment.id} not captured (status=${payment.status})`);
+      return res.status(400).json({ error: "Payment not captured" });
+    }
+
     // Use shared logic with webhook handler
     // ALWAYS use notes.email (our trusted source) over payment.email
     const result = await paymentFlowValidator.handlePaymentSuccess({
