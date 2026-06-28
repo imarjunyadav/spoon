@@ -121,7 +121,18 @@ class PaymentFlowValidator {
         };
       }
 
-      serverTotal += dbItem.price * (cartItem.quantity || 1);
+      // SECURITY: enforce a positive, sane integer quantity. Without this a
+      // negative/zero quantity could deflate the server-side total and underpay.
+      // (The wallet checkout path already enforces this same 1-50 bound.)
+      const qty = cartItem.quantity;
+      if (!Number.isInteger(qty) || qty < 1 || qty > 50) {
+        return {
+          valid: false,
+          error: 'Invalid item quantity (must be a whole number between 1 and 50)'
+        };
+      }
+
+      serverTotal += dbItem.price * qty;
     }
 
     // Compare with client amount (client sends in Rupees, so compare directly)

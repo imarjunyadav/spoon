@@ -96,6 +96,18 @@ router.post('/pay', async (req, res) => {
             });
         }
 
+        // SECURITY: the idempotencyKey becomes the order's primary key (orders.id),
+        // which is later rendered in the admin dashboard. Restrict it to a safe
+        // token charset so it can never carry markup. Legitimate clients send
+        // "wallet_<ts>_<rand>", so this is behavior-neutral.
+        if (idempotencyKey !== undefined && idempotencyKey !== null &&
+            (typeof idempotencyKey !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(idempotencyKey))) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid idempotency key'
+            });
+        }
+
         // ========================================
         // BREAK TIME VALIDATION (SERVER ENFORCED)
         // ========================================
