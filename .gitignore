@@ -61,3 +61,6 @@ _IGNORE_session/
 **/open-wa-session*.json
 screenshot_session_*.png
 *.data.json
+
+# Claude Code local/session settings (machine-specific)
+.claude/
