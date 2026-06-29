@@ -48,6 +48,9 @@
                 const loggedInEmail = result.email || email;
                 localStorage.setItem('spoon-user-email', loggedInEmail);
                 localStorage.setItem('spoon-is-logged-in', 'true');
+                // Marker (set ONLY here) so the session guard never routes this
+                // account to the OTP flow. Normal users never have this key.
+                localStorage.setItem('spoon-partner-session', '1');
                 if (result.user) {
                     localStorage.setItem('spoon-user', JSON.stringify(result.user));
                     localStorage.setItem(`user-${loggedInEmail}`, JSON.stringify(result.user));
@@ -59,8 +62,13 @@
                 return;
             }
 
-            // Generic message for every failure (no enumeration / no oracle).
-            errEl.textContent = 'Invalid credentials. Please try again.';
+            // Distinguish rate-limiting from bad credentials.
+            if (response.status === 429) {
+                errEl.textContent = 'Too many login attempts. Please wait a few minutes and try again.';
+            } else {
+                // Generic message for every other failure (no enumeration / no oracle).
+                errEl.textContent = 'Invalid credentials. Please try again.';
+            }
         } catch (err) {
             console.error('Partner sign-in failed:', err);
             errEl.textContent = 'Unable to connect to server. Please try again.';
