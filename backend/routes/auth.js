@@ -12,6 +12,8 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
+const bcrypt = require('bcryptjs');
 const redisOtpStore = require('../services/redisOtpStore');
 const emailService = require('../services/emailService');
 const userService = require('../services/userService');
@@ -369,6 +371,134 @@ router.post('/validate-session', async (req, res) => {
   } catch (error) {
     console.error('Validate session exception:', error);
     res.status(500).json({ valid: false, error: 'SERVER_ERROR' });
+  }
+});
+
+// ========================================
+// ENDPOINT: Partner Sign-In (password-based, single allowlisted account)
+// ========================================
+//
+// A self-contained, additive credential login for a single pre-provisioned
+// account. It is fully isolated from the OTP flow above (no shared state, no
+// changes to send-otp / verify-otp / signup) and is DISABLED by default.
+//
+// Activation is entirely controlled by environment variables:
+//   REVIEW_LOGIN_ENABLED   must be exactly "true" to enable; anything else -> 404
+//   REVIEW_EMAIL           the one email permitted to use this route
+//   REVIEW_PASSWORD_HASH   bcrypt hash of the password (never plaintext, never in DB)
+//
+// On success it reuses the EXACT same session-token mechanism as verify-otp, so
+// the post-login experience is byte-for-byte identical to a normal login.
+//
+// To remove the feature entirely: delete this block (+ the require of bcryptjs)
+// and the partner.html / partner-auth.js frontend files. No schema/data changes.
+
+// Strict brute-force limiter for the credential endpoint (separate from apiLimiter).
+const partnerLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,                   // 5 attempts per IP per window
+  message: {
+    success: false,
+    error: { code: 'RATE_LIMITED', message: 'Too many attempts. Please try again later.' }
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Uniform "looks like it doesn't exist" response when the feature is off or the
+// caller is not the allowlisted account. Avoids confirming the route exists.
+function notFound(res) {
+  return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Not found' } });
+}
+
+router.post('/partner-login', partnerLoginLimiter, async (req, res) => {
+  // Feature flag: off by default. Absent/!= "true" => behave as a non-existent route.
+  if (process.env.REVIEW_LOGIN_ENABLED !== 'true') {
+    return notFound(res);
+  }
+
+  try {
+    const allowEmail = (process.env.REVIEW_EMAIL || '').toLowerCase().trim();
+    const passwordHash = process.env.REVIEW_PASSWORD_HASH || '';
+
+    // Misconfiguration guard: if not fully configured, stay invisible (404).
+    if (!allowEmail || !passwordHash) {
+      console.error('⚠️ partner-login enabled but REVIEW_EMAIL/REVIEW_PASSWORD_HASH not set');
+      return notFound(res);
+    }
+
+    const { email, password } = req.body || {};
+
+    if (!isValidEmail(email) || !password || typeof password !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' }
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Allowlist: only the single configured account. Anyone else -> 404 (no oracle).
+    if (normalizedEmail !== allowEmail) {
+      return notFound(res);
+    }
+
+    // Verify the password against the bcrypt hash (constant-time inside bcrypt).
+    const passwordOk = await bcrypt.compare(password, passwordHash);
+    if (!passwordOk) {
+      return res.status(401).json({
+        success: false,
+        error: { code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' }
+      });
+    }
+
+    // The account must already exist (it is pre-provisioned, least-privilege).
+    const userResult = await userService.getUserByEmail(normalizedEmail);
+    if (!userResult.user) {
+      console.error(`❌ partner-login: configured account ${normalizedEmail} not found`);
+      return res.status(401).json({
+        success: false,
+        error: { code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' }
+      });
+    }
+
+    // Defense-in-depth: this path must never grant a privileged/admin session.
+    if (userResult.user.is_admin) {
+      console.error(`🚨 partner-login refused: ${normalizedEmail} is an admin account`);
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Forbidden' }
+      });
+    }
+
+    // Reuse the SAME session-token creation path as verify-otp (identical result).
+    const sessionToken = crypto.randomUUID();
+    const updateResult = await userService.updateSession(normalizedEmail, sessionToken);
+    if (!updateResult.success) {
+      console.error(`❌ partner-login: failed to set session for ${normalizedEmail}`);
+      return res.status(500).json({
+        success: false,
+        error: { code: 'SERVER_ERROR', message: 'An unexpected error occurred. Please try again.' }
+      });
+    }
+
+    console.log(`✅ partner-login success for ${normalizedEmail}`);
+
+    // Same response shape verify-otp returns for an existing user.
+    return res.json({
+      success: true,
+      isNewUser: false,
+      email: normalizedEmail,
+      user: userResult.user,
+      sessionToken: sessionToken
+    });
+
+  } catch (error) {
+    console.error('💥 partner-login error:', error);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'SERVER_ERROR', message: 'An unexpected error occurred. Please try again.' }
+    });
   }
 });
 
