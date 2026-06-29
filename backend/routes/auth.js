@@ -393,13 +393,16 @@ router.post('/validate-session', async (req, res) => {
 // To remove the feature entirely: delete this block (+ the require of bcryptjs)
 // and the partner.html / partner-auth.js frontend files. No schema/data changes.
 
-// Strict brute-force limiter for the credential endpoint (separate from apiLimiter).
+// Brute-force limiter for the credential endpoint (separate from apiLimiter).
+// This route is used only by the single allowlisted account, so the cap is set to
+// comfortably accommodate multiple reviewers + retries while still bounding abuse
+// (bcrypt + single-email allowlist already make guessing infeasible).
 const partnerLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,                   // 5 attempts per IP per window
+  max: 30,                  // 30 attempts per IP per window
   message: {
     success: false,
-    error: { code: 'RATE_LIMITED', message: 'Too many attempts. Please try again later.' }
+    error: { code: 'RATE_LIMITED', message: 'Too many login attempts. Please wait a few minutes and try again.' }
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -471,15 +474,23 @@ router.post('/partner-login', partnerLoginLimiter, async (req, res) => {
       });
     }
 
-    // Reuse the SAME session-token creation path as verify-otp (identical result).
-    const sessionToken = crypto.randomUUID();
-    const updateResult = await userService.updateSession(normalizedEmail, sessionToken);
-    if (!updateResult.success) {
-      console.error(`❌ partner-login: failed to set session for ${normalizedEmail}`);
-      return res.status(500).json({
-        success: false,
-        error: { code: 'SERVER_ERROR', message: 'An unexpected error occurred. Please try again.' }
-      });
+    // STABLE SESSION (this account only): reuse the existing session token instead
+    // of rotating it on every login. That way repeat logins, page refreshes, and
+    // multiple concurrent reviewers all share one valid token and never invalidate
+    // each other — the one-active-device policy is intentionally NOT enforced for
+    // this single temporary account. A token is minted only if none exists yet.
+    // Normal users (verify-otp) are unaffected and keep rotating per login.
+    let sessionToken = userResult.user.active_session_token;
+    if (!sessionToken) {
+      sessionToken = crypto.randomUUID();
+      const updateResult = await userService.updateSession(normalizedEmail, sessionToken);
+      if (!updateResult.success) {
+        console.error(`❌ partner-login: failed to set session for ${normalizedEmail}`);
+        return res.status(500).json({
+          success: false,
+          error: { code: 'SERVER_ERROR', message: 'An unexpected error occurred. Please try again.' }
+        });
+      }
     }
 
     console.log(`✅ partner-login success for ${normalizedEmail}`);

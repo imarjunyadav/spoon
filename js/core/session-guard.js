@@ -149,12 +149,23 @@ class SessionGuard {
     }
 
     performDefaultLogout(email) {
+        // Temporary partner account: never send it through the OTP flow. If its
+        // session is ever cleared, bounce back to partner.html so it can sign in
+        // again (re-using its stable token). This branch only runs for sessions
+        // created via partner.html; normal users never have this marker.
+        const isPartnerSession = localStorage.getItem('spoon-partner-session') === '1';
+
         // Clear all auth state
         localStorage.removeItem('spoon-is-logged-in');
         localStorage.removeItem('spoon-user-email');
         localStorage.removeItem('spoon-session-token');
         localStorage.removeItem('spoon-user');
         localStorage.removeItem('spoon-email');
+
+        if (isPartnerSession) {
+            window.location.href = 'partner.html';
+            return;
+        }
 
         // Redirect
         alert(`Your session has expired because this account (${email}) signed in on another device.`);
