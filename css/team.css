@@ -198,13 +198,6 @@
     margin-bottom: 2px;
 }
 
-.team-card__bio {
-    font-size: 14px;
-    font-weight: 400;
-    color: var(--text-secondary);
-    line-height: 1.5;
-}
-
 /**
  * TEAM CARD LINK
  * Subtle connect/contact link
