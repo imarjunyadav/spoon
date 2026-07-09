@@ -51,16 +51,12 @@ if (Test-Path $envFile) {
             $value = $matches[2].Trim()
             
             # Map specific keys if needed, otherwise pass through
-            if ($key -in @("SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_SECRET", "SMTP_EMAIL", "SMTP_PASSWORD", "REDIS_URL", "VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_EMAIL")) {
+            if ($key -in @("SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_SECRET", "RAZORPAY_WEBHOOK_SECRET", "SMTP_EMAIL", "SMTP_PASSWORD", "REDIS_URL", "VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_EMAIL")) {
                 $envParams += "$key=$value"
                 Write-Host "   + Loaded $key" -ForegroundColor Gray
             }
             
-            # Also handle the special webhook secret mapping
-            if ($key -eq "RAZORPAY_SECRET") {
-                $envParams += "RAZORPAY_WEBHOOK_SECRET=$value"
-                Write-Host "   + Loaded RAZORPAY_WEBHOOK_SECRET (from RAZORPAY_SECRET)" -ForegroundColor Gray
-            }
+            # RAZORPAY_WEBHOOK_SECRET is read directly from .env (handled in the whitelist above)
         }
     }
     Write-Host "[OK] Environment variables loaded." -ForegroundColor Green
