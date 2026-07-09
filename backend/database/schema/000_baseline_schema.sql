@@ -234,8 +234,17 @@ BEGIN
   );
 
   RETURN jsonb_build_object('success', true, 'duplicate', false, 'orderId', p_payment_id);
-EXCEPTION WHEN OTHERS THEN
-  RAISE;
+EXCEPTION
+  WHEN unique_violation THEN
+    -- Race condition: the other path committed the same payment_id first.
+    -- Look up the order it created and return success (idempotent).
+    SELECT order_id INTO v_existing_order
+    FROM public.payment_transactions
+    WHERE razorpay_payment_id = p_payment_id;
+    RETURN jsonb_build_object('success', true, 'duplicate', true, 'orderId', v_existing_order,
+                              'message', 'Payment already processed (race resolved)');
+  WHEN OTHERS THEN
+    RAISE;
 END;
 $$ LANGUAGE plpgsql;
 
