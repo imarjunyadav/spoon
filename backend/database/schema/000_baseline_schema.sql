@@ -208,15 +208,15 @@ CREATE OR REPLACE FUNCTION public.confirm_payment_and_order(
   p_currency TEXT, p_user_email TEXT, p_items JSONB, p_phone TEXT
 ) RETURNS JSONB AS $$
 DECLARE
-  v_existing_order TEXT;
+  v_exists BOOLEAN;
 BEGIN
-  SELECT order_id INTO v_existing_order
+  SELECT true INTO v_exists
   FROM public.payment_transactions
   WHERE razorpay_payment_id = p_payment_id
   FOR UPDATE;
 
-  IF v_existing_order IS NOT NULL THEN
-    RETURN jsonb_build_object('success', true, 'duplicate', true, 'orderId', v_existing_order,
+  IF v_exists THEN
+    RETURN jsonb_build_object('success', true, 'duplicate', true, 'orderId', p_payment_id,
                               'message', 'Payment already processed');
   END IF;
 
@@ -237,11 +237,8 @@ BEGIN
 EXCEPTION
   WHEN unique_violation THEN
     -- Race condition: the other path committed the same payment_id first.
-    -- Look up the order it created and return success (idempotent).
-    SELECT order_id INTO v_existing_order
-    FROM public.payment_transactions
-    WHERE razorpay_payment_id = p_payment_id;
-    RETURN jsonb_build_object('success', true, 'duplicate', true, 'orderId', v_existing_order,
+    -- We know the order ID is the payment ID, so we return it directly.
+    RETURN jsonb_build_object('success', true, 'duplicate', true, 'orderId', p_payment_id,
                               'message', 'Payment already processed (race resolved)');
   WHEN OTHERS THEN
     RAISE;

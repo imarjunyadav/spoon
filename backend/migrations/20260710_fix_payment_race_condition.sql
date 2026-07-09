@@ -1,8 +1,12 @@
--- Migration: Fix race condition in confirm_payment_and_order
--- Description: Catches unique_violation (23505) so that when both the frontend
---   verify-payment path and the Razorpay webhook path call this RPC concurrently,
---   the loser gracefully returns {success:true, duplicate:true} instead of crashing
---   with "duplicate key value violates unique constraint".
+-- Migration: Fix race condition and idempotency check in confirm_payment_and_order
+-- Description:
+--   1. Fixes idempotency check: The original code checked `order_id IS NOT NULL`, but 
+--      `order_id` in `payment_transactions` is never populated, so it was always NULL. 
+--      This caused the idempotency check to fail on sequential webhooks.
+--   2. Fixes race condition: Catches unique_violation (23505) so that when both the frontend
+--      verify-payment path and the Razorpay webhook path call this RPC concurrently,
+--      the loser gracefully returns {success:true, duplicate:true}.
+--   3. Correctly returns `p_payment_id` as the order ID, instead of querying the NULL column.
 -- Date: 2026-07-10
 -- Safe to run: YES (CREATE OR REPLACE, idempotent)
 
@@ -11,15 +15,16 @@ CREATE OR REPLACE FUNCTION public.confirm_payment_and_order(
   p_currency TEXT, p_user_email TEXT, p_items JSONB, p_phone TEXT
 ) RETURNS JSONB AS $$
 DECLARE
-  v_existing_order TEXT;
+  v_exists BOOLEAN;
 BEGIN
-  SELECT order_id INTO v_existing_order
+  -- Check if payment already exists
+  SELECT true INTO v_exists
   FROM public.payment_transactions
   WHERE razorpay_payment_id = p_payment_id
   FOR UPDATE;
 
-  IF v_existing_order IS NOT NULL THEN
-    RETURN jsonb_build_object('success', true, 'duplicate', true, 'orderId', v_existing_order,
+  IF v_exists THEN
+    RETURN jsonb_build_object('success', true, 'duplicate', true, 'orderId', p_payment_id,
                               'message', 'Payment already processed');
   END IF;
 
@@ -40,11 +45,8 @@ BEGIN
 EXCEPTION
   WHEN unique_violation THEN
     -- Race condition: the other path committed the same payment_id first.
-    -- Look up the order it created and return success (idempotent).
-    SELECT order_id INTO v_existing_order
-    FROM public.payment_transactions
-    WHERE razorpay_payment_id = p_payment_id;
-    RETURN jsonb_build_object('success', true, 'duplicate', true, 'orderId', v_existing_order,
+    -- We know the order ID is the payment ID, so we return it directly.
+    RETURN jsonb_build_object('success', true, 'duplicate', true, 'orderId', p_payment_id,
                               'message', 'Payment already processed (race resolved)');
   WHEN OTHERS THEN
     RAISE;
