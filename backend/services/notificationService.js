@@ -55,7 +55,7 @@ async function notifyOrderPrepared(order) {
         const payload = {
             title: `🍽️ Order Ready!`,
             body: `Your order #${(order.id || '').substring(0, 8)} is hot and ready. Tap "I am available to collect" at the counter to reveal your slot.`,
-            url: `/pages/user/orders.html`
+            url: `/public/orders.html`
         };
         await webPushService.sendPushToUser(order.customer_email, payload).catch(err => console.error('Push error:', err));
 
@@ -84,7 +84,7 @@ async function notifyOrderCancelledNoShow(order, refundAmount) {
         const payload = {
             title: `❌ Order Cancelled (No-Show)`,
             body: `Order #${(order.id || '').substring(0, 8)} was cancelled as it wasn't collected. ${refundAmount} coins have been refunded to your wallet.`,
-            url: `/pages/user/wallet.html`
+            url: `/public/wallet.html`
         };
 
         await webPushService.sendPushToUser(order.customer_email, payload);
