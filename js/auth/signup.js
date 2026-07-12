@@ -20,11 +20,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const emailInput = document.getElementById('email-input');
     const signupBtn = document.getElementById('signup-btn');
     const nameError = document.getElementById('name-error');
+    const consentCheckbox = document.getElementById('consent-checkbox');
 
     // --- 2. STATE & CONFIG ---
     let verifiedEmail = '';
-    // Validation flag to control the button state
+    // Validation flags to control the button state
     let isNameValid = false;
+    let isConsentGiven = false;
     let isSubmitting = false;
 
     // --- 3. API FUNCTIONS ---
@@ -95,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * Only name is required - email is already verified and phone is optional.
      */
     function updateButtonState() {
-        signupBtn.disabled = !isNameValid || isSubmitting;
+        signupBtn.disabled = !isNameValid || !isConsentGiven || isSubmitting;
     }
 
     // --- 5. HELPER FUNCTIONS ---
@@ -155,6 +157,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Final check before submission
         if (!isNameValid) {
             alert('Please enter a valid name before proceeding.');
+            return;
+        }
+
+        if (!isConsentGiven) {
+            alert('Please accept the Terms & Conditions and Privacy Policy to continue.');
             return;
         }
 
@@ -221,6 +228,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Add real-time validation listener to the name input
         nameInput.addEventListener('input', validateName);
+
+        // Require explicit consent before the account can be created
+        if (consentCheckbox) {
+            consentCheckbox.addEventListener('change', () => {
+                isConsentGiven = consentCheckbox.checked;
+                updateButtonState();
+            });
+        }
 
         // Add form submission listener
         signupForm.addEventListener('submit', handleFormSubmit);

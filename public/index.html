@@ -5,7 +5,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#eb1700">
+    <link rel="apple-touch-icon" href="/public/icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Spoon">
     <title>Spoon - Canteen Ordering</title>
+    <meta name="description"
+        content="Skip the canteen queue at TCET. Order and pay ahead on Spoon, then pick up when it's ready.">
+    <!-- Open Graph / social sharing. og:image is a RELATIVE path (no domain hardcoded,
+         since the production domain isn't finalized). When the domain is set, make the
+         image URL absolute (or inject it from FRONTEND_URL) for reliable link previews. -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Spoon">
+    <meta property="og:title" content="Spoon — Skip the canteen queue">
+    <meta property="og:description" content="Order and pay ahead at the TCET canteen, then pick up when it's ready.">
+    <meta property="og:image" content="/public/icons/icon-512.png">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Spoon — Skip the canteen queue">
+    <meta name="twitter:description" content="Order and pay ahead at the TCET canteen, then pick up when it's ready.">
+    <meta name="twitter:image" content="/public/icons/icon-512.png">
     <!-- Link to our new stylesheet -->
     <link rel="stylesheet" href="../css/menu.css">
     <!-- Font Awesome for icons, as used in the sample UI -->
@@ -133,6 +153,9 @@
     <script src="../js/core/session-guard.js"></script>
     <!-- Link to our new JavaScript files -->
     <script src="../js/pages/menu.js"></script>
+    <!-- Deferred PWA install prompt + one-time local-storage notice -->
+    <script src="../js/core/pwa-install.js" defer></script>
+    <script src="../js/core/storage-notice.js" defer></script>
 </body>
 
 </html>

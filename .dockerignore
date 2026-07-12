@@ -6,6 +6,11 @@ node_modules
 .gcloudignore
 .env
 .env.*
+# Also exclude NESTED env files (e.g. backend/.env) — a bare ".env" pattern does not
+# match subdirectories, so without these the real secrets file would be copied into the image.
+**/.env
+**/.env.*
+backend/.env
 logs
 tmp
 tests

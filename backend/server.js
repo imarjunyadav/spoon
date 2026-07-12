@@ -141,19 +141,28 @@ const rateLimit = require('express-rate-limit');
 // Strict limiter for payments (prevent card testing/spam)
 const paymentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // 50 requests per IP per window (increased for testing)
+  // Raised for institution-scale usage: thousands of students share a handful of
+  // campus NAT IPs, so a low per-IP cap would wrongly throttle legitimate checkouts.
+  // Still bounds a single abusive IP (card testing). Tune down if abuse is observed.
+  max: 1000, // per IP per 15 min
   message: {
     success: false,
     error: 'Too many payment attempts, please try again after 15 minutes'
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  // Never rate-limit Razorpay's server-to-server webhook: it arrives from Razorpay's
+  // own IPs and must always be processed so orders confirm/reconcile.
+  skip: (req) => req.originalUrl.startsWith('/api/payment/webhook'),
 });
 
 // General limiter for other API endpoints
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 300, // 300 requests per IP per window (admin dashboards need higher limits)
+  // Raised for institution-scale usage behind shared campus NAT (thousands of
+  // students + the session heartbeat all egress from a few public IPs). Still stops
+  // a single runaway/abusive IP. Tune after observing real traffic.
+  max: 6000, // per IP per minute
   message: {
     success: false,
     error: 'Too many requests, please slow down'
@@ -253,8 +262,19 @@ app.use("/api/settings", settingsRoutes);
  */
 const rootDir = path.join(__dirname, "../");
 
-// Serve all static files from root directory
-app.use(express.static(rootDir));
+// SECURITY: serve ONLY the frontend asset directories, not the repo root. Serving
+// the whole root (the previous behavior) also exposed backend source, deploy.ps1,
+// the Dockerfile, and package files as downloadable static files. These explicit
+// mounts keep every real frontend asset working while blocking everything else.
+app.use("/public", express.static(path.join(rootDir, "public")));
+app.use("/css", express.static(path.join(rootDir, "css")));
+app.use("/js", express.static(path.join(rootDir, "js")));
+app.use("/admin", express.static(path.join(rootDir, "admin")));
+
+// Individual root-level files that must be reachable at the site root.
+app.get("/favicon.svg", (req, res) => res.sendFile(path.join(rootDir, "favicon.svg")));
+app.get("/sw.js", (req, res) => res.sendFile(path.join(rootDir, "sw.js")));
+app.get("/manifest.json", (req, res) => res.sendFile(path.join(rootDir, "manifest.json")));
 
 /**
  * ROOT ROUTE

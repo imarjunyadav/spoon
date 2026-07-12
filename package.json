@@ -7,6 +7,9 @@
     "start": "node backend/server.js",
     "test": "jest"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/imarjunyadav/spoon.git"
