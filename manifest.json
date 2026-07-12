@@ -1,0 +1,16 @@
+{
+  "name": "Spoon — Canteen Ordering",
+  "short_name": "Spoon",
+  "description": "Skip the canteen queue at TCET. Order and pay ahead, then pick up when it's ready.",
+  "start_url": "/public/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#eb1700",
+  "icons": [
+    { "src": "/public/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/public/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/public/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

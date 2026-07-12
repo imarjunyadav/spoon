@@ -13,7 +13,12 @@
  */
 class SessionGuard {
     constructor() {
-        this.HEARTBEAT_INTERVAL = 15000; // 15 seconds
+        // 60s heartbeat: cuts the always-on request floor ~4x at institution scale
+        // (thousands of logged-in tabs each poll /api/auth/validate-session) while
+        // still enforcing the one-active-device policy. Visibility/focus checks below
+        // still fire an immediate re-check when a tab is reopened, so a session that
+        // signed in elsewhere is still caught promptly on next interaction.
+        this.HEARTBEAT_INTERVAL = 60000; // 60 seconds
         this.VISIBILITY_TIMEOUT = 5000;  // 5 seconds
 
         this.heartbeatTimer = null;

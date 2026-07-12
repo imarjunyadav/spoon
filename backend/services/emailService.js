@@ -7,13 +7,20 @@
 
 const nodemailer = require('nodemailer');
 
-// Initialize SMTP transporter for email notifications
+// Initialize SMTP transporter for email notifications.
+// Fully configurable via environment variables so the mail provider can be swapped
+// (e.g. Gmail -> the institution's SMTP relay) with NO code change. The defaults
+// preserve the existing Gmail behavior exactly.
+const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
+const SMTP_PORT = parseInt(process.env.SMTP_PORT, 10) || 587;
+const SMTP_USER = process.env.SMTP_USER || process.env.SMTP_EMAIL;
+
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
+  host: SMTP_HOST,
+  port: SMTP_PORT,
+  secure: SMTP_PORT === 465, // implicit TLS on 465; STARTTLS on 587 and others
   auth: {
-    user: process.env.SMTP_EMAIL,
+    user: SMTP_USER,
     pass: process.env.SMTP_PASSWORD
   }
 });
