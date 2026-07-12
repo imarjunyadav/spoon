@@ -73,19 +73,11 @@ router.post('/subscribe', requireAuth, async (req, res) => {
 
         if (error) throw error;
 
+        // NOTE: intentionally NO confirmation/"Notifications On" push here. The
+        // client calls this endpoint on every app open to keep the subscription
+        // synced, so sending a push here would notify the user every time they open
+        // Spoon. Push notifications are sent ONLY when an order is ready.
         console.log(`📡 User push subscribed: ${userEmail}`);
-
-        // Fire a confirmation notification so the user knows it works (non-fatal).
-        const payload = JSON.stringify({
-            title: '🔔 Notifications On',
-            body: "You'll now get an alert when your Spoon order is ready.",
-            icon: '/public/icons/icon-192.png',
-            data: { url: '/public/orders.html' }
-        });
-        await webpush.sendNotification(subscription, payload).catch(err =>
-            console.warn('⚠️ User test push failed (non-fatal):', err.message)
-        );
-
         res.status(201).json({ success: true });
 
     } catch (error) {

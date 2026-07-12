@@ -52,19 +52,30 @@
         if (!swReg || !vapidKey || !isLoggedIn()) return;
         try {
             var sub = await swReg.pushManager.getSubscription();
+            var isNew = false;
             if (!sub) {
                 sub = await swReg.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: urlBase64ToUint8Array(vapidKey)
                 });
+                isNew = true;
+            }
+            // Avoid a redundant backend upsert on every page load: sync once per
+            // browser session, or whenever a brand-new subscription is created.
+            if (!isNew) {
+                try { if (sessionStorage.getItem('spoon-push-synced') === '1') return; } catch (e) { /* ignore */ }
             }
             var resp = await fetch(apiBase() + '/api/user-push/subscribe', {
                 method: 'POST',
                 headers: authHeaders(),
                 body: JSON.stringify({ subscription: sub })
             });
-            if (!resp.ok) console.warn('⚠️ User push subscribe rejected:', resp.status);
-            else console.log('📡 User push subscribed');
+            if (resp.ok) {
+                try { sessionStorage.setItem('spoon-push-synced', '1'); } catch (e) { /* ignore */ }
+                console.log('📡 User push subscribed');
+            } else {
+                console.warn('⚠️ User push subscribe rejected:', resp.status);
+            }
         } catch (e) {
             console.warn('⚠️ User push subscribe failed:', e);
         }
@@ -76,7 +87,12 @@
             var perm = await Notification.requestPermission();
             if (perm === 'granted') {
                 await subscribe();
+                // In-app confirmation (NOT a push) so the user knows it worked.
+                if (typeof window.showToast === 'function') {
+                    window.showToast("🔔 You'll be notified when your order is ready", 'success');
+                }
             } else {
+                // Denied or dismissed — respect it and don't ask again.
                 try { localStorage.setItem(DISMISS_KEY, '1'); } catch (e) { /* ignore */ }
             }
         } catch (e) {
