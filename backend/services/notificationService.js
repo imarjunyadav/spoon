@@ -51,11 +51,11 @@ async function notifyOrderPrepared(order) {
     try {
         if (!order.customer_email) return;
 
-        // 1. Send Web Push
+        // 1. Send Web Push — simple, user-friendly, no internal identifiers.
         const payload = {
-            title: `🍽️ Order Ready!`,
-            body: `Your order #${(order.id || '').substring(0, 8)} is hot and ready. Tap "I am available to collect" at the counter to reveal your slot.`,
-            url: `/pages/user/orders.html`
+            title: `🍴 Your food is ready!`,
+            body: `Tap "I'm available to collect" to reveal your pickup slot.`,
+            url: `/public/orders.html` // open Spoon on the Orders tab
         };
         await webPushService.sendPushToUser(order.customer_email, payload).catch(err => console.error('Push error:', err));
 
@@ -78,19 +78,11 @@ async function notifyOrderPrepared(order) {
  * @param {number} refundAmount - Coins refunded
  */
 async function notifyOrderCancelledNoShow(order, refundAmount) {
-    try {
-        if (!order.customer_email) return;
-
-        const payload = {
-            title: `❌ Order Cancelled (No-Show)`,
-            body: `Order #${(order.id || '').substring(0, 8)} was cancelled as it wasn't collected. ${refundAmount} coins have been refunded to your wallet.`,
-            url: `/pages/user/wallet.html`
-        };
-
-        await webPushService.sendPushToUser(order.customer_email, payload);
-    } catch (error) {
-        console.error('⚠️ notifyOrderCancelledNoShow failed:', error.message);
-    }
+    // Product decision: user push is sent ONLY when an order is ready. No-show
+    // cancellations no longer trigger a push notification. Kept as a safe no-op so
+    // existing callers (orders.js) continue to work unchanged and this can be
+    // re-enabled later if desired.
+    return;
 }
 
 module.exports = {

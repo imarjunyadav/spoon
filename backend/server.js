@@ -230,6 +230,14 @@ const pushRoutes = require("./routes/push");
 app.use("/api/push", pushRoutes);
 
 /**
+ * USER PUSH ROUTES
+ * Web Push subscription management for logged-in students (separate from the
+ * admin push routes above). Example: POST /api/user-push/subscribe
+ */
+const userPushRoutes = require("./routes/userPush");
+app.use("/api/user-push", userPushRoutes);
+
+/**
  * ADMIN ROUTES
  * Admin role verification endpoint
  * Example: GET /api/admin/verify

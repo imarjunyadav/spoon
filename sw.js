@@ -79,18 +79,27 @@ self.addEventListener('push', function (event) {
 self.addEventListener('notificationclick', function (event) {
     event.notification.close();
 
+    // Where to send the user (order-ready -> Orders tab).
+    var targetUrl = (event.notification.data && event.notification.data.url) || '/public/orders.html';
+
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
-            // If tab is already open, focus it
-            for (let i = 0; i < clientList.length; i++) {
-                const client = clientList[i];
-                if (client.url.includes(event.notification.data.url) && 'focus' in client) {
+            // If a Spoon tab is already open, focus it AND navigate it to the Orders
+            // tab (so the user lands on Orders, not whatever page they left open).
+            for (var i = 0; i < clientList.length; i++) {
+                var client = clientList[i];
+                if ('focus' in client) {
+                    if ('navigate' in client) {
+                        return client.navigate(targetUrl)
+                            .then(function (c) { return (c || client).focus(); })
+                            .catch(function () { return client.focus(); });
+                    }
                     return client.focus();
                 }
             }
-            // Otherwise open a new tab
+            // Otherwise open a new window directly on the Orders tab.
             if (clients.openWindow) {
-                return clients.openWindow(event.notification.data.url);
+                return clients.openWindow(targetUrl);
             }
         })
     );

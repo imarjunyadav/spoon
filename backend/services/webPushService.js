@@ -101,7 +101,7 @@ async function sendPushToUser(userEmail, payloadOptions) {
 
     try {
         const { data: subscriptions, error } = await getSupabase()
-            .from('push_subscriptions')
+            .from('user_push_subscriptions')
             .select('endpoint, keys')
             .eq('user_email', userEmail);
 
@@ -112,8 +112,8 @@ async function sendPushToUser(userEmail, payloadOptions) {
         const payload = JSON.stringify({
             title: payloadOptions.title,
             body: payloadOptions.body,
-            icon: '/images/spoon-logo-square.png',
-            data: { url: payloadOptions.url || '/pages/user/orders.html' }
+            icon: '/public/icons/icon-192.png',
+            data: { url: payloadOptions.url || '/public/orders.html' }
         });
 
         const promises = subscriptions.map(sub =>
@@ -121,7 +121,7 @@ async function sendPushToUser(userEmail, payloadOptions) {
                 if (err.statusCode === 410 || err.statusCode === 404) {
                     console.log('🗑️ Removing stale user subscription:', sub.endpoint);
                     return getSupabase()
-                        .from('push_subscriptions')
+                        .from('user_push_subscriptions')
                         .delete()
                         .eq('endpoint', sub.endpoint);
                 }
