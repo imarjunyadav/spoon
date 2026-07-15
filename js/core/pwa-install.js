@@ -41,12 +41,15 @@
     window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();      // suppress the browser's automatic mini-infobar
         deferredPrompt = e;
-        if (eligible()) showBanner();
+        // On pages that have the header "Get App" button (the menu), that button is the
+        // install CTA — don't also pop the bottom banner. Elsewhere, keep the banner.
+        if (eligible() && !document.getElementById('get-app-btn')) showBanner();
     });
 
     window.addEventListener('appinstalled', function () {
         try { localStorage.setItem(DISMISS_KEY, '1'); } catch (e) { /* ignore */ }
         removeBanner();
+        hidePromo();
     });
 
     function injectStyles() {
@@ -95,5 +98,51 @@
             try { localStorage.setItem(DISMISS_KEY, '1'); } catch (e) { /* ignore */ }
             removeBanner();
         });
+    }
+
+    // ---------- In-page install promo (menu page) ----------
+
+    function isStandalone() {
+        return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+            window.navigator.standalone === true;
+    }
+
+    function hidePromo() {
+        var btn = document.getElementById('get-app-btn');
+        if (btn) btn.setAttribute('hidden', '');
+    }
+
+    // Fallback for browsers that don't fire beforeinstallprompt (e.g. iOS Safari):
+    // tell the user how to install manually.
+    function installHint() {
+        var msg = /iphone|ipad|ipod/i.test(navigator.userAgent)
+            ? "To install: tap the Share button, then 'Add to Home Screen'."
+            : "To install: open your browser menu and choose 'Install app' / 'Add to Home Screen'.";
+        if (typeof window.showToast === 'function') window.showToast(msg, 'info', 5000);
+        else alert(msg);
+    }
+
+    function wireGetApp() {
+        var btn = document.getElementById('get-app-btn');
+        if (!btn) return;                 // not on this page
+        if (isStandalone()) { hidePromo(); return; } // already installed — hide the button
+
+        btn.addEventListener('click', function () {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(function (choice) {
+                    if (choice && choice.outcome === 'accepted') hidePromo();
+                    deferredPrompt = null;
+                }).catch(function () { deferredPrompt = null; });
+            } else {
+                installHint();
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', wireGetApp);
+    } else {
+        wireGetApp();
     }
 })();
