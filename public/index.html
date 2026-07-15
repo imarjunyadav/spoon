@@ -34,18 +34,18 @@
     <style>
         .spoon-header {
             display: flex; align-items: center; justify-content: space-between;
-            gap: 12px; padding: 12px 20px 10px;
+            gap: 12px; padding: 8px 20px 6px;
         }
         .spoon-header__brand { min-width: 0; }
-        .spoon-header__title { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: .5px; color: #eb1700; }
+        .spoon-header__title { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: .5px; color: #eb1700; }
         .spoon-header__tagline {
-            margin: 2px 0 0; font-size: 12px; color: #8a8a8a;
+            margin: 1px 0 0; font-size: 12px; color: #8a8a8a;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .spoon-header__getapp {
-            flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+            flex-shrink: 0; display: inline-flex; align-items: center;
             background: #eb1700; color: #fff; border: none; border-radius: 999px;
-            padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+            padding: 9px 20px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
         }
         .spoon-header__getapp:active { transform: scale(.97); }
         .spoon-header__getapp[hidden] { display: none; }
@@ -65,9 +65,7 @@
                 <h1 class="spoon-header__title">SPOON</h1>
                 <p class="spoon-header__tagline">Order. We'll notify you. Come collect.</p>
             </div>
-            <button type="button" class="spoon-header__getapp" id="get-app-btn">
-                <i class="fa-solid fa-circle-down"></i> GET APP
-            </button>
+            <button type="button" class="spoon-header__getapp" id="get-app-btn">GET APP</button>
         </header>
 
         <!-- ============== SEARCH ============== -->
