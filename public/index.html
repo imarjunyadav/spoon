@@ -38,17 +38,12 @@
     <style>
         .spoon-header {
             display: flex; align-items: center; justify-content: space-between;
-            gap: 12px; padding: 5px 20px 3px;
+            gap: 12px; padding: 6px 20px;
         }
-        .spoon-header__brand { min-width: 0; }
         .spoon-header__title {
-            margin: 0; font-size: 24px; line-height: 1.05;
+            margin: 0; font-size: 24px; line-height: 1;
             font-family: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
             font-weight: 700; letter-spacing: 1px; color: #eb1700;
-        }
-        .spoon-header__tagline {
-            margin: 1px 0 0; font-size: 12px; line-height: 1.2; color: #8a8a8a;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .spoon-header__getapp {
             flex-shrink: 0; display: inline-flex; align-items: center;
@@ -69,10 +64,7 @@
 
         <!-- ============== HEADER ============== -->
         <header class="spoon-header">
-            <div class="spoon-header__brand">
-                <h1 class="spoon-header__title">SPOON</h1>
-                <p class="spoon-header__tagline">Order. We'll notify you. Come collect.</p>
-            </div>
+            <h1 class="spoon-header__title">Spoon!</h1>
             <button type="button" class="spoon-header__getapp" id="get-app-btn">GET APP</button>
         </header>
 
