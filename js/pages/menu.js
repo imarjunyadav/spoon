@@ -49,10 +49,13 @@ document.addEventListener('DOMContentLoaded', () => {
      * Personalizes header with user name if logged in.
      */
     function personalizeHeader() {
-        const isLoggedIn = localStorage.getItem('spoon-is-logged-in') === 'true';
         const userGreetingEl = document.getElementById('user-greeting');
         const userAvatarEl = document.querySelector('.greeting-card__avatar');
 
+        // The greeting card + avatar were removed from the menu header — nothing to do.
+        if (!userGreetingEl && !userAvatarEl) return;
+
+        const isLoggedIn = localStorage.getItem('spoon-is-logged-in') === 'true';
         if (isLoggedIn) {
             const userData = JSON.parse(localStorage.getItem('spoon-user'));
 
@@ -573,8 +576,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setupProtectedRoutes();
         personalizeHeader();
 
-        const randomTagline = taglines[Math.floor(Math.random() * taglines.length)];
-        greetingTaglineEl.textContent = randomTagline;
+        if (greetingTaglineEl) {
+            const randomTagline = taglines[Math.floor(Math.random() * taglines.length)];
+            greetingTaglineEl.textContent = randomTagline;
+        }
 
         await fetchMenuItems();
         await fetchSystemSettings();
