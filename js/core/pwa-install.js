@@ -41,9 +41,9 @@
     window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();      // suppress the browser's automatic mini-infobar
         deferredPrompt = e;
-        // On pages that have the in-page install promo (the menu), that promo is the
+        // On pages that have the header "Get App" button (the menu), that button is the
         // install CTA — don't also pop the bottom banner. Elsewhere, keep the banner.
-        if (eligible() && !document.getElementById('pwa-promo')) showBanner();
+        if (eligible() && !document.getElementById('get-app-btn')) showBanner();
     });
 
     window.addEventListener('appinstalled', function () {
@@ -108,8 +108,8 @@
     }
 
     function hidePromo() {
-        var sec = document.getElementById('pwa-promo-section');
-        if (sec) sec.setAttribute('hidden', '');
+        var btn = document.getElementById('get-app-btn');
+        if (btn) btn.setAttribute('hidden', '');
     }
 
     // Fallback for browsers that don't fire beforeinstallprompt (e.g. iOS Safari):
@@ -122,10 +122,10 @@
         else alert(msg);
     }
 
-    function wirePromo() {
-        var btn = document.getElementById('pwa-promo');
+    function wireGetApp() {
+        var btn = document.getElementById('get-app-btn');
         if (!btn) return;                 // not on this page
-        if (isStandalone()) { hidePromo(); return; } // already installed — nothing to promote
+        if (isStandalone()) { hidePromo(); return; } // already installed — hide the button
 
         btn.addEventListener('click', function () {
             if (deferredPrompt) {
@@ -141,8 +141,8 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', wirePromo);
+        document.addEventListener('DOMContentLoaded', wireGetApp);
     } else {
-        wirePromo();
+        wireGetApp();
     }
 })();
