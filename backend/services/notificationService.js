@@ -54,7 +54,7 @@ async function notifyOrderPrepared(order) {
         // 1. Send Web Push — simple, user-friendly, no internal identifiers.
         const payload = {
             title: `🍴 Your food is ready!`,
-            body: `Tap "I'm available to collect" to reveal your pickup slot.`,
+            body: `Your food is ready! Tap "I'm available to collect" to reveal your pickup slot.`,
             url: `/public/orders.html` // open Spoon on the Orders tab
         };
         await webPushService.sendPushToUser(order.customer_email, payload).catch(err => console.error('Push error:', err));

@@ -411,6 +411,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Payment & Checkout ---
 
+  // Break-time popup copy (shared by the pre-checkout guard and the payment-error
+  // handlers, so a break always shows this message instead of a payment error).
+  function showBreakTimePopup() {
+    window.showAlertModal(
+      "Canteen staff is on break",
+      "We can't take new orders while the canteen staff is on break. Please try again later or order offline.",
+      "fa-clock"
+    );
+  }
+  // The backend rejects orders during break with "Canteen staff is on a break, try later."
+  function isBreakTimeError(message) {
+    return typeof message === 'string' && message.toLowerCase().includes('break');
+  }
+
   /**
    * Final Order Confirmation Handler.
    * Processes payment using Razorpay OR Spoon Wallet.
@@ -420,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (isBreakTime) {
       closeModal(confirmOrderModal);
-      window.showAlertModal("Counter staff is on a break", "We're not accepting new orders right now. Please try again later.", "fa-clock");
+      showBreakTimePopup();
       return;
     }
 
@@ -484,8 +498,12 @@ document.addEventListener('DOMContentLoaded', () => {
           localStorage.removeItem("current_order_id");
           window.location.href = `order-status.html?id=${result.orderId}&payment_success=true`;
         } else {
-          // Failure
-          window.showAlertModal("Payment Failed", `Wallet payment failed: ${result.error || 'Unknown error'}`);
+          // Failure — show the break message if the canteen is on break, else the payment error.
+          if (isBreakTimeError(result.error)) {
+            showBreakTimePopup();
+          } else {
+            window.showAlertModal("Payment Failed", `Wallet payment failed: ${result.error || 'Unknown error'}`);
+          }
           finalConfirmBtn.classList.remove('loading');
           finalConfirmBtn.disabled = false;
         }
@@ -596,7 +614,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (error) {
       console.error("Error creating order:", error);
-      window.showAlertModal("Payment Error", error.message || "Failed to initiate payment. Please try again.");
+      // Show the break message if the canteen is on break, else the payment error.
+      if (isBreakTimeError(error.message)) {
+        showBreakTimePopup();
+      } else {
+        window.showAlertModal("Payment Error", error.message || "Failed to initiate payment. Please try again.");
+      }
       finalConfirmBtn.classList.remove('loading');
       finalConfirmBtn.disabled = false;
     }
