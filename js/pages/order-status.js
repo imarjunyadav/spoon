@@ -57,11 +57,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const API_BASE = window.SPOON_CONFIG?.API_BASE_URL || '';
 
     // --- Adaptive Polling Configuration ---
-    // Intervals in milliseconds based on order status (V2)
+    // Intervals in milliseconds based on order status (V3).
+    // These only fire while the tab is FOREGROUNDED (polling pauses when hidden),
+    // so they can be snappy without wasting requests. The "order ready" push backs
+    // up the kitchen→prepared window for users who have notifications on.
     const POLLING_INTERVALS = {
-        pending: 15000,
-        kitchen: 10000,
-        prepared_before_arrive: 5000,
+        pending: 10000,
+        kitchen: 6000,
+        prepared_before_arrive: 4000,
         prepared_after_arrive: 3000,
         completed: 0,
         cancelled: 0
@@ -292,20 +295,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- Visibility: pause polling while the tab is hidden, refresh + resume on return ---
-    document.addEventListener('visibilitychange', async () => {
+    // Fetch the latest order immediately and resume polling — used whenever the page
+    // returns to the foreground so the user sees the current status with no wait.
+    async function refreshNow() {
         const orderId = new URLSearchParams(window.location.search).get('id');
         if (!orderId || !currentOrder) return;
 
-        if (document.hidden) {
-            // Nothing to update while hidden — stop polling to save requests/battery.
-            clearInterval(pollingInterval);
-            pollingInterval = null;
-            return;
-        }
-
-        // Became visible: refresh immediately (catch anything missed while away),
-        // then resume polling if the order is still active.
         const updated = await getOrderById(orderId);
         if (updated) {
             const changed = updated.status !== currentOrder.status || updated.arrived_at !== currentOrder.arrived_at;
@@ -315,6 +310,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (currentOrder.status !== 'completed' && currentOrder.status !== 'cancelled') {
             startAdaptivePolling();
         }
+    }
+
+    // --- Visibility: pause polling while hidden, refresh instantly on return ---
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            // Nothing to update while hidden — stop polling to save requests/battery.
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+        } else {
+            refreshNow();
+        }
+    });
+
+    // Back/forward navigation can restore this page from the bfcache without re-running
+    // init — refresh + resume so it isn't left showing stale status with no polling.
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) refreshNow();
     });
 
     // --- Cleanup ---
