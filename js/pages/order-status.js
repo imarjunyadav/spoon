@@ -292,6 +292,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // --- Visibility: pause polling while the tab is hidden, refresh + resume on return ---
+    document.addEventListener('visibilitychange', async () => {
+        const orderId = new URLSearchParams(window.location.search).get('id');
+        if (!orderId || !currentOrder) return;
+
+        if (document.hidden) {
+            // Nothing to update while hidden — stop polling to save requests/battery.
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+            return;
+        }
+
+        // Became visible: refresh immediately (catch anything missed while away),
+        // then resume polling if the order is still active.
+        const updated = await getOrderById(orderId);
+        if (updated) {
+            const changed = updated.status !== currentOrder.status || updated.arrived_at !== currentOrder.arrived_at;
+            currentOrder = updated;
+            if (changed) renderTimeline();
+        }
+        if (currentOrder.status !== 'completed' && currentOrder.status !== 'cancelled') {
+            startAdaptivePolling();
+        }
+    });
+
     // --- Cleanup ---
 
     window.addEventListener('beforeunload', () => {
