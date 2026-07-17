@@ -407,13 +407,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Single shared Realtime channel; torn down when the tab is hidden to free a
+    // Supabase Realtime connection, and re-created when the tab becomes visible.
+    let realtimeChannel = null;
+
     /**
-     * Subscribe to realtime database changes.
+     * Subscribe to realtime database changes (stock/availability + break time)
+     * on a single shared channel.
      */
     function subscribeToRealtimeSync() {
-        if (!supabase) return;
+        if (!supabase || realtimeChannel) return;
 
-        supabase
+        realtimeChannel = supabase
             .channel('menu-realtime-sync')
             .on('postgres_changes', {
                 event: 'UPDATE',
@@ -468,6 +473,33 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .subscribe();
     }
+
+    /**
+     * Tear down the Realtime channel (frees the Supabase Realtime connection).
+     */
+    function unsubscribeRealtimeSync() {
+        if (realtimeChannel && supabase) {
+            supabase.removeChannel(realtimeChannel);
+            realtimeChannel = null;
+        }
+    }
+
+    // Auto-manage the Realtime connection with tab visibility: disconnect while the
+    // tab is hidden, then reconnect + refresh stock/break-time when it becomes
+    // visible again (so nothing that changed while away is missed).
+    document.addEventListener('visibilitychange', async () => {
+        if (document.hidden) {
+            unsubscribeRealtimeSync();
+        } else {
+            subscribeToRealtimeSync();
+            await fetchMenuItems();
+            await fetchSystemSettings();
+            renderProducts(currentCategory);
+        }
+    });
+
+    // Clean up the connection on page unload.
+    window.addEventListener('beforeunload', unsubscribeRealtimeSync);
 
     /**
      * Handles search input to filter items.

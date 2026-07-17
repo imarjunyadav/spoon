@@ -84,13 +84,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   }
 
+  // Single shared Realtime channel; torn down when the tab is hidden.
+  let realtimeChannel = null;
+
   /**
-   * Subscribe to realtime backend settings.
+   * Subscribe to realtime backend settings (break time) on a single shared channel.
    */
   function subscribeToRealtimeSync() {
-      if (!supabase) return;
+      if (!supabase || realtimeChannel) return;
 
-      supabase
+      realtimeChannel = supabase
           .channel('cart-realtime-sync')
           .on('postgres_changes', {
               event: 'UPDATE',
@@ -105,6 +108,29 @@ document.addEventListener('DOMContentLoaded', () => {
           })
           .subscribe();
   }
+
+  /**
+   * Tear down the Realtime channel (frees the Supabase Realtime connection).
+   */
+  function unsubscribeRealtimeSync() {
+      if (realtimeChannel && supabase) {
+          supabase.removeChannel(realtimeChannel);
+          realtimeChannel = null;
+      }
+  }
+
+  // Disconnect Realtime while the tab is hidden; reconnect + refresh break time
+  // when it becomes visible again.
+  document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+          unsubscribeRealtimeSync();
+      } else {
+          subscribeToRealtimeSync();
+          fetchSystemSettings();
+      }
+  });
+
+  window.addEventListener('beforeunload', unsubscribeRealtimeSync);
 
   // --- Cart Helper Functions ---
 
