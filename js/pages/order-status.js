@@ -300,6 +300,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function refreshNow() {
         const orderId = new URLSearchParams(window.location.search).get('id');
         if (!orderId || !currentOrder) return;
+        // Terminal orders never change again — no need to fetch or resume polling.
+        if (currentOrder.status === 'completed' || currentOrder.status === 'cancelled') return;
 
         const updated = await getOrderById(orderId);
         if (updated) {
