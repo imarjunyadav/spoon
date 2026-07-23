@@ -97,11 +97,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Display-name fallback (used only if an item's `category` is ever null) AND
+    // the canonical chip order: categories render in this key order; anything not
+    // listed here falls to the end.
     const CATEGORY_MAP = {
-        'sandwich': 'SANDWICH',
-        'south': 'SOUTH INDIAN',
-        'chinese': 'CHINESE',
-        'soup': 'SOUP'
+        'fried-rice': 'FRIED RICE',
+        'noodles': 'NOODLES',
+        'starters': 'STARTERS & CHILLY',
+        'chinese-specials': 'CHINESE SPECIALS',
+        'sandwiches': 'SANDWICHES',
+        'toast-sides': 'TOAST & SIDES',
+        'chai': 'CHAI'
     };
 
     /**
@@ -142,7 +148,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
 
-            menuData.categories = Object.values(categoriesMap);
+            // Render chips in the intended order (CATEGORY_MAP key order); any
+            // category not listed there falls to the end, keeping its relative order.
+            const categoryOrder = Object.keys(CATEGORY_MAP);
+            menuData.categories = Object.values(categoriesMap).sort((a, b) => {
+                const ia = categoryOrder.indexOf(a.id);
+                const ib = categoryOrder.indexOf(b.id);
+                return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+            });
 
         } catch (err) {
             console.error('Unexpected error loading menu:', err);
@@ -575,19 +588,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (promoCta) {
             promoCta.addEventListener('click', (e) => {
                 e.preventDefault();
-                const chineseCategory = 'chinese';
-                currentCategory = chineseCategory;
+                const targetCategory = 'fried-rice';
+                currentCategory = targetCategory;
 
                 const allChips = categoriesContainer.querySelectorAll('.category-chip');
                 allChips.forEach(chip => {
-                    if (chip.dataset.categoryId === chineseCategory) {
+                    if (chip.dataset.categoryId === targetCategory) {
                         chip.classList.add('active');
                     } else {
                         chip.classList.remove('active');
                     }
                 });
 
-                renderProducts(chineseCategory);
+                renderProducts(targetCategory);
             });
         }
     }
