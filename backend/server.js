@@ -137,6 +137,13 @@ app.use(express.json({
 // ========================================
 
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = rateLimit; // v8 helper: IPv6-safe key normalization
+
+// Real client IP even when fronted by Cloudflare. Cloudflare sets CF-Connecting-IP to
+// the true client and overwrites any client-supplied value, so it can't be spoofed via
+// CF. Falls back to req.ip (trust proxy=1 => real client) for direct run.app access —
+// also unspoofable there, since Google's front end sets the last X-Forwarded-For entry.
+const clientIpKey = (req) => ipKeyGenerator(req.headers['cf-connecting-ip'] || req.ip);
 
 // Strict limiter for payments (prevent card testing/spam)
 const paymentLimiter = rateLimit({
@@ -151,6 +158,7 @@ const paymentLimiter = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  keyGenerator: clientIpKey, // real client IP even behind Cloudflare (not the CF edge IP)
   // Never rate-limit Razorpay's server-to-server webhook: it arrives from Razorpay's
   // own IPs and must always be processed so orders confirm/reconcile.
   skip: (req) => req.originalUrl.startsWith('/api/payment/webhook'),
@@ -169,6 +177,7 @@ const apiLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: clientIpKey, // real client IP even behind Cloudflare (not the CF edge IP)
 });
 
 // Apply limiters
