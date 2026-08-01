@@ -26,7 +26,7 @@
             supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1udnhvampiYmlxbXltbGF0aWdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzcwMjgsImV4cCI6MjA4MDc1MzAyOH0.pejckebDO7ieQlsbrlpqg3K6Xds5uBJCqkSJRaWubZE',
             apiUrl: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? 'http://localhost:7070' 
-                : 'https://spoon-backend-122591058801.asia-south1.run.app') + '/api'
+                : '') + '/api'  // same-origin in prod: works on any mapped domain (spoon.tcetmumbai.in, run.app, ...)
         };
     </script>
 </head>

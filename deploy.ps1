@@ -51,7 +51,7 @@ if (Test-Path $envFile) {
             $value = $matches[2].Trim()
             
             # Map specific keys if needed, otherwise pass through
-            if ($key -in @("SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_SECRET", "RAZORPAY_WEBHOOK_SECRET", "SMTP_EMAIL", "SMTP_PASSWORD", "REDIS_URL", "VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_EMAIL")) {
+            if ($key -in @("SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_SECRET", "RAZORPAY_WEBHOOK_SECRET", "SMTP_EMAIL", "SMTP_PASSWORD", "REDIS_URL", "VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_EMAIL", "FRONTEND_URL")) {
                 $envParams += "$key=$value"
                 Write-Host "   + Loaded $key" -ForegroundColor Gray
             }

@@ -60,7 +60,9 @@ async function notifyOrderPrepared(order) {
         await webPushService.sendPushToUser(order.customer_email, payload).catch(err => console.error('Push error:', err));
 
         // 2. Send Order Tracking Email
-        const trackingUrl = `https://spoon-backend-122591058801.asia-south1.run.app/public/orders.html`;
+        // Prefer the official domain (set FRONTEND_URL after its DNS/HTTPS are live);
+        // falls back to the Cloud Run URL so links always work if FRONTEND_URL is unset.
+        const trackingUrl = `${process.env.FRONTEND_URL || 'https://spoon-backend-122591058801.asia-south1.run.app'}/public/orders.html`;
         await emailService.sendOrderReadyEmail(order.customer_email, trackingUrl).catch(err => console.error('Email error:', err));
 
         // 3. Send WhatsApp

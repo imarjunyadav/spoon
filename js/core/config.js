@@ -16,11 +16,13 @@ const Config = {
     keyId: 'rzp_test_RzVKDlWgrurqra'
   },
 
-  // API Endpoints
+  // API Endpoints — NOTE: legacy/unused. The app actually uses
+  // window.SPOON_CONFIG.API_BASE_URL (= '' → same-origin, see the IIFE below).
+  // Kept only so any stray reference stays same-origin, not pinned to run.app.
   api: {
     baseUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
       ? 'http://localhost:7070'
-      : 'https://spoon-backend-122591058801.asia-south1.run.app'
+      : ''
   }
 };
 
