@@ -72,7 +72,8 @@ function formatOrderReadyMessage(order) {
             .join('\n');
     }
 
-    const trackingUrl = 'https://spoon-backend-122591058801.asia-south1.run.app/public/orders.html';
+    // Prefer the official domain (FRONTEND_URL); fall back to Cloud Run so links always work.
+    const trackingUrl = `${process.env.FRONTEND_URL || 'https://spoon-backend-122591058801.asia-south1.run.app'}/public/orders.html`;
 
     return [
         '*Your order is ready* ✅',
