@@ -1,0 +1,19 @@
+{
+  "hosting": {
+    "public": "firebase_public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "spoon-backend",
+          "region": "asia-south1"
+        }
+      }
+    ]
+  }
+}
