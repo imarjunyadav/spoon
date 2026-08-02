@@ -1,0 +1,5 @@
+# Intentionally empty.
+# Firebase Hosting requires a "public" directory, but Spoon serves 100% of its
+# content (static frontend + /api) from Cloud Run. The catch-all rewrite in
+# firebase.json forwards every path to the spoon-backend Cloud Run service, so no
+# static files are hosted here. Keeping this dir empty ensures nothing shadows the rewrite.
