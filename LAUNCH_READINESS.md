@@ -1648,7 +1648,8 @@ gcloud run deploy spoon-backend --source . --region asia-south1 `
 
 Confirmed: **no `manifest.json` anywhere** (glob returned only node_modules loaders). There is a service worker (`sw.js`) but without a manifest the PWA is **not installable / no add-to-home-screen** and Lighthouse PWA checks fail. It still works fully as a website. Ship a minimal manifest post-launch:
 ```html
-<!-- add to <head> of public pages -->
+<!-- add to <head>
+ <meta name="google-adsense-account" content="ca-pub-5996919416931309"> of public pages -->
 <link rel="manifest" href="/manifest.json">
 ```
 ```json
