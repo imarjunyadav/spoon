@@ -526,7 +526,7 @@ body {
 }
 
 .order-card.fc-selectable.fc-selected::after {
-    content: '✓';
+    content: '\2713';
     position: absolute;
     left: 14px;
     top: 50%;
@@ -878,5 +878,147 @@ body {
         font-size: 15px;
         white-space: normal;
         word-break: break-word;
+    }
+}
+
+/* ====================
+   OVERFLOW MENU  (desktop: hidden)
+   ==================== */
+.overflow-menu-wrapper {
+    display: none;
+    position: relative;
+}
+
+.overflow-trigger {
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: 0;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    padding: 4px 6px;
+}
+
+.overflow-dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    background: var(--background-white);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.13);
+    min-width: 150px;
+    z-index: 600;
+    overflow: hidden;
+}
+
+.overflow-dropdown.overflow-open {
+    display: block;
+}
+
+.overflow-item {
+    display: block;
+    width: 100%;
+    padding: 15px 20px;
+    text-align: left;
+    background: none;
+    border: none;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.overflow-item:last-child {
+    border-bottom: none;
+}
+
+.overflow-item:hover,
+.overflow-item:active {
+    background: var(--background-light);
+    color: var(--text-primary);
+}
+
+/* ====================
+   MOBILE ADDITIONS  (≤ 768px)
+   ==================== */
+@media (max-width: 768px) {
+    /* ── Overflow menu: visible; REFUNDS + ACCOUNT hidden from header row ── */
+    .overflow-menu-wrapper {
+        display: block;
+    }
+
+    #btn-cancelled,
+    #btn-profile {
+        display: none !important;
+    }
+
+    /* ── Order cards: top-align qty + name so wrapped names read cleanly ── */
+    .item-line {
+        align-items: flex-start;
+    }
+
+    .item-qty {
+        line-height: 1.4;
+    }
+
+    /* ── Modals: let the modal-body scroll; remove inner list caps ── */
+    #stock-items-list,
+    #cancelled-items-list,
+    #queue-overflow-list {
+        max-height: none !important;
+    }
+
+    /* ── Settings modal: tighter, readable on small screen ── */
+    #modal-settings .modal-body {
+        gap: 18px !important;
+    }
+
+    #modal-settings label {
+        font-size: 15px !important;
+        margin-bottom: 6px !important;
+    }
+
+    #modal-settings p {
+        font-size: 13px !important;
+        margin-bottom: 10px !important;
+    }
+
+    #modal-settings input[type="number"] {
+        padding: 12px 14px !important;
+        font-size: 16px !important;
+    }
+
+    #btn-save-settings {
+        font-size: 17px !important;
+        padding: 14px !important;
+        margin-top: 8px !important;
+    }
+
+    /* ── Profile modal: more compact ── */
+    #modal-profile .modal-body {
+        gap: 20px !important;
+        padding-top: 20px !important;
+    }
+
+    #btn-logout-confirm {
+        font-size: 15px !important;
+        padding: 14px !important;
+    }
+
+    /* ── Toast: full-width strip on mobile ── */
+    #toast-container {
+        left: 12px !important;
+        right: 12px !important;
+        bottom: 12px !important;
+    }
+
+    .toast {
+        max-width: 100%;
     }
 }

@@ -42,6 +42,14 @@
                 <button class="hdr-btn" id="btn-force-cancel">FORCE CANCEL</button>
                 <button class="hdr-btn" id="btn-settings">SETTINGS</button>
                 <button class="hdr-btn" id="btn-profile" title="Account">ACCOUNT</button>
+                <!-- 3-dot overflow menu: visible on mobile only, contains REFUNDS + ACCOUNT -->
+                <div class="overflow-menu-wrapper">
+                    <button class="hdr-btn overflow-trigger" id="btn-overflow" aria-label="More options" title="More">&#8942;</button>
+                    <div class="overflow-dropdown" id="overflow-dropdown">
+                        <button class="overflow-item" id="btn-cancelled-overflow">REFUNDS</button>
+                        <button class="overflow-item" id="btn-profile-overflow">ACCOUNT</button>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -206,5 +214,33 @@
 
     <!-- MAIN SCRIPT -->
     <script src="../js/admin/admin-dashboard.js"></script>
+
+    <!-- Overflow menu toggle (UI only — delegates clicks to real buttons) -->
+    <script>
+    (function () {
+        var trigger = document.getElementById('btn-overflow');
+        var dropdown = document.getElementById('overflow-dropdown');
+        if (!trigger || !dropdown) return;
+
+        trigger.addEventListener('click', function (e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('overflow-open');
+        });
+
+        document.addEventListener('click', function () {
+            dropdown.classList.remove('overflow-open');
+        });
+
+        document.getElementById('btn-cancelled-overflow').addEventListener('click', function () {
+            dropdown.classList.remove('overflow-open');
+            document.getElementById('btn-cancelled').click();
+        });
+
+        document.getElementById('btn-profile-overflow').addEventListener('click', function () {
+            dropdown.classList.remove('overflow-open');
+            document.getElementById('btn-profile').click();
+        });
+    })();
+    </script>
 </body>
 </html>
