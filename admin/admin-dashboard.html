@@ -35,13 +35,21 @@
     <div class="admin-shell">
         <!-- HEADER -->
         <header class="admin-header">
-            <div class="brand-title" style="display: flex; align-items: center; gap: 6px;">SPOON <span id="live-indicator" style="font-size: 20px; line-height: 1; color: var(--text-secondary);">●</span></div>
+            <div class="brand-title" style="display: flex; align-items: center; gap: 6px;">SPOON <span id="live-indicator" style="font-size: 20px; line-height: 1; color: var(--text-secondary);">&#9679;</span></div>
             <div class="header-actions" style="display: flex; gap: 32px; align-items: baseline; flex: 1; justify-content: flex-end;">
                 <button class="hdr-btn" id="btn-stock" title="Press S to view Stocks">STOCKS</button>
                 <button class="hdr-btn" id="btn-cancelled">REFUNDS</button>
                 <button class="hdr-btn" id="btn-force-cancel">FORCE CANCEL</button>
                 <button class="hdr-btn" id="btn-settings">SETTINGS</button>
                 <button class="hdr-btn" id="btn-profile" title="Account">ACCOUNT</button>
+                <!-- 3-dot overflow menu: visible on mobile only, contains REFUNDS + ACCOUNT -->
+                <div class="overflow-menu-wrapper">
+                    <button class="hdr-btn overflow-trigger" id="btn-overflow" aria-label="More options" title="More">&#8942;</button>
+                    <div class="overflow-dropdown" id="overflow-dropdown">
+                        <button class="overflow-item" id="btn-cancelled-overflow">REFUNDS</button>
+                        <button class="overflow-item" id="btn-profile-overflow">ACCOUNT</button>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -77,7 +85,7 @@
         <!-- CANCELLED ORDERS MODAL -->
         <div class="modal-content hidden" id="modal-cancelled" style="width: 1200px; max-width: 95vw;">
             <div class="modal-header">
-                <h2 class="col-title" style="font-size: 22px;">Cancelled Orders & Refunds</h2>
+                <h2 class="col-title" style="font-size: 22px;">Cancelled Orders &amp; Refunds</h2>
                 <button class="close-btn modal-close" style="font-size: 24px; padding: 8px;"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
@@ -206,5 +214,33 @@
 
     <!-- MAIN SCRIPT -->
     <script src="../js/admin/admin-dashboard.js"></script>
+
+    <!-- Overflow menu toggle (UI only — delegates clicks to real buttons) -->
+    <script>
+    (function () {
+        var trigger = document.getElementById('btn-overflow');
+        var dropdown = document.getElementById('overflow-dropdown');
+        if (!trigger || !dropdown) return;
+
+        trigger.addEventListener('click', function (e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('overflow-open');
+        });
+
+        document.addEventListener('click', function () {
+            dropdown.classList.remove('overflow-open');
+        });
+
+        document.getElementById('btn-cancelled-overflow').addEventListener('click', function () {
+            dropdown.classList.remove('overflow-open');
+            document.getElementById('btn-cancelled').click();
+        });
+
+        document.getElementById('btn-profile-overflow').addEventListener('click', function () {
+            dropdown.classList.remove('overflow-open');
+            document.getElementById('btn-profile').click();
+        });
+    })();
+    </script>
 </body>
 </html>
