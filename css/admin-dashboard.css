@@ -97,6 +97,17 @@ body {
     color: var(--text-primary);
 }
 
+.hdr-btn--icon {
+    font-size: 17px;
+    line-height: 1;
+    min-width: 32px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+}
+
 .profile-btn {
     background: var(--background-light);
     border: 1px solid var(--border-color);
@@ -362,6 +373,8 @@ body {
 
 .modal-body {
     overflow-y: auto;
+    flex: 1;
+    min-height: 0;
 }
 
 .close-btn {
@@ -526,7 +539,7 @@ body {
 }
 
 .order-card.fc-selectable.fc-selected::after {
-    content: '✓';
+    content: '\2713';
     position: absolute;
     left: 14px;
     top: 50%;
@@ -655,7 +668,7 @@ body {
 .toast-error   { background: var(--brand-primary); }
 
 /* ====================
-   TABLET RESPONSIVE  (769px – 1100px)
+   TABLET RESPONSIVE  (769px - 1100px)
    ==================== */
 @media (min-width: 769px) and (max-width: 1100px) {
     .admin-shell {
@@ -783,6 +796,7 @@ body {
         overflow: visible;
         text-overflow: clip;
         gap: 6px;
+        align-items: flex-start;
     }
 
     .item-name {
@@ -796,6 +810,7 @@ body {
     .item-qty {
         font-size: 19px;
         flex-shrink: 0;
+        line-height: 1.4;
     }
 
     /* ── Order meta ── */
@@ -879,102 +894,20 @@ body {
         white-space: normal;
         word-break: break-word;
     }
-}
 
-/* ====================
-   OVERFLOW MENU  (desktop: hidden)
-   ==================== */
-.overflow-menu-wrapper {
-    display: none;
-    position: relative;
-}
-
-.overflow-trigger {
-    font-size: 20px;
-    line-height: 1;
-    letter-spacing: 0;
-    min-height: 36px;
-    display: flex;
-    align-items: center;
-    padding: 4px 6px;
-}
-
-.overflow-dropdown {
-    display: none;
-    position: absolute;
-    right: 0;
-    top: calc(100% + 8px);
-    background: var(--background-white);
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.13);
-    min-width: 150px;
-    z-index: 600;
-    overflow: hidden;
-}
-
-.overflow-dropdown.overflow-open {
-    display: block;
-}
-
-.overflow-item {
-    display: block;
-    width: 100%;
-    padding: 15px 20px;
-    text-align: left;
-    background: none;
-    border: none;
-    border-bottom: 1px solid #f0f0f0;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text-secondary);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.overflow-item:last-child {
-    border-bottom: none;
-}
-
-.overflow-item:hover,
-.overflow-item:active {
-    background: var(--background-light);
-    color: var(--text-primary);
-}
-
-/* ====================
-   MOBILE ADDITIONS  (≤ 768px)
-   ==================== */
-@media (max-width: 768px) {
-    /* ── Overflow menu: visible; REFUNDS + ACCOUNT hidden from header row ── */
-    .overflow-menu-wrapper {
-        display: block;
+    /* ── Icon-only nav buttons (REFUNDS / ACCOUNT) ── */
+    .hdr-btn--icon {
+        font-size: 16px;
     }
 
-    #btn-cancelled,
-    #btn-profile {
-        display: none !important;
-    }
-
-    /* ── Order cards: top-align qty + name so wrapped names read cleanly ── */
-    .item-line {
-        align-items: flex-start;
-    }
-
-    .item-qty {
-        line-height: 1.4;
-    }
-
-    /* ── Modals: let the modal-body scroll; remove inner list caps ── */
+    /* ── Modal inner lists: let modal body be the single scroller ── */
     #stock-items-list,
     #cancelled-items-list,
     #queue-overflow-list {
         max-height: none !important;
     }
 
-    /* ── Settings modal: tighter, readable on small screen ── */
+    /* ── Settings modal ── */
     #modal-settings .modal-body {
         gap: 18px !important;
     }
@@ -1000,7 +933,7 @@ body {
         margin-top: 8px !important;
     }
 
-    /* ── Profile modal: more compact ── */
+    /* ── Profile modal ── */
     #modal-profile .modal-body {
         gap: 20px !important;
         padding-top: 20px !important;
@@ -1011,7 +944,7 @@ body {
         padding: 14px !important;
     }
 
-    /* ── Toast: full-width strip on mobile ── */
+    /* ── Toast: full-width strip ── */
     #toast-container {
         left: 12px !important;
         right: 12px !important;
