@@ -653,6 +653,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderStockItems() {
         if (!dom.stockItemsList) return;
 
+        // Preserve scroll position across data-driven rebuilds (realtime, error revert)
+        const savedScrollTop = dom.stockItemsList.scrollTop;
+
         const searchQuery = (dom.stockSearch?.value || '').trim().toLowerCase();
 
         let filteredItems = stockItemsList;
@@ -672,7 +675,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const totalOos = stockItemsList.filter(i => !i.is_available).length;
 
-        let tabsHtml = `<div class="stock-tabs-bar" style="display:flex; gap:6px; overflow-x:auto; padding-bottom:12px; border-bottom:1px solid #eee; margin-bottom:8px; flex-shrink:0;">`;
+        // Sticky tabs: stick to top of #stock-items-list (desktop) or .modal-body (mobile)
+        let tabsHtml = `<div class="stock-tabs-bar" style="position:sticky; top:0; background:var(--background-white); z-index:1; display:flex; gap:6px; overflow-x:auto; padding-top:4px; padding-bottom:12px; border-bottom:1px solid #eee; margin-bottom:8px; flex-shrink:0;">`;
         tabsHtml += `<button class="stock-tab ${activeStockCategory === 'all' ? 'active' : ''}" onclick="window.setStockCategory('all')">All${totalOos > 0 ? ` <span class="oos-badge">${totalOos}</span>` : ''}</button>`;
         categories.forEach(cat => {
             const oos = outOfStockCounts[cat] || 0;
@@ -714,7 +718,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        dom.stockItemsList.innerHTML = tabsHtml + `<div class="stock-items-scroll" style="overflow-y:auto; max-height:350px; padding-right:4px;">` + itemsHtml + `</div>`;
+        // Single scroll container: #stock-items-list owns scrolling; no nested overflow wrapper
+        dom.stockItemsList.innerHTML = tabsHtml + `<div class="stock-items-scroll" style="padding-right:4px;">` + itemsHtml + `</div>`;
+
+        // Restore scroll so items stay in place after realtime / error-revert rebuilds
+        if (savedScrollTop > 0) {
+            dom.stockItemsList.scrollTop = savedScrollTop;
+        }
     }
 
     window.setStockCategory = (cat) => {
