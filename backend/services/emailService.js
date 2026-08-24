@@ -1,29 +1,15 @@
 /**
  * SPOON - EMAIL SERVICE
- * 
+ *
  * Centralized email service for sending OTP verification
  * and other transactional emails via Nodemailer.
+ *
+ * Sender accounts are managed by senderPool.js and configured entirely
+ * through environment variables (SMTP_EMAIL_1/SMTP_PASSWORD_1, etc.).
+ * No code changes are needed to add or remove senders.
  */
 
-const nodemailer = require('nodemailer');
-
-// Initialize SMTP transporter for email notifications.
-// Fully configurable via environment variables so the mail provider can be swapped
-// (e.g. Gmail -> the institution's SMTP relay) with NO code change. The defaults
-// preserve the existing Gmail behavior exactly.
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
-const SMTP_PORT = parseInt(process.env.SMTP_PORT, 10) || 587;
-const SMTP_USER = process.env.SMTP_USER || process.env.SMTP_EMAIL;
-
-const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: SMTP_PORT,
-  secure: SMTP_PORT === 465, // implicit TLS on 465; STARTTLS on 587 and others
-  auth: {
-    user: SMTP_USER,
-    pass: process.env.SMTP_PASSWORD
-  }
-});
+const senderPool = require('./senderPool');
 
 /**
  * Generate HTML email template for OTP verification.
@@ -75,24 +61,16 @@ function generateOTPEmailTemplate(otp) {
  * @returns {Promise<{success: boolean, error?: string}>} Success status or error
  */
 async function sendOTPEmail(email, otp) {
-  try {
-    const htmlContent = generateOTPEmailTemplate(otp);
-
-    // Note: Implicitly handles 10-second timeout via SMTP connection
-    const info = await transporter.sendMail({
-      from: `"SPOON Canteen" <${process.env.SMTP_EMAIL}>`,
-      to: email,
-      subject: 'SPOON - Your Verification Code',
-      html: htmlContent
-    });
-
-    console.log(`📧 OTP email sent to ${email}:`, info.messageId);
-    return { success: true };
-
-  } catch (err) {
-    console.error(`❌ OTP email error for ${email}:`, err.message);
-    return { success: false, error: err.message };
+  const htmlContent = generateOTPEmailTemplate(otp);
+  const result = await senderPool.sendWithFallback({
+    to: email,
+    subject: 'SPOON - Your Verification Code',
+    html: htmlContent,
+  });
+  if (!result.success) {
+    console.error(`❌ OTP email error for ${email}:`, result.error);
   }
+  return result;
 }
 
 /**
@@ -144,23 +122,16 @@ function generateOrderReadyTemplate(trackingUrl) {
  * @returns {Promise<{success: boolean, error?: string}>}
  */
 async function sendOrderReadyEmail(email, trackingUrl) {
-  try {
-    const htmlContent = generateOrderReadyTemplate(trackingUrl);
-
-    const info = await transporter.sendMail({
-      from: `"SPOON Canteen" <${process.env.SMTP_EMAIL}>`,
-      to: email,
-      subject: 'Your food is ready at the counter!',
-      html: htmlContent
-    });
-
-    console.log(`📧 Order Ready email sent to ${email}: ${info.messageId}`);
-    return { success: true };
-
-  } catch (err) {
-    console.error(`❌ Order Ready email error for ${email}:`, err.message);
-    return { success: false, error: err.message };
+  const htmlContent = generateOrderReadyTemplate(trackingUrl);
+  const result = await senderPool.sendWithFallback({
+    to: email,
+    subject: 'Your food is ready at the counter!',
+    html: htmlContent,
+  });
+  if (!result.success) {
+    console.error(`❌ Order Ready email error for ${email}:`, result.error);
   }
+  return result;
 }
 
 module.exports = {
@@ -168,5 +139,4 @@ module.exports = {
   generateOTPEmailTemplate,
   sendOrderReadyEmail,
   generateOrderReadyTemplate,
-  transporter
 };
