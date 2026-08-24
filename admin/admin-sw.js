@@ -1,4 +1,4 @@
-const CACHE_NAME = 'spoon-admin-v1';
+const CACHE_NAME = 'spoon-admin-v2';
 const PRECACHE_URLS = [
     '/admin/admin-dashboard.html',
     '/css/admin-dashboard.css',
@@ -6,6 +6,7 @@ const PRECACHE_URLS = [
     '/favicon.svg',
     '/admin/icons/icon.svg',
     '/admin/admin-manifest.json',
+    '/admin/ElevenLabs_Positive_chime_for_accepted_user_input.mp3',
 ];
 
 function isApiOrRealtime(url) {

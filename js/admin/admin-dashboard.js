@@ -80,25 +80,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let alarmMouseStartX = null;
     let alarmMouseStartY = null;
 
-    // Built-in AudioContext Synthesizer — lazy-initialized on first user gesture
-    let audioCtx = null;
+    // MP3 chime alert — lazy-loaded on first user gesture
+    let alarmAudio = null;
     let audioUnlocked = false;
     let alarmIntervalId = null;
 
     /**
-     * Unlock AudioContext on first user interaction.
-     * Browsers block AudioContext creation until a user gesture occurs.
+     * Unlock audio on first user interaction.
+     * Browsers block audio until a user gesture occurs.
      */
     function unlockAudio() {
         if (audioUnlocked) return;
-        try {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            audioUnlocked = true;
-            // Remove one-time listeners after unlock
-            document.removeEventListener('click', unlockAudio);
-            document.removeEventListener('keydown', unlockAudio);
-            document.removeEventListener('touchstart', unlockAudio);
-        } catch(e) { console.error("Failed to create AudioContext", e); }
+        audioUnlocked = true;
+        alarmAudio = new Audio('/admin/ElevenLabs_Positive_chime_for_accepted_user_input.mp3');
+        alarmAudio.volume = 1.0;
+        alarmAudio.preload = 'auto';
+        document.removeEventListener('click', unlockAudio);
+        document.removeEventListener('keydown', unlockAudio);
+        document.removeEventListener('touchstart', unlockAudio);
     }
 
     // Register one-time unlock listeners
@@ -107,22 +106,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('touchstart', unlockAudio, { once: false });
 
     function playBeep() {
-        if (!audioCtx || !audioUnlocked) return;
+        if (!audioUnlocked || !alarmAudio) return;
         try {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitch ding A5
-            
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            osc.start();
-            gain.gain.setValueAtTime(1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.7);
-            osc.stop(audioCtx.currentTime + 0.7);
+            const sound = alarmAudio.cloneNode();
+            sound.volume = 1.0;
+            sound.play().catch(() => {});
         } catch(e) { /* silently ignore audio failures */ }
     }
 
