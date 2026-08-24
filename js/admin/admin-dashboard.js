@@ -203,7 +203,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const diffInMinutes = Math.floor(diffInSeconds / 60);
 
         if (diffInMinutes < 1) return 'just now';
-        return `${diffInMinutes}m`;
+        if (diffInMinutes < 60) return `${diffInMinutes}m`;
+        const hours = Math.floor(diffInMinutes / 60);
+        const mins = diffInMinutes % 60;
+        return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
     }
 
     // ---------------------------------------------------------
@@ -1226,6 +1229,44 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ---------------------------------------------------------
+    // PWA INSTALL INTERACTION
+    // ---------------------------------------------------------
+    (function() {
+        let deferredInstallPrompt = null;
+        const brandLogo = document.getElementById('brand-logo');
+        if (!brandLogo) return;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            brandLogo.style.cursor = 'pointer';
+            brandLogo.title = 'Tap to install Spoon Admin';
+        });
+
+        brandLogo.addEventListener('click', async () => {
+            if (!deferredInstallPrompt) return;
+            if (!window.confirm('Install Spoon Admin?')) return;
+            try {
+                await deferredInstallPrompt.prompt();
+                const { outcome } = await deferredInstallPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    deferredInstallPrompt = null;
+                    brandLogo.style.cursor = '';
+                    brandLogo.title = '';
+                }
+            } catch (e) {
+                console.error('[PWA] Install prompt error', e);
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredInstallPrompt = null;
+            brandLogo.style.cursor = '';
+            brandLogo.title = '';
+        });
+    })();
+
+    // ---------------------------------------------------------
     // IGNITION
     // ---------------------------------------------------------
     fetchSettings();
@@ -1241,3 +1282,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 60000);
     });
 });
+
+// Register admin service worker for PWA
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/admin/admin-sw.js', { scope: '/admin/' })
+            .catch(err => console.error('[Admin SW] Registration failed', err));
+    });
+}

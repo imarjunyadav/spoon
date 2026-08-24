@@ -368,13 +368,17 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(102, 102, 102, 0.15);
+    flex-shrink: 0;
 }
 
 .modal-body {
     overflow-y: auto;
     flex: 1;
     min-height: 0;
+    -webkit-overflow-scrolling: touch;
 }
 
 .close-btn {
@@ -382,6 +386,21 @@ body {
     border: none;
     font-size: 20px;
     cursor: pointer;
+}
+
+/* Sticky action buttons within scrollable modal body */
+#btn-save-settings {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    box-shadow: 0 -4px 12px rgba(235, 23, 0, 0.12);
+}
+
+#btn-logout-confirm {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
 }
 
 /* ========================

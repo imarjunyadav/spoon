@@ -5,6 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <!-- PWA: Admin Manifest & Mobile Meta -->
+    <link rel="manifest" href="/admin/admin-manifest.json">
+    <meta name="theme-color" content="#eb1700">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Spoon Admin">
+    <link rel="apple-touch-icon" href="/admin/icons/icon.svg">
     <title>SPOON ADMIN </title>
 
     <!-- Font Awesome -->
@@ -35,7 +43,7 @@
     <div class="admin-shell">
         <!-- HEADER -->
         <header class="admin-header">
-            <div class="brand-title" style="display: flex; align-items: center; gap: 6px;">SPOON <span id="live-indicator" style="font-size: 20px; line-height: 1; color: var(--text-secondary);">&#9679;</span></div>
+            <div class="brand-title" id="brand-logo" style="display: flex; align-items: center; gap: 6px;">SPOON <span id="live-indicator" style="font-size: 20px; line-height: 1; color: var(--text-secondary);">&#9679;</span></div>
             <div class="header-actions" style="display: flex; gap: 20px; align-items: center; flex: 1; justify-content: flex-end;">
                 <button class="hdr-btn" id="btn-stock" title="Press S to view Stocks">STOCKS</button>
                 <button class="hdr-btn" id="btn-force-cancel">CANCEL</button>
